@@ -140,6 +140,9 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/registration/" `
 
 &nbsp; -Body '{"username":"testuser2","email":"testuser2@example.com","password1":"TestPass123!","password2":"TestPass123!"}'
 
+
+
+
 ## API Endpoint Summary
 
 ### Authentication Endpoints
@@ -191,3 +194,44 @@ Token is obtained via the `/api/auth/login/` or `/api/auth/registration/` endpoi
 
 - Non-owners:
   - Receive `403 Forbidden` when attempting to modify another user’s content
+
+
+## Comment API
+
+### Comment Endpoints
+
+| Endpoint | Method | Authentication Required | Description |
+|-----------|--------|--------------------------|-------------|
+| `/api/comments/` | GET | No | Retrieve all comments |
+| `/api/comments/?observation=<id>` | GET | No | Retrieve comments filtered by observation |
+| `/api/comments/` | POST | Yes | Create a new comment (owner automatically assigned) |
+| `/api/comments/<id>/` | GET | No | Retrieve a single comment |
+| `/api/comments/<id>/` | PATCH | Yes (Owner only) | Update a comment |
+| `/api/comments/<id>/` | DELETE | Yes (Owner only) | Delete a comment |
+
+---
+
+### Comment Manual Testing
+
+| Test ID | Feature | Endpoint | Method | Steps | Expected Result | Actual Result |
+|----------|----------|-----------|--------|--------|------------------|----------------|
+| COM-01 | Create Comment (authenticated) | `/api/comments/` | POST | Send request with `Authorization: Token <key>` header | Comment created with owner auto-assigned | PASS |
+| COM-02 | List Comments (public) | `/api/comments/` | GET | Access endpoint without authentication | 200 OK + list returned | PASS |
+| COM-03 | Filter Comments by Observation | `/api/comments/?observation=1` | GET | Include observation query parameter | Only matching comments returned | PASS |
+| COM-04 | Prevent Non-Owner Update | `/api/comments/1/` | PATCH | Login as different user and attempt update | 403 Forbidden | PASS |
+| COM-05 | Prevent Non-Owner Delete | `/api/comments/1/` | DELETE | Login as different user and attempt delete | 403 Forbidden | PASS |
+
+---
+
+### Updated Permission Model
+
+- Unauthenticated users:
+  - Can view observations and comments (read-only)
+  - Cannot create, update, or delete content
+
+- Authenticated users:
+  - Can create observations and comments
+  - Can edit or delete only their own content
+
+- Non-owners:
+  - Receive `403 Forbidden` when attempting to modify another user's content
