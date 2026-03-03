@@ -144,3 +144,21 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 SITE_ID = 1
+
+# Local dev: print emails to console instead of trying SMTP
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Keep registration simple for dev/testing
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_EMAIL_REQUIRED = False
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
+}
