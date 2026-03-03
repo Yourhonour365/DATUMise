@@ -27,10 +27,10 @@ class CommentSerializer(serializers.ModelSerializer):
             "owner",
             "content",
             "created_at",
-            "updated_at",
+            
         ]
         read_only_fields = [
             "owner",
             "created_at",
-            "updated_at",
+            
         ]
