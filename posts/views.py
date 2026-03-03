@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from .models import Observation
 from .serializers import ObservationSerializer
-
+from .permissions import IsOwnerOrReadOnly
 
 class ObservationList(generics.ListCreateAPIView):
     queryset = Observation.objects.all()
@@ -15,4 +15,7 @@ class ObservationList(generics.ListCreateAPIView):
 class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
     serializer_class = ObservationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [
+    permissions.IsAuthenticatedOrReadOnly,
+    IsOwnerOrReadOnly,
+]
