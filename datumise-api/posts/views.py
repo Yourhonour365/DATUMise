@@ -1,10 +1,18 @@
-from django.shortcuts import render
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-# Create your views here.
+from rest_framework import generics, permissions
+from .models import Observation
+from .serializers import ObservationSerializer
 
 
+class ObservationList(generics.ListCreateAPIView):
+    queryset = Observation.objects.all()
+    serializer_class = ObservationSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-@api_view(["GET"])
-def health(request):
-    return Response({"status": "ok", "app": "datumise-api"})
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Observation.objects.all()
+    serializer_class = ObservationSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
