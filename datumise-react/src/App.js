@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
-  
+import ObservationDetail from "./ObservationDetail"; 
+
 function Home() {
   return (
     <div className="container mt-5">
@@ -67,6 +68,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/observations" element={<Observations />} />
         <Route path="/observations/create" element={<ObservationCreateForm />} />
+        <Route path="/observations/:id" element={<ObservationDetail />} />
       </Routes>
     </Router>
   );
