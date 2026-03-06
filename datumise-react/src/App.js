@@ -47,6 +47,14 @@ function Observations() {
 
   return (
     <div className="container mt-5">
+      
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="mb-0">Observations</h2>
+        <Link to="/observations/create" className="btn btn-primary btn-sm">
+          + New Observation
+        </Link>
+      </div>
+      
       {loading && <p>Loading observations...</p>}
 
       {!loading && observations.length === 0 && (
