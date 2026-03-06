@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import api from "./api/api";
 
 function Home() {
   return (
@@ -27,9 +28,31 @@ function Register() {
 }
 
 function Observations() {
+  const [observations, setObservations] = useState([]);
+
+  useEffect(() => {
+    api.get("/api/observations/")
+      .then((response) => {
+        setObservations(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching observations:", error);
+      });
+  }, []);
+
   return (
     <div className="container mt-5">
       <h2>Observations</h2>
+
+      {observations.map((obs) => (
+        <div key={obs.id} className="card mb-3">
+          <div className="card-body">
+            <h5>{obs.title}</h5>
+            <p>{obs.description}</p>
+            <small>Owner: {obs.owner}</small>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -48,5 +71,3 @@ function App() {
 }
 
 export default App;
-
-
