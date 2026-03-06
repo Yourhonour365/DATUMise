@@ -152,11 +152,17 @@ const handleUpdateComment = async (commentId) => {
             </Button>
         </div>
       )}
-      {!observation.is_owner && (
+      {!localStorage.getItem("token") ? (
         <p className="text-muted fst-italic">
-        🔒 Only the owner of this observation can edit or delete it.
+          🔒 Only logged-in users can add, edit, or delete observations.
         </p>
-     )}
+      ) : (
+        !observation.is_owner && (
+          <p className="text-muted fst-italic">
+            🔒 Only the owner of this observation can edit or delete it.
+          </p>
+        )
+      )}
 
       <hr />
 
@@ -188,7 +194,16 @@ const handleUpdateComment = async (commentId) => {
       <h3>
         Comments {comments.length > 0 && `(${comments.length})`}
       </h3>
-
+      {comments.length > 0 && !localStorage.getItem("token") && (
+        <p className="text-muted fst-italic">
+          🔒 Only logged-in users can add, edit, or delete comments.
+        </p>
+      )}
+            {comments.length > 0 && localStorage.getItem("token") && (
+        <p className="text-muted fst-italic">
+          🔒 Only comment owners can edit comments.
+        </p>
+      )}
       {comments.length === 0 ? (
         <p className="fst-italic text-muted">
           No comments yet, be the first to comment.
@@ -265,11 +280,7 @@ const handleUpdateComment = async (commentId) => {
 
       </div>
 
-      {!comment.is_owner && !comment.is_observation_owner && (
-        <small className="text-muted fst-italic">
-          🔒 You cannot edit or delete this comment.
-        </small>
-      )}
+      
     </>
   )}
 </div>
