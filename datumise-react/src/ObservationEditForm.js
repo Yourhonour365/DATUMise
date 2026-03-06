@@ -23,7 +23,10 @@ function ObservationEditForm() {
           description: response.data.description,
         });
       } catch (err) {
-        console.error("Error fetching observation:", err);
+        console.log("Full error:", err);
+        console.log("Status:", err.response?.status);
+        console.log("Data:", err.response?.data);
+        console.log("Message:", err.message);
       }
     };
 
@@ -44,7 +47,7 @@ function ObservationEditForm() {
       await api.put(`/api/observations/${id}/`, formData);
       navigate(`/observations/${id}`);
     } catch (err) {
-      console.error("Error updating observation:", err);
+      console.error("Error updating observation:", err.response?.data || err.message);
     }
   };
 
