@@ -77,6 +77,22 @@ function ObservationDetail() {
     return <p>Loading observation...</p>;
   }
 
+ const handleDeleteComment = async (commentId) => {
+    const confirmed = window.confirm("Delete this comment?");
+
+    if (!confirmed) return;
+
+    try {
+        await api.delete(`/api/comments/${commentId}/`);
+
+        // refresh comments
+        fetchComments();
+
+    } catch (err) {
+        console.error("Error deleting comment:", err);
+    }
+    };
+
   return (
     <Container className="mt-4">
       <h1>{observation.title}</h1>
@@ -133,9 +149,17 @@ function ObservationDetail() {
           <div key={comment.id} className="card mb-3">
             <div className="card-body">
               <p>{comment.content}</p>
-              <small>
-                Owner: {comment.owner} | Created: {comment.created_at}
+              <small className="d-block mb-2">
+                    Owner: {comment.owner} | Created: {comment.created_at}
               </small>
+
+              <Button
+                    variant="outline-danger"
+                    size="sm"
+                    onClick={() => handleDeleteComment(comment.id)}
+                >
+                    Delete Comment
+              </Button>
             </div>
           </div>
         ))
