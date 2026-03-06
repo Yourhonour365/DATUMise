@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Container } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import api from "./api/api";
 
 function ObservationCreateForm() {
   const [formData, setFormData] = useState({
@@ -8,6 +10,7 @@ function ObservationCreateForm() {
   });
 
   const { title, description } = formData;
+  const navigate = useNavigate();
 
   const handleChange = (event) => {
     setFormData({
@@ -16,12 +19,23 @@ function ObservationCreateForm() {
     });
   };
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      await api.post("/api/observations/", formData);
+      navigate("/observations");
+    } catch (err) {
+      console.error("Create observation failed:", err);
+    }
+  };
+
   return (
     <Container className="mt-4">
       <h1>Create Observation</h1>
 
-      <Form>
-        <Form.Group className="mb-3" controlId="title">
+      <Form onSubmit={handleSubmit}>
+        <Form.Group className="mb-3">
           <Form.Label>Title</Form.Label>
           <Form.Control
             type="text"
@@ -30,10 +44,11 @@ function ObservationCreateForm() {
             onChange={handleChange}
             maxLength={200}
             placeholder="Enter observation title"
+            required
           />
         </Form.Group>
 
-        <Form.Group className="mb-3" controlId="description">
+        <Form.Group className="mb-3">
           <Form.Label>Description</Form.Label>
           <Form.Control
             as="textarea"
