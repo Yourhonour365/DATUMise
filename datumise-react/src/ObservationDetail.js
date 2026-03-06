@@ -125,7 +125,14 @@ const handleUpdateComment = async (commentId) => {
         <strong>Owner:</strong> {observation.owner}
       </p>
       <p>
-        <strong>Created:</strong> {observation.created_at}
+        <strong>Created:</strong>{" "}
+        {new Date(observation.created_at).toLocaleString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        })}
       </p>
 
       <div className="d-flex gap-2 mb-4">
@@ -206,7 +213,14 @@ const handleUpdateComment = async (commentId) => {
       <p>{comment.content}</p>
 
       <small className="d-block mb-2">
-        Owner: {comment.owner} | Created: {comment.created_at}
+        Owner: {comment.owner} | Created:{" "}
+        {new Date(comment.created_at).toLocaleString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        })}
       </small>
 
       <div className="d-flex gap-2">
