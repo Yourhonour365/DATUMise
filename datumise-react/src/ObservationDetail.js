@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Container } from "react-bootstrap";
+import { useParams, Link } from "react-router-dom";
+import { Container, Button } from "react-bootstrap";
 import api from "./api/api";
 
 function ObservationDetail() {
@@ -31,6 +31,10 @@ function ObservationDetail() {
       <p>{observation.description}</p>
       <p><strong>Owner:</strong> {observation.owner}</p>
       <p><strong>Created:</strong> {observation.created_at}</p>
+
+      <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
+        Edit Observation
+      </Button>
     </Container>
   );
 }
