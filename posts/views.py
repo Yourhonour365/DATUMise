@@ -27,7 +27,7 @@ class CommentList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        queryset = Comment.objects.all()
+        queryset = Comment.objects.all().order_by("-created_at")
         observation_id = self.request.query_params.get("observation")
 
         if observation_id:
