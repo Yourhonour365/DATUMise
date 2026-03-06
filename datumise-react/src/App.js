@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import api from "./api/api";
-
+import ObservationCreateForm from "./ObservationCreateForm";
+  
 function Home() {
   return (
     <div className="container mt-5">
@@ -65,6 +66,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/observations" element={<Observations />} />
+        <Route path="/observations/create" element={<ObservationCreateForm />} />
       </Routes>
     </Router>
   );
