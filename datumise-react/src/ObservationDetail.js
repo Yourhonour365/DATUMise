@@ -11,6 +11,8 @@ function ObservationDetail() {
   const [comments, setComments] = useState([]);
   const [commentContent, setCommentContent] = useState("");
   const [commentError, setCommentError] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentContent, setEditCommentContent] = useState("");
 
   const fetchComments = async () => {
     try {
@@ -93,6 +95,31 @@ function ObservationDetail() {
     }
     };
 
+const handleEditClick = (comment) => {
+  setEditingCommentId(comment.id);
+  setEditCommentContent(comment.content);
+};
+
+const handleCancelEdit = () => {
+  setEditingCommentId(null);
+  setEditCommentContent("");
+};
+
+const handleUpdateComment = async (commentId) => {
+  try {
+    await api.put(`/api/comments/${commentId}/`, {
+      observation: id,
+      content: editCommentContent,
+    });
+
+    setEditingCommentId(null);
+    setEditCommentContent("");
+    fetchComments();
+  } catch (err) {
+    console.error("Error updating comment:", err);
+  }
+};
+
   return (
     <Container className="mt-4">
       <h1>{observation.title}</h1>
@@ -148,19 +175,63 @@ function ObservationDetail() {
         comments.map((comment) => (
           <div key={comment.id} className="card mb-3">
             <div className="card-body">
-              <p>{comment.content}</p>
-              <small className="d-block mb-2">
-                    Owner: {comment.owner} | Created: {comment.created_at}
-              </small>
+  {editingCommentId === comment.id ? (
+    <>
+      <Form.Group className="mb-3">
+        <Form.Control
+          as="textarea"
+          rows={3}
+          value={editCommentContent}
+          onChange={(e) => setEditCommentContent(e.target.value)}
+        />
+      </Form.Group>
 
-              <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={() => handleDeleteComment(comment.id)}
-                >
-                    Delete Comment
-              </Button>
-            </div>
+      <div className="d-flex gap-2">
+        <Button
+          variant="success"
+          size="sm"
+          onClick={() => handleUpdateComment(comment.id)}
+        >
+          Save
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleCancelEdit}
+        >
+          Cancel
+        </Button>
+      </div>
+    </>
+  ) : (
+    <>
+      <p>{comment.content}</p>
+
+      <small className="d-block mb-2">
+        Owner: {comment.owner} | Created: {comment.created_at}
+      </small>
+
+      <div className="d-flex gap-2">
+        <Button
+          variant="outline-primary"
+          size="sm"
+          onClick={() => handleEditClick(comment)}
+        >
+          Edit Comment
+        </Button>
+
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => handleDeleteComment(comment.id)}
+        >
+          Delete Comment
+        </Button>
+      </div>
+    </>
+  )}
+</div>
           </div>
         ))
       )}
