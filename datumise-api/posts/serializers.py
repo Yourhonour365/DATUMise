@@ -4,6 +4,8 @@ from .models import Observation, Comment
 
 class ObservationSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
+    is_owner = serializers.SerializerMethodField()
+    comment_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Observation
@@ -14,8 +16,13 @@ class ObservationSerializer(serializers.ModelSerializer):
             "description",
             "created_at",
             "updated_at",
+            "comment_count",
+            "is_owner",
         ]
 
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        return request and request.user == obj.owner
 
 class CommentSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")

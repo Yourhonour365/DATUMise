@@ -135,15 +135,22 @@ const handleUpdateComment = async (commentId) => {
         })}
       </p>
 
-      <div className="d-flex gap-2 mb-4">
-        <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
-          Edit Observation
-        </Button>
+      {observation.is_owner && (
+        <div className="d-flex gap-2 mb-4">
+            <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
+                Edit Observation
+            </Button>
 
-        <Button variant="danger" onClick={handleDelete}>
-          Delete Observation
-        </Button>
-      </div>
+            <Button variant="danger" onClick={handleDelete}>
+                Delete Observation
+            </Button>
+        </div>
+      )}
+      {!observation.is_owner && (
+        <p className="text-muted fst-italic">
+        🔒 Only the owner of this observation can edit or delete it.
+        </p>
+     )}
 
       <hr />
 
