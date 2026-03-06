@@ -14,6 +14,8 @@ class ObservationList(generics.ListCreateAPIView):
             comment_count=Count("comments")
         ).order_by("-created_at")
 
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
