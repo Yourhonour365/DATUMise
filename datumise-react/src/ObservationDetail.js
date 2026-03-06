@@ -16,13 +16,10 @@ function ObservationDetail() {
 
   const fetchComments = async () => {
     try {
-      const response = await api.get("/api/comments/");
-      const observationComments = response.data.filter(
-        (comment) => String(comment.observation) === String(id)
-      );
-      setComments(observationComments);
+        const response = await api.get(`/api/comments/?observation=${id}`);
+        setComments(response.data);
     } catch (err) {
-      console.error("Error fetching comments:", err);
+        console.error("Error fetching comments:", err);
     }
   };
 
