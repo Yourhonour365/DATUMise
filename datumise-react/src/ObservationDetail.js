@@ -21,7 +21,7 @@ function ObservationDetail() {
     } catch (err) {
         console.error("Error fetching comments:", err);
     }
-  };
+};
 
   useEffect(() => {
     const fetchObservation = async () => {
