@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Container, Button } from "react-bootstrap";
+import { Container, Button, Form, Alert } from "react-bootstrap";
 import api from "./api/api";
 
 function ObservationDetail() {
@@ -9,6 +9,20 @@ function ObservationDetail() {
 
   const [observation, setObservation] = useState(null);
   const [comments, setComments] = useState([]);
+  const [commentContent, setCommentContent] = useState("");
+  const [commentError, setCommentError] = useState("");
+
+  const fetchComments = async () => {
+    try {
+      const response = await api.get("/api/comments/");
+      const observationComments = response.data.filter(
+        (comment) => String(comment.observation) === String(id)
+      );
+      setComments(observationComments);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchObservation = async () => {
@@ -17,18 +31,6 @@ function ObservationDetail() {
         setObservation(response.data);
       } catch (err) {
         console.error("Error fetching observation:", err);
-      }
-    };
-
-    const fetchComments = async () => {
-      try {
-        const response = await api.get("/api/comments/");
-        const observationComments = response.data.filter(
-          (comment) => String(comment.observation) === String(id)
-        );
-        setComments(observationComments);
-      } catch (err) {
-        console.error("Error fetching comments:", err);
       }
     };
 
@@ -53,6 +55,24 @@ function ObservationDetail() {
     }
   };
 
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    setCommentError("");
+
+    try {
+      await api.post("/api/comments/", {
+        observation: id,
+        content: commentContent,
+      });
+
+      setCommentContent("");
+      fetchComments();
+    } catch (err) {
+      console.error("Error creating comment:", err);
+      setCommentError("Failed to post comment. Please try again.");
+    }
+  };
+
   if (!observation) {
     return <p>Loading observation...</p>;
   }
@@ -61,8 +81,12 @@ function ObservationDetail() {
     <Container className="mt-4">
       <h1>{observation.title}</h1>
       <p>{observation.description}</p>
-      <p><strong>Owner:</strong> {observation.owner}</p>
-      <p><strong>Created:</strong> {observation.created_at}</p>
+      <p>
+        <strong>Owner:</strong> {observation.owner}
+      </p>
+      <p>
+        <strong>Created:</strong> {observation.created_at}
+      </p>
 
       <div className="d-flex gap-2 mb-4">
         <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
@@ -73,6 +97,30 @@ function ObservationDetail() {
           Delete Observation
         </Button>
       </div>
+
+      <hr />
+
+      <h3>Add Comment</h3>
+
+      <Form onSubmit={handleCommentSubmit} className="mb-4">
+        <Form.Group className="mb-3" controlId="commentContent">
+          <Form.Label>Comment</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={3}
+            value={commentContent}
+            onChange={(e) => setCommentContent(e.target.value)}
+            placeholder="Write your comment here..."
+            required
+          />
+        </Form.Group>
+
+        {commentError && <Alert variant="danger">{commentError}</Alert>}
+
+        <Button type="submit" variant="success">
+          Post Comment
+        </Button>
+      </Form>
 
       <hr />
 
