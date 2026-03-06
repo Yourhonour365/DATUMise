@@ -54,6 +54,12 @@ function Observations() {
               <Link to={`/observations/${obs.id}`}>{obs.title}</Link>
             </h5>
             <p>{obs.description}</p>
+            <small>
+              <Link to={`/observations/${obs.id}`} className="text-muted text-decoration-underline">
+                💬 {obs.comment_count} comments
+              </Link>
+            </small>
+            <br />
             <small>Owner: {obs.owner}</small>
           </div>
         </div>
