@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 import ObservationDetail from "./ObservationDetail"; 
+import ObservationEditForm from "./ObservationEditForm";
 
 function Home() {
   return (
@@ -71,6 +72,7 @@ function App() {
         <Route path="/observations" element={<Observations />} />
         <Route path="/observations/create" element={<ObservationCreateForm />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
+        <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
       </Routes>
     </Router>
   );
