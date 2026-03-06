@@ -127,17 +127,14 @@ const handleUpdateComment = async (commentId) => {
   </div>
       <h1>{observation.title}</h1>
       <p>{observation.description}</p>
-      <p>
-        <strong>Owner:</strong> {observation.owner}
-      </p>
-      <p>
-        <strong>Created:</strong>{" "}
+      <p className="text-muted">
+        {observation.owner} •{" "}
         {new Date(observation.created_at).toLocaleString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         })}
       </p>
 
@@ -249,14 +246,14 @@ const handleUpdateComment = async (commentId) => {
     <>
       <p>{comment.content}</p>
 
-      <small className="d-block mb-2">
-        Owner: {comment.owner} | Created:{" "}
+      <small className="text-muted d-block mb-2">
+        {comment.owner} •{" "}
         {new Date(comment.created_at).toLocaleString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         })}
       </small>
 

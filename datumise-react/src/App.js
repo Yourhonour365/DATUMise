@@ -66,7 +66,16 @@ function Observations() {
               </Link>
             </small>
             <br />
-            <small>Owner: {obs.owner}</small>
+            <small className="text-muted">
+              {obs.owner} •{" "}
+              {new Date(obs.created_at).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </small>
           </div>
         </div>
       ))}
