@@ -1,16 +1,18 @@
 from rest_framework import generics, permissions
+from django.db.models import Count
 from .models import Observation, Comment
 from .serializers import ObservationSerializer, CommentSerializer
 from .permissions import IsOwnerOrReadOnly
 
 
 class ObservationList(generics.ListCreateAPIView):
-    queryset = Observation.objects.all()
     serializer_class = ObservationSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+    def get_queryset(self):
+        return Observation.objects.annotate(
+            comment_count=Count("comments")
+        ).order_by("-created_at")
 
 
 class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):

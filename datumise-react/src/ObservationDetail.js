@@ -233,26 +233,32 @@ const handleUpdateComment = async (commentId) => {
       <div className="d-flex gap-2">
 
         {comment.is_owner && (
-            <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={() => handleEditClick(comment)}
-            >
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => handleEditClick(comment)}
+          >
             Edit Comment
-            </Button>
+          </Button>
         )}
 
         {(comment.is_owner || comment.is_observation_owner) && (
-            <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => handleDeleteComment(comment.id)}
-            >
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={() => handleDeleteComment(comment.id)}
+          >
             Delete Comment
-            </Button>
+          </Button>
         )}
 
-        </div>
+      </div>
+
+      {!comment.is_owner && !comment.is_observation_owner && (
+        <small className="text-muted fst-italic">
+          🔒 You cannot edit or delete this comment.
+        </small>
+      )}
     </>
   )}
 </div>
