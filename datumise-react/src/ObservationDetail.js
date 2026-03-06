@@ -13,6 +13,7 @@ function ObservationDetail() {
   const [commentError, setCommentError] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const fetchComments = async () => {
     try {
@@ -119,6 +120,11 @@ const handleUpdateComment = async (commentId) => {
 
   return (
     <Container className="mt-4">
+  <div className="mb-3">
+    <Link to="/observations" className="text-decoration-none">
+      ← Back to Observations
+    </Link>
+  </div>
       <h1>{observation.title}</h1>
       <p>{observation.description}</p>
       <p>
@@ -154,9 +160,10 @@ const handleUpdateComment = async (commentId) => {
 
       <hr />
 
-      <h3>Add Comment</h3>
+      {localStorage.getItem("token") && <h3>Add Comment</h3>}
 
-      <Form onSubmit={handleCommentSubmit} className="mb-4">
+      {localStorage.getItem("token") && (
+        <Form onSubmit={handleCommentSubmit} className="mb-4">
         <Form.Group className="mb-3" controlId="commentContent">
           <Form.Label>Comment</Form.Label>
           <Form.Control
@@ -175,13 +182,17 @@ const handleUpdateComment = async (commentId) => {
           Post Comment
         </Button>
       </Form>
-
+      )}
       <hr />
 
-      <h3>Comments</h3>
+      <h3>
+        Comments {comments.length > 0 && `(${comments.length})`}
+      </h3>
 
       {comments.length === 0 ? (
-        <p>No comments yet.</p>
+        <p className="fst-italic text-muted">
+          No comments yet, be the first to comment.
+        </p>
       ) : (
         comments.map((comment) => (
           <div key={comment.id} className="card mb-3">
