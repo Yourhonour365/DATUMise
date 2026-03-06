@@ -192,7 +192,11 @@ const handleUpdateComment = async (commentId) => {
       <hr />
 
       <h3>
-        Comments {comments.length > 0 && `(${comments.length})`}
+        {comments.length === 1
+          ? "1 comment"
+          : comments.length > 1
+          ? `${comments.length} comments`
+          : "Comments"}
       </h3>
       {comments.length > 0 && !localStorage.getItem("token") && (
         <p className="text-muted fst-italic">
