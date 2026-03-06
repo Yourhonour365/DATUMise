@@ -1,237 +1,209 @@
-\# DATUMise
+# DATUMise
 
+DATUMise is a content-sharing web application for structured site observations.
 
+Users can register, log in, create observations, and interact with content through comments.
 
-DATUMise is a content-sharing web application for structured site observations. Users can register, log in, create observations, and interact with content.
-
-
-
-\## Repositories / Structure
-
-
-
-\- `datumise-api/` - Django REST Framework API
-
-\- `datumise-react/` - React front-end (to be added)
-
-
-
-\## Live Links
-
-
-
-\- API: (to be added)
-
-\- Front-end: (to be added)
-
-
-
-\## Project Goals
-
-
-
-\- Provide an API for users to create and manage structured observations
-
-\- Enable authentication and secure access control
-
-\- Support interaction features (likes, comments, follow) (in progress)
-
-
-
-## Manual Testing (Back-End)
-
-### Authentication (dj-rest-auth)
-
-| Test ID | Feature | Endpoint | Method | Steps | Expected Result | Actual Result |
-|----------|----------|-----------|--------|--------|------------------|----------------|
-| AUTH-01 | Register user | `/api/auth/registration/` | POST | Submit valid username, email and matching passwords | Token returned | PASS |
-| AUTH-02 | Prevent duplicate user | `/api/auth/registration/` | POST | Register same username twice | Validation error returned | PASS |
-| AUTH-03 | Login user | `/api/auth/login/` | POST | Submit valid username and password | Token returned | PASS |
+This project is developed as part of **Code Institute Portfolio Project 5 – Advanced Front-End Applications**.
 
 ---
 
-### Observation API
+## Project Structure
 
-| Test ID | Feature | Endpoint | Method | Steps | Expected Result | Actual Result |
-|----------|----------|-----------|--------|--------|------------------|----------------|
-| OBS-01 | Create Observation (authenticated) | `/api/observations/` | POST | Include `Authorization: Token <key>` header | Observation created with owner and timestamps | PASS |
-| OBS-02 | List Observations (public) | `/api/observations/` | GET | Access endpoint without authentication | 200 OK + list returned | PASS |
-| OBS-03 | Prevent non-owner update | `/api/observations/1/` | PATCH | Login as different user and attempt update | 403 Forbidden | PASS |
-| OBS-04 | Prevent non-owner delete | `/api/observations/1/` | DELETE | Login as different user and attempt delete | 403 Forbidden | PASS |
+DATUMise consists of two parts:
+
+- **datumise-api/** – Django REST Framework API  
+- **datumise-react/** – React front-end application  
 
 ---
 
-### Example Test Commands (Windows PowerShell)
+## Live Links
 
-#### Register
+API: (to be added)  
+Front-End: (to be added)
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/registration/" `
-  -Method Post `
-  -ContentType "application/json" `
-  -Body '{"username":"testuser2","email":"testuser2@example.com","password1":"TestPass123!","password2":"TestPass123!"}'
-```
+---
 
-#### Login
+## Project Goals
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/login/" `
-  -Method Post `
-  -ContentType "application/json" `
-  -Body '{"username":"testuser2","password":"TestPass123!"}'
-```
+The goal of DATUMise is to provide a platform where users can:
 
-#### Create Observation (Token Auth)
+- Create and share structured observations
+- View observations created by other users
+- Comment on observations
+- Edit and delete their own content
+- Interact with the application through a REST API and React front-end
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/observations/" `
-  -Method Post `
-  -Headers @{ Authorization = "Token <PASTE_TOKEN_HERE>" } `
-  -ContentType "application/json" `
-  -Body '{"title":"Test observation","description":"Created via manual API test using token auth."}'
-```
+---
 
-#### Attempt Unauthorized Update
+## Technologies Used
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/observations/1/" `
-  -Method Patch `
-  -Headers @{ Authorization = "Token <OTHER_USER_TOKEN>" } `
-  -ContentType "application/json" `
-  -Body '{"title":"Hacked title attempt"}'
-```
+### Front-End
 
-#### Attempt Unauthorized Delete
+- React.js
+- JavaScript (ES6)
+- HTML5
+- CSS3
+- Bootstrap
 
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/observations/1/" `
-  -Method Delete `
-  -Headers @{ Authorization = "Token <OTHER_USER_TOKEN>" }
-```
+### Back-End
 
+- Python
+- Django
+- Django REST Framework
+- dj-rest-auth
+- Token Authentication
 
-\### Observation endpoints
+---
 
+## Features
 
+### Authentication
 
-| Test ID | Feature | Endpoint | Method | Steps | Expected | Result |
+Users can:
 
-|---|---|---|---|---|---|---|
+- Register a new account
+- Log in and receive an authentication token
+- Log out securely
 
-| OBS-01 | Create Observation (auth) | `/api/observations/` | POST | POST with Token header | Observation created | PASS |
+### Observations
 
-| OBS-02 | List Observations (public) | `/api/observations/` | GET | Open endpoint | 200 + list | PASS |
+Users can:
 
+- Create observations
+- View observations created by other users
+- Edit their own observations
+- Delete their own observations
 
+### Comments
 
-\### Commands used (Windows PowerShell)
+Users can:
 
+- Comment on observations
+- View comments from other users
+- Edit or delete their own comments
 
+---
 
-\*\*Register\*\*
-
-```powershell
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/auth/registration/" `
-
-&nbsp; -Method Post `
-
-&nbsp; -ContentType "application/json" `
-
-&nbsp; -Body '{"username":"testuser2","email":"testuser2@example.com","password1":"TestPass123!","password2":"TestPass123!"}'
-
-
-
-
-## API Endpoint Summary
+## API Endpoints
 
 ### Authentication Endpoints
 
-| Endpoint | Method | Authentication Required | Description |
-|-----------|--------|--------------------------|-------------|
-| `/api/auth/registration/` | POST | No | Register a new user account |
-| `/api/auth/login/` | POST | No | Log in existing user and return token |
-| `/api/auth/logout/` | POST | Yes | Log out authenticated user (invalidate token) |
+| Endpoint | Method | Auth Required | Description |
+|---------|--------|--------------|-------------|
+| `/api/auth/registration/` | POST | No | Register new user |
+| `/api/auth/login/` | POST | No | Login user |
+| `/api/auth/logout/` | POST | Yes | Logout authenticated user |
 
 ---
 
 ### Observation Endpoints
 
-| Endpoint | Method | Authentication Required | Description |
-|-----------|--------|--------------------------|-------------|
-| `/api/observations/` | GET | No | Retrieve list of all observations |
-| `/api/observations/` | POST | Yes | Create a new observation (owner automatically assigned) |
-| `/api/observations/<id>/` | GET | No | Retrieve a single observation |
-| `/api/observations/<id>/` | PATCH | Yes (Owner only) | Update an observation |
-| `/api/observations/<id>/` | DELETE | Yes (Owner only) | Delete an observation |
+| Endpoint | Method | Auth Required | Description |
+|---------|--------|--------------|-------------|
+| `/api/observations/` | GET | No | Retrieve observations |
+| `/api/observations/` | POST | Yes | Create observation |
+| `/api/observations/<id>/` | GET | No | Retrieve single observation |
+| `/api/observations/<id>/` | PATCH | Yes (Owner) | Update observation |
+| `/api/observations/<id>/` | DELETE | Yes (Owner) | Delete observation |
 
 ---
-
-### Authentication Mechanism
-
-This API uses:
-
-- **Token Authentication**
-- Header format:
-
-```http
-Authorization: Token <user_token>
-```
-
-Token is obtained via the `/api/auth/login/` or `/api/auth/registration/` endpoint.
-
----
-
-### Permission Model
-
-- Unauthenticated users:
-  - Can view observations (read-only)
-  - Cannot create, update or delete
-
-- Authenticated users:
-  - Can create observations
-  - Can edit or delete **only their own** observations
-
-- Non-owners:
-  - Receive `403 Forbidden` when attempting to modify another user’s content
-
-
-## Comment API
 
 ### Comment Endpoints
 
-| Endpoint | Method | Authentication Required | Description |
-|-----------|--------|--------------------------|-------------|
-| `/api/comments/` | GET | No | Retrieve all comments |
-| `/api/comments/?observation=<id>` | GET | No | Retrieve comments filtered by observation |
-| `/api/comments/` | POST | Yes | Create a new comment (owner automatically assigned) |
-| `/api/comments/<id>/` | GET | No | Retrieve a single comment |
-| `/api/comments/<id>/` | PATCH | Yes (Owner only) | Update a comment |
-| `/api/comments/<id>/` | DELETE | Yes (Owner only) | Delete a comment |
+| Endpoint | Method | Auth Required | Description |
+|---------|--------|--------------|-------------|
+| `/api/comments/` | GET | No | Retrieve comments |
+| `/api/comments/?observation=<id>` | GET | No | Filter comments |
+| `/api/comments/` | POST | Yes | Create comment |
+| `/api/comments/<id>/` | GET | No | Retrieve comment |
+| `/api/comments/<id>/` | PATCH | Yes (Owner) | Update comment |
+| `/api/comments/<id>/` | DELETE | Yes (Owner) | Delete comment |
 
 ---
 
-### Comment Manual Testing
+## Authentication
 
-| Test ID | Feature | Endpoint | Method | Steps | Expected Result | Actual Result |
-|----------|----------|-----------|--------|--------|------------------|----------------|
-| COM-01 | Create Comment (authenticated) | `/api/comments/` | POST | Send request with `Authorization: Token <key>` header | Comment created with owner auto-assigned | PASS |
-| COM-02 | List Comments (public) | `/api/comments/` | GET | Access endpoint without authentication | 200 OK + list returned | PASS |
-| COM-03 | Filter Comments by Observation | `/api/comments/?observation=1` | GET | Include observation query parameter | Only matching comments returned | PASS |
-| COM-04 | Prevent Non-Owner Update | `/api/comments/1/` | PATCH | Login as different user and attempt update | 403 Forbidden | PASS |
-| COM-05 | Prevent Non-Owner Delete | `/api/comments/1/` | DELETE | Login as different user and attempt delete | 403 Forbidden | PASS |
+This API uses **Token Authentication**.
+
+Header example:
+
+`Authorization: Token <user_token>`
+
+Tokens are obtained via:
+
+- `/api/auth/login/`
+- `/api/auth/registration/`
 
 ---
 
-### Updated Permission Model
+## Permission Model
 
-- Unauthenticated users:
-  - Can view observations and comments (read-only)
-  - Cannot create, update, or delete content
+### Unauthenticated Users
 
-- Authenticated users:
-  - Can create observations and comments
-  - Can edit or delete only their own content
+- Can view observations
+- Can view comments
+- Cannot create or modify content
 
-- Non-owners:
-  - Receive `403 Forbidden` when attempting to modify another user's content
+### Authenticated Users
+
+- Can create observations
+- Can create comments
+- Can edit or delete their own content
+
+### Non-Owners
+
+- Receive **403 Forbidden** when attempting to modify another user's content
+
+---
+
+## Manual Testing (Back-End)
+
+### Authentication
+
+| Test ID | Feature | Endpoint | Result |
+|--------|--------|----------|-------|
+| AUTH-01 | Register user | `/api/auth/registration/` | PASS |
+| AUTH-02 | Prevent duplicate user | `/api/auth/registration/` | PASS |
+| AUTH-03 | Login user | `/api/auth/login/` | PASS |
+
+---
+
+### Observation API
+
+| Test ID | Feature | Endpoint | Result |
+|--------|--------|----------|-------|
+| OBS-01 | Create observation | `/api/observations/` | PASS |
+| OBS-02 | List observations | `/api/observations/` | PASS |
+| OBS-03 | Prevent non-owner update | `/api/observations/1/` | PASS |
+| OBS-04 | Prevent non-owner delete | `/api/observations/1/` | PASS |
+
+---
+
+### Comment API
+
+| Test ID | Feature | Endpoint | Result |
+|--------|--------|----------|-------|
+| COM-01 | Create comment | `/api/comments/` | PASS |
+| COM-02 | List comments | `/api/comments/` | PASS |
+| COM-03 | Filter comments | `/api/comments/?observation=1` | PASS |
+| COM-04 | Prevent non-owner update | `/api/comments/1/` | PASS |
+| COM-05 | Prevent non-owner delete | `/api/comments/1/` | PASS |
+
+---
+
+## Future Improvements
+
+Possible enhancements include:
+
+- Image uploads for observations
+- Survey grouping and approval workflows
+- Hazard classification (Red / Amber / Green)
+- Search and filtering
+- Follow and like functionality
+
+---
+
+## Deployment
+
+Deployment instructions will be added once both the API and React front-end are deployed.
