@@ -8,7 +8,7 @@ import ObservationEditForm from "./ObservationEditForm";
 function Home() {
   return (
     <div className="container mt-5">
-      <h1>DATUMise</h1>
+      <h1>DATUMise Observations</h1>
       <p>Structured site observations platform.</p>
     </div>
   );
@@ -32,11 +32,13 @@ function Register() {
 
 function Observations() {
   const [observations, setObservations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get("/api/observations/")
       .then((response) => {
         setObservations(response.data);
+        setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching observations:", error);
@@ -45,9 +47,14 @@ function Observations() {
 
   return (
     <div className="container mt-5">
-      <h2>Observations</h2>
+      {loading && <p>Loading observations...</p>}
 
-      {observations.map((obs) => (
+      {!loading && observations.length === 0 && (
+        <p>No observations yet.</p>
+      )}
+
+      {!loading && observations.map((obs) => (
+        
         <div key={obs.id} className="card mb-3">
           <div className="card-body">
             <h5>
