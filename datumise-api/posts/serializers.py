@@ -16,8 +16,11 @@ class ObservationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
 class CommentSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
+    is_owner = serializers.SerializerMethodField()
+    is_observation_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -27,10 +30,20 @@ class CommentSerializer(serializers.ModelSerializer):
             "owner",
             "content",
             "created_at",
-            
+            "is_owner",
+            "is_observation_owner",
         ]
         read_only_fields = [
             "owner",
             "created_at",
-            
+            "is_owner",
+            "is_observation_owner",
         ]
+
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user == obj.owner)
+
+    def get_is_observation_owner(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user == obj.observation.owner)

@@ -23,9 +23,17 @@ class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class CommentList(generics.ListCreateAPIView):
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Comment.objects.all()
+        observation_id = self.request.query_params.get("observation")
+
+        if observation_id:
+            queryset = queryset.filter(observation=observation_id)
+
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
