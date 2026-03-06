@@ -56,7 +56,13 @@ function Observations() {
             <p>{obs.description}</p>
             <small>
               <Link to={`/observations/${obs.id}`} className="text-muted text-decoration-underline">
-                💬 {obs.comment_count === 0 ? "Add first comment" : `${obs.comment_count} comments`}
+                💬 {
+                  obs.comment_count === 0
+                    ? "Add first comment"
+                    : obs.comment_count === 1
+                    ? "1 comment"
+                    : `${obs.comment_count} comments`
+                    }
               </Link>
             </small>
             <br />
