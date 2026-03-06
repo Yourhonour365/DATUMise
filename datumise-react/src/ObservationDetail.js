@@ -213,22 +213,28 @@ const handleUpdateComment = async (commentId) => {
       </small>
 
       <div className="d-flex gap-2">
-        <Button
-          variant="outline-primary"
-          size="sm"
-          onClick={() => handleEditClick(comment)}
-        >
-          Edit Comment
-        </Button>
 
-        <Button
-          variant="outline-danger"
-          size="sm"
-          onClick={() => handleDeleteComment(comment.id)}
-        >
-          Delete Comment
-        </Button>
-      </div>
+        {comment.is_owner && (
+            <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => handleEditClick(comment)}
+            >
+            Edit Comment
+            </Button>
+        )}
+
+        {(comment.is_owner || comment.is_observation_owner) && (
+            <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => handleDeleteComment(comment.id)}
+            >
+            Delete Comment
+            </Button>
+        )}
+
+        </div>
     </>
   )}
 </div>
