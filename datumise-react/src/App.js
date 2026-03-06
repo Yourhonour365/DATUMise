@@ -53,7 +53,7 @@ function Observations() {
             <h5>
               <Link to={`/observations/${obs.id}`}>{obs.title}</Link>
             </h5>
-            <p>{obs.description}</p>
+            <p>{obs.description.slice(0, 120)}{obs.description.length > 120 && "..."}</p>
             <small>
               <Link to={`/observations/${obs.id}`} className="text-muted text-decoration-underline">
                 💬 {
