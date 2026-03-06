@@ -6,7 +6,9 @@ import api from "./api/api";
 function ObservationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [observation, setObservation] = useState(null);
+  const [comments, setComments] = useState([]);
 
   useEffect(() => {
     const fetchObservation = async () => {
@@ -14,11 +16,24 @@ function ObservationDetail() {
         const response = await api.get(`/api/observations/${id}/`);
         setObservation(response.data);
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching observation:", err);
+      }
+    };
+
+    const fetchComments = async () => {
+      try {
+        const response = await api.get("/api/comments/");
+        const observationComments = response.data.filter(
+          (comment) => String(comment.observation) === String(id)
+        );
+        setComments(observationComments);
+      } catch (err) {
+        console.error("Error fetching comments:", err);
       }
     };
 
     fetchObservation();
+    fetchComments();
   }, [id]);
 
   const handleDelete = async () => {
@@ -49,7 +64,7 @@ function ObservationDetail() {
       <p><strong>Owner:</strong> {observation.owner}</p>
       <p><strong>Created:</strong> {observation.created_at}</p>
 
-      <div className="d-flex gap-2">
+      <div className="d-flex gap-2 mb-4">
         <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
           Edit Observation
         </Button>
@@ -58,6 +73,25 @@ function ObservationDetail() {
           Delete Observation
         </Button>
       </div>
+
+      <hr />
+
+      <h3>Comments</h3>
+
+      {comments.length === 0 ? (
+        <p>No comments yet.</p>
+      ) : (
+        comments.map((comment) => (
+          <div key={comment.id} className="card mb-3">
+            <div className="card-body">
+              <p>{comment.content}</p>
+              <small>
+                Owner: {comment.owner} | Created: {comment.created_at}
+              </small>
+            </div>
+          </div>
+        ))
+      )}
     </Container>
   );
 }
