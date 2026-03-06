@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 import ObservationDetail from "./ObservationDetail"; 
@@ -49,7 +49,9 @@ function Observations() {
       {observations.map((obs) => (
         <div key={obs.id} className="card mb-3">
           <div className="card-body">
-            <h5>{obs.title}</h5>
+            <h5>
+              <Link to={`/observations/${obs.id}`}>{obs.title}</Link>
+            </h5>
             <p>{obs.description}</p>
             <small>Owner: {obs.owner}</small>
           </div>
