@@ -53,7 +53,7 @@ function ObservationEditForm() {
 
   return (
     <Container className="mt-4">
-      <h1>Edit Observation</h1>
+      <h3 className="mb-3">Edit Observation</h3>
 
       <Form onSubmit={handleSubmit}>
         
