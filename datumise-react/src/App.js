@@ -85,11 +85,24 @@ function Observations() {
 
       {!loading && observations.map((obs) => (
         
-        <div key={obs.id} className="card mb-3">
-          <div className="card-body">
+        <div key={obs.id} className="card mb-3 shadow-sm">
+          <div className="card-body d-flex gap-3">
+            {obs.image && (
+              <img
+                src={obs.image}
+                alt={obs.title}
+                className="img-fluid rounded mb-2"
+                style={{ maxHeight: "120px", objectFit: "contain" }}
+              />
+            )}
+            
+            <div style={{ flex: 1 }}>
             <h5>
               <Link to={`/observations/${obs.id}`}>{obs.title}</Link>
             </h5>
+
+            
+
             <p>{obs.description.slice(0, 120)}{obs.description.length > 120 && "..."}</p>
             <small>
               <Link to={`/observations/${obs.id}`} className="text-muted text-decoration-underline">
@@ -114,6 +127,7 @@ function Observations() {
               })}
             </small>
           </div>
+        </div>
         </div>
       ))}
       <div className="d-flex justify-content-center gap-2 mt-4 mb-4">
