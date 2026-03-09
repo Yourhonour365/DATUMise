@@ -37,7 +37,7 @@ function Observations() {
   useEffect(() => {
     api.get("/api/observations/")
       .then((response) => {
-        setObservations(response.data);
+        setObservations(response.data.results);
         setLoading(false);
       })
       .catch((error) => {
