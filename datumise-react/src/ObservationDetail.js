@@ -207,7 +207,9 @@ const handleUpdateComment = async (commentId) => {
       )}
       {comments.length === 0 ? (
         <p className="fst-italic text-muted">
-          No comments yet, be the first to comment.
+          {!localStorage.getItem("token")
+            ? "No comments yet. Login to comment."
+            : "No comments yet, be the first to comment."}
         </p>
       ) : (
         comments.map((comment) => (
