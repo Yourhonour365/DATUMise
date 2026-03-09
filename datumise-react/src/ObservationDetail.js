@@ -125,23 +125,26 @@ const handleUpdateComment = async (commentId) => {
       ← Back to Observations
     </Link>
   </div>
-      <h1>{observation.title}</h1>
-      
-      {observation.image && (
+      <div className="d-flex gap-3 align-items-stretch">
+        {observation.image && (
         <img
           src={observation.image}
           alt={observation.title}
-          className="img-fluid rounded mb-3"
+          className="img-fluid rounded"
           style={{ maxHeight: "400px", objectFit: "contain" }}
         />
       )}
-
-
-
-      <p>{observation.description}</p>
+      <div style={{ flex: 1 }} className="d-flex flex-column">
+      <h1 className="mb-3">{observation.title}</h1>
       
       
-      <p className="text-muted">
+
+
+
+      <p className="mb-3">{observation.description}</p>
+      
+      <div className="mt-auto">
+      <p className="text-muted small">
         {observation.owner} •{" "}
         {new Date(observation.created_at).toLocaleString("en-GB", {
           day: "numeric",
@@ -151,9 +154,8 @@ const handleUpdateComment = async (commentId) => {
           minute: "2-digit",
         })}
       </p>
-
       {observation.is_owner && (
-        <div className="d-flex gap-2 mb-4">
+        <div className="d-flex gap-2 mt-auto">
             <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
                 Edit Observation
             </Button>
@@ -163,6 +165,7 @@ const handleUpdateComment = async (commentId) => {
             </Button>
         </div>
       )}
+      </div>
       {!localStorage.getItem("token") ? (
         <p className="text-muted fst-italic">
           🔒 Only logged-in users can add, edit, or delete observations.
@@ -174,6 +177,12 @@ const handleUpdateComment = async (commentId) => {
           </p>
         )
       )}
+      </div>
+      </div>
+      
+      
+      
+      
 
       <hr />
 
