@@ -119,7 +119,7 @@ function Observations() {
       <div className="d-flex justify-content-center gap-2 mt-4 mb-4">
         {previousPage && (
           <button
-            className="btn btn-outline-secondary"
+            className="btn btn-outline-secondary btn-sm"
             onClick={() => handlePageChange(previousPage)}
           >
             Previous
@@ -128,7 +128,7 @@ function Observations() {
 
         {nextPage && (
           <button
-            className="btn btn-outline-secondary"
+            className="btn btn-outline-secondary btn-sm"
             onClick={() => handlePageChange(nextPage)}
           >
             Next
