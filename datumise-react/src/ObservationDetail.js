@@ -134,7 +134,7 @@ const handleUpdateComment = async (commentId) => {
       ← Back to Observations
     </Link>
   </div>
-      <div className="d-flex gap-3 align-items-stretch">
+      <div className="d-flex gap-3 align-items-stretch mb-4">
         {observation.image && (
         <img
           src={observation.image}
@@ -149,7 +149,9 @@ const handleUpdateComment = async (commentId) => {
             {observation.title}
           </legend>
 
-          <p className="mb-3">{observation.description}</p>
+          <p className="mb-3" style={{ whiteSpace: "pre-line" }}>
+            {observation.description}
+          </p>
 
           
         </fieldset>
@@ -193,17 +195,24 @@ const handleUpdateComment = async (commentId) => {
       
       
       
+
       
 
-      <hr />
-
-      {localStorage.getItem("token") && <h3>Add Comment</h3>}
+      
 
       {localStorage.getItem("token") && (
         <Form id="comment-form" onSubmit={handleCommentSubmit} className="mb-4">
-        <Form.Group className="mb-3" controlId="commentContent">
-          <Form.Label>Comment</Form.Label>
+        
+        
+        
+        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+          
+          <legend className="float-none w-auto px-2 fs-4 mb-0">
+            Add Comment
+          </legend>
+
           <Form.Control
+            className="border-0"
             id="comment-input"
             as="textarea"
             rows={3}
@@ -212,7 +221,7 @@ const handleUpdateComment = async (commentId) => {
             placeholder="Write your comment here..."
             required
           />
-        </Form.Group>
+        </fieldset>
 
         {commentError && <Alert variant="danger">{commentError}</Alert>}
 
@@ -221,7 +230,7 @@ const handleUpdateComment = async (commentId) => {
         </Button>
       </Form>
       )}
-      <hr />
+      
 
       <h3>
         {comments.length === 1
@@ -250,8 +259,12 @@ const handleUpdateComment = async (commentId) => {
         comments.map((comment) => (
           <div key={comment.id} className="card mb-3">
             <div className="card-body">
+  
+  
   {editingCommentId === comment.id ? (
     <>
+      
+      
       <Form.Group className="mb-3">
         <Form.Control
           as="textarea"

@@ -92,9 +92,19 @@ function ObservationCreateForm() {
           />
         </fieldset>
 
-        <Button variant="primary" type="submit">
-          Create Observation
-        </Button>
+        <div className="d-flex gap-2">
+          <Button variant="primary" type="submit">
+            Create Observation
+          </Button>
+
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => navigate("/observations")}
+          >
+            Cancel
+          </Button>
+</div>
       </Form>
     </Container>
   );
