@@ -105,7 +105,7 @@ function Observations() {
 
             <p>{obs.description.slice(0, 120)}{obs.description.length > 120 && "..."}</p>
             <small>
-              <Link to={`/observations/${obs.id}`} className="text-muted text-decoration-underline">
+              <Link to={`/observations/${obs.id}#comment-form`} className="text-muted text-decoration-underline">
                 💬 {
                   obs.comment_count === 0
                     ? "Add first comment"
