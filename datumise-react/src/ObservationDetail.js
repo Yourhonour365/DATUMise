@@ -144,48 +144,50 @@ const handleUpdateComment = async (commentId) => {
         />
       )}
       <div style={{ flex: 1 }} className="d-flex flex-column">
-      <h1 className="mb-3">{observation.title}</h1>
-      
-      
+        <fieldset className="border rounded p-3 mb-3">
+          <legend className="float-none w-auto px-2 fs-5">
+            {observation.title}
+          </legend>
 
+          <p className="mb-3">{observation.description}</p>
 
+          
+        </fieldset>
+        <div className="mt-auto">
+            <p className="text-muted small">
+              {observation.owner} •{" "}
+              {new Date(observation.created_at).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
 
-      <p className="mb-3">{observation.description}</p>
-      
-      <div className="mt-auto">
-      <p className="text-muted small">
-        {observation.owner} •{" "}
-        {new Date(observation.created_at).toLocaleString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </p>
-      {observation.is_owner && (
-        <div className="d-flex gap-2 mt-auto">
-            <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
-                Edit Observation
-            </Button>
+            {observation.is_owner && (
+              <div className="d-flex gap-2">
+                <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
+                  Edit Observation
+                </Button>
 
-            <Button variant="danger" onClick={handleDelete}>
-                Delete Observation
-            </Button>
-        </div>
-      )}
-      </div>
-      {!localStorage.getItem("token") ? (
-        <p className="text-muted fst-italic">
-          🔒 Only logged-in users can add, edit, or delete observations.
-        </p>
-      ) : (
-        !observation.is_owner && (
+                <Button variant="danger" onClick={handleDelete}>
+                  Delete Observation
+                </Button>
+              </div>
+            )}
+          </div>
+        {!localStorage.getItem("token") ? (
           <p className="text-muted fst-italic">
-            🔒 Only the owner of this observation can edit or delete it.
+            🔒 Only logged-in users can add, edit, or delete observations.
           </p>
-        )
-      )}
+        ) : (
+          !observation.is_owner && (
+            <p className="text-muted fst-italic">
+              🔒 Only the owner of this observation can edit or delete it.
+            </p>
+          )
+        )}
       </div>
       </div>
       
