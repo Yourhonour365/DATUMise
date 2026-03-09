@@ -71,7 +71,7 @@ function Observations() {
     <div className="container mt-5">
       
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="mb-0">Observations</h2>
+        <h3 className="mb-3">Observations</h3>
         <Link to="/observations/create" className="btn btn-primary btn-sm">
           + New Observation
         </Link>
@@ -86,7 +86,7 @@ function Observations() {
       {!loading && observations.map((obs) => (
         
         <div key={obs.id} className="card mb-3 shadow-sm">
-          <div className="card-body d-flex gap-3">
+          <div className="card-body d-flex gap-3 align-items-center">
             {obs.image && (
               <img
                 src={obs.image}

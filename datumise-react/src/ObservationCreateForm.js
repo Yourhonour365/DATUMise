@@ -40,7 +40,7 @@ function ObservationCreateForm() {
 
   return (
     <Container className="mt-4">
-      <h1>Create Observation</h1>
+      <h3 className="mb-3">Create Observation</h3>
 
       <Form onSubmit={handleSubmit}>
         
