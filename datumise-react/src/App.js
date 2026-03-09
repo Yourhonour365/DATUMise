@@ -51,12 +51,14 @@ function Observations() {
 
   const handlePageChange = (url) => {
     window.scrollTo(0, 0);
+    setLoading(true);
     
     api.get(url)
       .then((response) => {
         setObservations(response.data.results);
         setNextPage(response.data.next);
         setPreviousPage(response.data.previous);
+        setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching paginated observations:", error);
