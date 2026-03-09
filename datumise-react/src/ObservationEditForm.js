@@ -56,9 +56,16 @@ function ObservationEditForm() {
       <h1>Edit Observation</h1>
 
       <Form onSubmit={handleSubmit}>
-        <Form.Group className="mb-3">
-          <Form.Label>Title</Form.Label>
+        
+        
+        
+        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+          <legend className="float-none w-auto px-2 fs-6 mb-0">
+            Title
+          </legend>
+
           <Form.Control
+            className="border-0"
             type="text"
             name="title"
             value={title}
@@ -67,11 +74,15 @@ function ObservationEditForm() {
             placeholder="Enter observation title"
             required
           />
-        </Form.Group>
+        </fieldset>
 
-        <Form.Group className="mb-3">
-          <Form.Label>Description</Form.Label>
+        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+          <legend className="float-none w-auto px-2 fs-6 mb-0">
+            Description
+          </legend>
+
           <Form.Control
+            className="border-0"
             as="textarea"
             rows={4}
             name="description"
@@ -79,7 +90,7 @@ function ObservationEditForm() {
             onChange={handleChange}
             placeholder="Enter observation description"
           />
-        </Form.Group>
+        </fieldset>
 
         <Button variant="primary" type="submit">
           Save Changes
