@@ -33,17 +33,35 @@ function Register() {
 function Observations() {
   const [observations, setObservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [nextPage, setNextPage] = useState(null);
+  const [previousPage, setPreviousPage] = useState(null);
 
   useEffect(() => {
     api.get("/api/observations/")
       .then((response) => {
         setObservations(response.data.results);
+        setNextPage(response.data.next);
+        setPreviousPage(response.data.previous);
         setLoading(false);
       })
       .catch((error) => {
         console.error("Error fetching observations:", error);
       });
   }, []);
+
+  const handlePageChange = (url) => {
+    api.get(url)
+      .then((response) => {
+        setObservations(response.data.results);
+        setNextPage(response.data.next);
+        setPreviousPage(response.data.previous);
+      })
+      .catch((error) => {
+        console.error("Error fetching paginated observations:", error);
+      });
+  };
+
+
 
   return (
     <div className="container mt-5">
@@ -94,6 +112,26 @@ function Observations() {
           </div>
         </div>
       ))}
+      <div className="d-flex justify-content-between mt-4">
+        {previousPage && (
+          <button
+            className="btn btn-outline-secondary"
+            onClick={() => handlePageChange(previousPage)}
+          >
+            Previous
+          </button>
+        )}
+
+        {nextPage && (
+          <button
+            className="btn btn-outline-secondary ms-auto"
+            onClick={() => handlePageChange(nextPage)}
+          >
+            Next
+          </button>
+        )}
+      </div>
+
     </div>
   );
 }
