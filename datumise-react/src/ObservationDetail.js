@@ -18,7 +18,7 @@ function ObservationDetail() {
   const fetchComments = async () => {
     try {
         const response = await api.get(`/api/comments/?observation=${id}`);
-        setComments(response.data);
+        setComments(response.data.results);
     } catch (err) {
         console.error("Error fetching comments:", err);
     }
