@@ -50,6 +50,8 @@ function Observations() {
   }, []);
 
   const handlePageChange = (url) => {
+    window.scrollTo(0, 0);
+    
     api.get(url)
       .then((response) => {
         setObservations(response.data.results);
