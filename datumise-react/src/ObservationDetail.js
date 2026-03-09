@@ -36,6 +36,15 @@ function ObservationDetail() {
 
     fetchObservation();
     fetchComments();
+
+    if (window.location.hash === "#comment-form") {
+      setTimeout(() => {
+        const input = document.getElementById("comment-input");
+        if (input) {
+          input.focus();
+        }
+      }, 100);
+    }
   }, [id]);
 
   const handleDelete = async () => {
@@ -189,10 +198,11 @@ const handleUpdateComment = async (commentId) => {
       {localStorage.getItem("token") && <h3>Add Comment</h3>}
 
       {localStorage.getItem("token") && (
-        <Form onSubmit={handleCommentSubmit} className="mb-4">
+        <Form id="comment-form" onSubmit={handleCommentSubmit} className="mb-4">
         <Form.Group className="mb-3" controlId="commentContent">
           <Form.Label>Comment</Form.Label>
           <Form.Control
+            id="comment-input"
             as="textarea"
             rows={3}
             value={commentContent}
