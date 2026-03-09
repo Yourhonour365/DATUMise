@@ -126,7 +126,21 @@ const handleUpdateComment = async (commentId) => {
     </Link>
   </div>
       <h1>{observation.title}</h1>
+      
+      {observation.image && (
+        <img
+          src={observation.image}
+          alt={observation.title}
+          className="img-fluid rounded mb-3"
+          style={{ maxHeight: "400px", objectFit: "contain" }}
+        />
+      )}
+
+
+
       <p>{observation.description}</p>
+      
+      
       <p className="text-muted">
         {observation.owner} •{" "}
         {new Date(observation.created_at).toLocaleString("en-GB", {

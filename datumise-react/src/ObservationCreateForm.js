@@ -11,7 +11,8 @@ function ObservationCreateForm() {
 
   const { title, description } = formData;
   const navigate = useNavigate();
-
+  const [image, setImage] = useState(null);
+  
   const handleChange = (event) => {
     setFormData({
       ...formData,
@@ -21,6 +22,14 @@ function ObservationCreateForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("description", description);
+    if (image) {
+      formData.append("image", image);
+    }
+
 
     try {
       await api.post("/api/observations/", formData);
@@ -59,6 +68,16 @@ function ObservationCreateForm() {
             placeholder="Enter observation description"
           />
         </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Image</Form.Label>
+          <Form.Control
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files[0])}
+          />
+        </Form.Group>
+
 
         <Button variant="primary" type="submit">
           Create Observation
