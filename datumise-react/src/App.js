@@ -52,7 +52,7 @@ function Observations() {
   const handlePageChange = (url) => {
     window.scrollTo(0, 0);
     setLoading(true);
-    
+
     api.get(url)
       .then((response) => {
         setObservations(response.data.results);
@@ -116,7 +116,7 @@ function Observations() {
           </div>
         </div>
       ))}
-      <div className="d-flex justify-content-between mt-4">
+      <div className="d-flex justify-content-between mt-4 mb-4">
         {previousPage && (
           <button
             className="btn btn-outline-secondary"
