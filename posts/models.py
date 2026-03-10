@@ -3,12 +3,65 @@ from django.db import models
 
 # Create your models here.
 
+class Survey(models.Model):
+    STATUS_CHOICES = [
+        ("planned", "Planned"),
+        ("active", "Active"),
+        ("paused", "Paused"),
+        ("submitted", "Submitted"),
+    ]
+
+    name = models.CharField(max_length=255)
+    client = models.CharField(max_length=255, blank=True, null=True)
+    site = models.CharField(max_length=255, blank=True, null=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_surveys",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_surveys",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="planned",
+    )
+    scheduled_for = models.DateTimeField(null=True, blank=True)
+    due_by = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_incomplete(self):
+        return not self.client or not self.site
+
+    def __str__(self):
+        return self.name
+
+
+
+
 class Observation(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="observations",
     )
+
+    survey = models.ForeignKey(
+    Survey,
+    on_delete=models.CASCADE,
+    related_name="observations",
+    null=True,
+    blank=True,
+    )
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
