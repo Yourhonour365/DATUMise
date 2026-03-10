@@ -180,7 +180,10 @@ const handleUpdateComment = async (commentId) => {
       )}
       <div style={{ flex: 1 }} className="d-flex flex-column">
         <fieldset className="border rounded p-3 mb-3">
-          <legend className="float-none w-auto px-2 fs-5 fw-bold text-dark mb-0">
+          <legend 
+            className="float-none w-auto px-2 fs-5 fw-bold text-dark mb-0"
+            style={{ wordBreak: "break-word" }}
+          >
             {observation.title}
           </legend>
 
@@ -399,11 +402,11 @@ const handleUpdateComment = async (commentId) => {
       centered
       size="lg"
     >
-      <Modal.Header closeButton className="border-0">
+      <Modal.Header closeButton className="border-0 pb-2">
         <Modal.Title>{observation.title}</Modal.Title>
       </Modal.Header>
 
-      <Modal.Body className="text-center">
+      <Modal.Body className="text-center pt-2 pb-4">
         {observation.image && (
           <img
             key={observation.image}
@@ -414,20 +417,26 @@ const handleUpdateComment = async (commentId) => {
           />
         )}
       </Modal.Body>
-      <Modal.Footer className="border-0 justify-content-center">
-        <Button
-          variant="secondary"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          Change Image
-        </Button>
+      <Modal.Footer className="border-0 pt-0 pb-4">
+        <div className="d-flex justify-content-center gap-2 w-100">
+          {observation.is_owner && (
+            <Button
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ minWidth: "140px" }}
+            >
+              Change Image
+            </Button>
+          )}
 
-        <Button
-          variant="primary"
-          onClick={() => setShowImageModal(false)}
-        >
-          Done
-        </Button>
+          <Button
+            variant="primary"
+            onClick={() => setShowImageModal(false)}
+            style={{ minWidth: "140px" }}
+          >
+            Done
+          </Button>
+        </div>
       </Modal.Footer>
     </Modal>
     </Container>
