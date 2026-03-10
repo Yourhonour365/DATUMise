@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Container, Button, Form, Alert } from "react-bootstrap";
+import { Container, Button, Form, Alert,Modal } from "react-bootstrap";
 import api from "./api/api";
 
 function ObservationDetail() {
@@ -14,6 +14,7 @@ function ObservationDetail() {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const fetchComments = async () => {
     try {
@@ -170,7 +171,8 @@ const handleUpdateComment = async (commentId) => {
             src={observation.image}
             alt={observation.title}
             className="img-fluid rounded"
-            style={{ height: "400px", width: "auto", objectFit: "contain" }}
+            style={{ height: "400px", width: "auto", objectFit: "contain", cursor: "pointer" }}
+            onClick={() => setShowImageModal(true)}
           />
         </div>
 
@@ -391,6 +393,26 @@ const handleUpdateComment = async (commentId) => {
           </div>
         ))
       )}
+    <Modal
+      show={showImageModal}
+      onHide={() => setShowImageModal(false)}
+      centered
+      size="lg"
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>{observation.title}</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body className="text-center">
+        {observation.image && (
+          <img
+            src={observation.image}
+            alt={observation.title}
+            className="img-fluid"
+          />
+        )}
+      </Modal.Body>
+    </Modal>
     </Container>
   );
 }
