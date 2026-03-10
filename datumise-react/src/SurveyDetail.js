@@ -26,6 +26,9 @@ function SurveyDetail() {
         <h3>Survey Detail</h3>
         {loading && <p>Loading survey...</p>}
         {!loading && survey && <h5>{survey.name}</h5>}
+        {!loading && survey && (
+        <p className="text-muted">Status: {survey.status}</p>
+        )}
         </div>
     );
     }
