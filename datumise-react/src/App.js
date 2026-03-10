@@ -6,6 +6,7 @@ import ObservationDetail from "./ObservationDetail";
 import ObservationEditForm from "./ObservationEditForm";
 import ObservationList from "./ObservationList";
 import SurveyList from "./SurveyList";
+import SurveyDetail from "./SurveyDetail";
 
 function Home() {
   return (
@@ -48,6 +49,7 @@ function App() {
         <Route path="/observations/:id" element={<ObservationDetail />} />
         <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
         <Route path="/surveys" element={<SurveyList />} />
+        <Route path="/surveys/:id" element={<SurveyDetail />} />
       </Routes>
     </Router>
   );
