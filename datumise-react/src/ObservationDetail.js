@@ -186,7 +186,11 @@ const handleUpdateComment = async (commentId) => {
           >
             {observation.title}
           </legend>
-
+            {observation.survey_name && (
+              <p className="text-muted small mb-2">
+                Survey: {observation.survey_name}
+              </p>
+            )}
           <p
             className="mb-3"
             style={{ whiteSpace: "pre-line", wordBreak: "break-word" }}
