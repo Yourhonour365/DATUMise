@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="419" height="532" viewBox="0 0 419 532">
+
+  <defs>
+    <symbol id="pin" viewBox="0 0 100 128">
+      <path fill="#E95F03" fill-rule="evenodd" d="
+        M50,0
+        C22.4,0 0,22.4 0,50
+        C0,79 50,128 50,128
+        C50,128 100,79 100,50
+        C100,22.4 77.6,0 50,0
+        Z
+        M50,28
+        A22,22 0 1 0 50,72
+        A22,22 0 1 0 50,28
+        Z
+      "/>
+    </symbol>
+  </defs>
+
+  <!-- Pins -->
+  <use href="#pin" x="40" y="12" width="151" height="194" preserveAspectRatio="none"/>
+  <use href="#pin" x="41" y="278" width="142" height="181" preserveAspectRatio="none"/>
+  <use href="#pin" x="227" y="166" width="151" height="194" preserveAspectRatio="none"/>
+
+  <!-- Bars -->
+  <rect x="58" y="219" width="109" height="12" rx="6.0" fill="#444444"/>
+  <rect x="76" y="247" width="73" height="11" rx="5.5" fill="#444444"/>
+  <rect x="247" y="377" width="112" height="13" rx="6.0" fill="#444444"/>
+  <rect x="266" y="405" width="75" height="11" rx="5.5" fill="#444444"/>
+  <rect x="58" y="475" width="109" height="13" rx="6.0" fill="#444444"/>
+  <rect x="76" y="503" width="74" height="11" rx="5.5" fill="#444444"/>
+
+</svg>
