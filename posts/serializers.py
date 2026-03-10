@@ -75,6 +75,8 @@ class SurveySerializer(serializers.ModelSerializer):
             "status",
             "scheduled_for",
             "due_by",
+            "client_present",
+            "urgent",
             "created_at",
             "observations",
         ]
