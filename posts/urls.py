@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ObservationList, ObservationDetail, CommentList, CommentDetail, SurveyList
+from .views import ObservationList, ObservationDetail, CommentList, CommentDetail, SurveyList, SurveyDetail
 
 urlpatterns = [
     path("observations/", ObservationList.as_view(), name="observation-list"),
@@ -7,4 +7,5 @@ urlpatterns = [
     path("comments/", CommentList.as_view(), name="comment-list"),
     path("comments/<int:pk>/", CommentDetail.as_view(), name="comment-detail"),
     path("surveys/", SurveyList.as_view(), name="survey-list"),
+    path("surveys/<int:pk>/", SurveyDetail.as_view()),
 ]

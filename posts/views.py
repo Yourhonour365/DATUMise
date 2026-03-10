@@ -66,3 +66,8 @@ class SurveyList(generics.ListAPIView):
     queryset = Survey.objects.all().order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
+
+class SurveyDetail(generics.RetrieveAPIView):
+    queryset = Survey.objects.all()
+    serializer_class = SurveySerializer
+    permission_classes = [permissions.IsAuthenticated]  
