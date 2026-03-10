@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Observation, Comment
+from .models import Observation, Comment, Survey
 
 
 class ObservationSerializer(serializers.ModelSerializer):
@@ -58,3 +58,20 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_is_observation_owner(self, obj):
         request = self.context.get("request")
         return bool(request and request.user == obj.observation.owner)
+
+
+class SurveySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Survey
+        fields = [
+            "id",
+            "name",
+            "client",
+            "site",
+            "created_by",
+            "assigned_to",
+            "status",
+            "scheduled_for",
+            "due_by",
+            "created_at",
+        ]
