@@ -134,17 +134,19 @@ const handleUpdateComment = async (commentId) => {
       ← Back to Observations
     </Link>
   </div>
-      <div className="d-flex gap-3 align-items-center mb-4">
+      <div className="d-flex flex-column flex-md-row gap-3 align-items-center align-items-md-start mb-4">
         {observation.image && (
         
         
         
-        <img
-          src={observation.image}
-          alt={observation.title}
-          className="img-fluid rounded"
-          style={{ height: "400px", width: "auto", objectFit: "contain" }}
-        />
+        <div className="mt-3">
+          <img
+            src={observation.image}
+            alt={observation.title}
+            className="img-fluid rounded"
+            style={{ height: "400px", width: "auto", objectFit: "contain" }}
+          />
+        </div>
 
 
       )}
