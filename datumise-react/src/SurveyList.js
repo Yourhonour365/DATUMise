@@ -26,11 +26,13 @@ function SurveyList() {
 
   return (
     <div className="container mt-4">
-      <h3>Surveys ({surveys.length})</h3>
+      <h3 className="mb-4">Surveys ({surveys.length})</h3>
       {loading && <p>Loading surveys...</p>}
       {!loading &&
-        surveys.map((survey) => (
-            
+        [...surveys]
+            .sort((a, b) => b.urgent - a.urgent)
+            .map((survey) => (
+
             <div
                 key={survey.id}
                 className="card mb-3 shadow-sm"
@@ -38,7 +40,12 @@ function SurveyList() {
                 onClick={() => navigate(`/surveys/${survey.id}`)}
             >
             <div className="card-body">
-                <h5 className="mb-1">{survey.name}</h5>
+                <h5 className="mb-1">
+                    {survey.urgent && (
+                        <span className="badge bg-danger me-2">URGENT</span>
+                    )}
+                    {survey.name}
+                </h5>
                 <small className="text-muted">
                     Status: {survey.status} •{" "}
                     {new Date(survey.created_at).toLocaleDateString("en-GB", {

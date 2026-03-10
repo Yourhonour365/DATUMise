@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Container, Button, Form, Alert,Modal } from "react-bootstrap";
 import api from "./api/api";
 
 function ObservationDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [observation, setObservation] = useState(null);
@@ -156,11 +157,20 @@ const handleUpdateComment = async (commentId) => {
 
   return (
     <Container className="mt-4">
-  <div className="mb-3">
-    <Link to="/observations" className="text-decoration-none">
-      ← Back to Observations
-    </Link>
-  </div>
+      <div className="mb-3">
+        {location.state?.fromSurvey ? (
+          <Link
+            to={`/surveys/${location.state.surveyId}`}
+            className="text-decoration-none"
+          >
+            ← Back to Survey
+          </Link>
+        ) : (
+          <Link to="/observations" className="text-decoration-none">
+            ← Back to Observations
+          </Link>
+        )}
+      </div>
       <div className="d-flex flex-column flex-md-row gap-3 align-items-center align-items-md-start mb-4">
         {observation.image && (
         

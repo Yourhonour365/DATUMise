@@ -33,6 +33,8 @@ class Survey(models.Model):
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     due_by = models.DateTimeField(null=True, blank=True)
+    client_present = models.BooleanField(default=False)
+    urgent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -29,7 +29,7 @@ function SurveyDetail() {
 
   return (
     <div className="container mt-4">
-      <h3>Survey Detail</h3>
+      
 
       {!localStorage.getItem("token") && (
         <p className="text-muted">Please log in to view survey details.</p>
@@ -39,28 +39,41 @@ function SurveyDetail() {
 
       {!loading && survey && (
         <>
-          <h5>{survey.name}</h5>
+          <h3 className="mb-3">
+            {survey.urgent && (
+                <span className="badge bg-danger me-2">URGENT</span>
+            )}
+            {survey.name}
+          </h3>
 
-          <p className="text-muted">Status: {survey.status}</p>
-
-          <p className="text-muted">
-            Created:{" "}
-            {new Date(survey.created_at).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </p>
+          <div className="text-muted mb-3">
+            <div>Status: {survey.status}</div>
+            <div>
+                Created{" "}
+                {new Date(survey.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                })}
+            </div>
+            </div>
 
           <h5 className="mt-4">
             Observations ({survey.observations?.length || 0})
           </h5>
+
+          {survey.observations?.length === 0 && (
+            <p className="text-muted mt-3">
+                No observations have been added to this survey yet.
+            </p>
+         )}
 
           <div className="mt-3">
             {survey.observations?.map((observation) => (
               <Link
                 key={observation.id}
                 to={`/observations/${observation.id}`}
+                state={{ fromSurvey: true, surveyId: survey.id }}
                 className="text-decoration-none text-dark"
               >
                 <div className="border rounded p-3 mb-3">
