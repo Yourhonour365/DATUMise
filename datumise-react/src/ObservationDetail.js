@@ -354,41 +354,44 @@ const handleUpdateComment = async (commentId) => {
     <>
       <p>{comment.content}</p>
 
-      <small className="text-muted d-block mb-2">
-        {comment.owner} •{" "}
-        {new Date(comment.created_at).toLocaleString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </small>
+      <div className="d-flex align-items-center gap-3 mb-2">
+        <small className="text-muted">
+          {comment.owner} •{" "}
+          {new Date(comment.created_at).toLocaleString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </small>
 
-      <div className="d-flex gap-2">
+        <div className="d-flex gap-2">
 
-        {comment.is_owner && (
-          <Button
-            variant="outline-primary"
-            size="sm"
-            onClick={() => handleEditClick(comment)}
-          >
-            Edit Comment
-          </Button>
-        )}
+          {comment.is_owner && (
+            <Button
+              variant="outline-primary"
+              size="sm"
+              className="px-2 py-0"
+              onClick={() => handleEditClick(comment)}
+            >
+              Edit
+            </Button>
+          )}
 
-        {(comment.is_owner || comment.is_observation_owner) && (
-          <Button
-            variant="outline-danger"
-            size="sm"
-            onClick={() => handleDeleteComment(comment.id)}
-          >
-            Delete Comment
-          </Button>
-        )}
+          {(comment.is_owner || comment.is_observation_owner) && (
+            <Button
+              variant="outline-danger"
+              size="sm"
+              className="px-2 py-0"
+              onClick={() => handleDeleteComment(comment.id)}
+            >
+              Delete
+            </Button>
+          )}
 
+        </div>
       </div>
-
       
     </>
   )}
