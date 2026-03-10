@@ -1,9 +1,9 @@
 from rest_framework import generics, permissions
 from django.db.models import Count
-from .models import Observation, Comment
+from .models import Observation, Comment, Survey
 from .serializers import ObservationSerializer, CommentSerializer
 from .permissions import IsOwnerOrReadOnly
-
+from django.utils import timezone
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
@@ -15,7 +15,19 @@ class ObservationList(generics.ListCreateAPIView):
         ).order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        active_survey = Survey.objects.filter(
+            created_by=self.request.user,
+            status="active"
+        ).order_by("-created_at").first()
+
+        if not active_survey:
+            active_survey = Survey.objects.create(
+                name=f"Survey - {timezone.now().strftime('%d %b %Y')}",
+                created_by=self.request.user,
+                status="active",
+            )
+
+        serializer.save(owner=self.request.user, survey=active_survey)
 
 class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
