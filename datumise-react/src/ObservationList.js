@@ -42,7 +42,7 @@ function ObservationList() {
   return (
     <div className="container mt-5">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="mb-3">Observations</h3>
+        <h3 className="mb-3">Observations ({observations.length})</h3>
         <Link to="/observations/create" className="btn btn-primary btn-sm">
           + New Observation
         </Link>
@@ -54,8 +54,16 @@ function ObservationList() {
         <p>No observations yet.</p>
       )}
 
+      <div style={{ minHeight: "760px" }}>
       {!loading && observations.map((obs) => (
-        <div key={obs.id} className="card mb-3 shadow-sm">
+        
+        
+        
+        <div
+            key={obs.id}
+            className="card mb-3 shadow-sm"
+            style={{ minHeight: "170px" }}
+        >
           <div className="card-body d-flex gap-3 align-items-start"
           style={{ cursor: "pointer" }}
           onClick={() => navigate(`/observations/${obs.id}`)}
@@ -78,18 +86,33 @@ function ObservationList() {
 
             <div style={{ flex: 1 }}>
               <h5>
+
                 <Link
-                to={`/observations/${obs.id}`}
-                style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
-                >
-  {obs.title}
-</Link>
+                    to={`/observations/${obs.id}`}
+                    style={{
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        minHeight: "48px",
+                    }}
+                    >
+                    {obs.title}
+                </Link>
+              
               </h5>
 
-              <p style={{ wordBreak: "break-word" }}>
-                {obs.description.slice(0, 120)}
+              <p
+                style={{
+                    wordBreak: "break-word",
+                    minHeight: "48px",
+                }}
+                >
+                {obs.description.slice(0, 120).split(" ").slice(0, -1).join(" ")}
                 {obs.description.length > 120 && "..."}
-              </p>
+                </p>
 
               <small>
                 <Link
@@ -121,7 +144,7 @@ function ObservationList() {
           </div>
         </div>
       ))}
-
+    </div>
       <div className="d-flex justify-content-center gap-2 mt-4 mb-4">
         {previousPage && (
           <button
