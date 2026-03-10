@@ -1,11 +1,14 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import api from "./api/api";
+import { useNavigate } from "react-router-dom";
+
 
 function SurveyList() {
 
  const [surveys, setSurveys] = useState([]);
  const [loading, setLoading] = useState(true);
+ const navigate = useNavigate();
 
     useEffect(() => {
         const fetchSurveys = async () => {
@@ -27,10 +30,12 @@ function SurveyList() {
       {loading && <p>Loading surveys...</p>}
       {!loading &&
         surveys.map((survey) => (
+            
             <div
                 key={survey.id}
                 className="card mb-3 shadow-sm"
                 style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/surveys/${survey.id}`)}
             >
             <div className="card-body">
                 <h5 className="mb-1">{survey.name}</h5>
