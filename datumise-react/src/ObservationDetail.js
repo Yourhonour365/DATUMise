@@ -316,7 +316,7 @@ const handleUpdateComment = async (commentId) => {
       ) : (
         comments.map((comment) => (
           <div key={comment.id} className="card mt-3 mb-3">
-            <div className="card-body">
+            <div className="card-body py-2 px-3">
   
   
   {editingCommentId === comment.id ? (
@@ -352,7 +352,7 @@ const handleUpdateComment = async (commentId) => {
     </>
   ) : (
     <>
-      <p>{comment.content}</p>
+      <p className="mb-2">{comment.content}</p>
 
       <div className="d-flex align-items-center gap-3 mb-2">
         <small className="text-muted">
