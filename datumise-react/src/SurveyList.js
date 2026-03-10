@@ -27,7 +27,11 @@ function SurveyList() {
       {loading && <p>Loading surveys...</p>}
       {!loading &&
         surveys.map((survey) => (
-            <div key={survey.id} className="card mb-3 shadow-sm">
+            <div
+                key={survey.id}
+                className="card mb-3 shadow-sm"
+                style={{ cursor: "pointer" }}
+            >
             <div className="card-body">
                 <h5 className="mb-1">{survey.name}</h5>
                 <small className="text-muted">
