@@ -12,9 +12,10 @@ function ObservationEditForm() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    image: null,
   });
 
-  const { title, description } = formData;
+  const { title, description, image } = formData;
 
   useEffect(() => {
     const fetchObservation = async () => {
@@ -23,6 +24,7 @@ function ObservationEditForm() {
         setFormData({
           title: response.data.title,
           description: response.data.description,
+          image: null,
         });
 
         setImageUrl(response.data.image || "");
@@ -39,9 +41,11 @@ function ObservationEditForm() {
   }, [id]);
 
   const handleChange = (event) => {
+    const { name, value, files } = event.target;
+
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value,
+      [name]: name === "image" ? files[0] : value,
     });
   };
 
@@ -59,22 +63,31 @@ function ObservationEditForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const formDataToSend = new FormData();
+      formDataToSend.append("title", title);
+      formDataToSend.append("description", description);
+
+      if (image) {
+        formDataToSend.append("image", image);
+    }
 
     try {
-      await api.put(`/api/observations/${id}/`, formData);
+      await api.put(`/api/observations/${id}/`, formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       navigate(`/observations/${id}`);
     } catch (err) {
-      console.error("Error updating observation:", err.response?.data || err.message);
+      console.log("Error updating observation:", err);
     }
   };
 
   return (
     <Container className="mt-4">
       <h3 className="mb-3">Edit Observation</h3>
-
-      <Form onSubmit={handleSubmit}>
-          {imageUrl && (
-            <div className="mb-3 text-center">
+        {imageUrl && (
+            <div className="mb-4 text-center">
               <img
                 src={imageUrl}
                 alt={title}
@@ -83,6 +96,20 @@ function ObservationEditForm() {
               />
             </div>
           )}
+      <Form onSubmit={handleSubmit}>
+          <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
+            Replace Image
+          </legend>
+
+          <Form.Control
+            className="form-control"
+            type="file"
+            name="image"
+            accept="image/*"
+            onChange={handleChange}
+          />
+        </fieldset>
         
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
@@ -118,6 +145,8 @@ function ObservationEditForm() {
             placeholder="Enter observation description"
           />
         </fieldset>
+
+        
 
         <Button className="mt-3" variant="primary" type="submit">
           Save Changes
