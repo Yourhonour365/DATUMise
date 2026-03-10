@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from django.db.models import Count
 from .models import Observation, Comment, Survey
-from .serializers import ObservationSerializer, CommentSerializer
+from .serializers import ObservationSerializer, CommentSerializer, SurveySerializer
 from .permissions import IsOwnerOrReadOnly
 from django.utils import timezone
 
@@ -61,3 +61,8 @@ class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
         permissions.IsAuthenticatedOrReadOnly,
         IsOwnerOrReadOnly,
     ]
+
+class SurveyList(generics.ListAPIView):
+    queryset = Survey.objects.all().order_by("-created_at")
+    serializer_class = SurveySerializer
+    permission_classes = [permissions.IsAuthenticated]
