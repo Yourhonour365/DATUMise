@@ -9,6 +9,10 @@ function SurveyDetail() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!localStorage.getItem("token")) {
+            setLoading(false);
+            return;
+        }
         const fetchSurvey = async () => {
             try {
             const response = await api.get(`/api/surveys/${id}/`);
@@ -24,6 +28,9 @@ function SurveyDetail() {
     return (
         <div className="container mt-4">
         <h3>Survey Detail</h3>
+        {!localStorage.getItem("token") && (
+        <p className="text-muted">Please log in to view survey details.</p>
+        )}
         {loading && <p>Loading survey...</p>}
         {!loading && survey && <h5>{survey.name}</h5>}
         {!loading && survey && (
