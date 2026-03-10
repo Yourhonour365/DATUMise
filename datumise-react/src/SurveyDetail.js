@@ -27,6 +27,32 @@ function SurveyDetail() {
     fetchSurvey();
   }, [id]);
 
+    const startSurvey = async () => {
+    try {
+        const response = await api.patch(`/api/surveys/${id}/`, {
+        status: "live",
+        });
+        setSurvey(response.data);
+    } catch (err) {
+        console.log(err);
+    }
+    };
+
+    const pauseSurvey = async () => {
+    try {
+        const response = await api.patch(`/api/surveys/${id}/`, {
+        status: "paused",
+        });
+        setSurvey(response.data);
+    } catch (err) {
+        console.log(err);
+    }
+    };
+
+
+
+
+
   return (
     <div className="container mt-4">
       
@@ -45,7 +71,23 @@ function SurveyDetail() {
             )}
             {survey.name}
           </h3>
+            {survey.status !== "live" && (
+                <button
+                    className="btn btn-success mb-3"
+                    onClick={startSurvey}
+                    >
+                    Start Survey
+                </button>
+            )}
 
+            {survey.status === "live" && (
+                <button
+                    className="btn btn-warning mb-3 ms-2"
+                    onClick={pauseSurvey}
+                    >
+                    Pause Survey
+                </button>
+            )}
           <div className="text-muted mb-3">
             <div>Status: {survey.status}</div>
             <div>
