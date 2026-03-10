@@ -25,7 +25,17 @@ function SurveyList() {
     <div className="container mt-4">
       <h3>Surveys</h3>
       {loading && <p>Loading surveys...</p>}
-      {!loading && <p>{surveys.length} surveys found.</p>}
+      {!loading &&
+        surveys.map((survey) => (
+            <div key={survey.id} className="card mb-3 shadow-sm">
+            <div className="card-body">
+                <h5 className="mb-1">{survey.name}</h5>
+                <small className="text-muted">
+                Status: {survey.status}
+                </small>
+            </div>
+            </div>
+        ))}
     </div>
   );
 }
