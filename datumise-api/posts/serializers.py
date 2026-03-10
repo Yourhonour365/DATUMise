@@ -6,6 +6,7 @@ class ObservationSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
     is_owner = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(read_only=True)
+    survey_name = serializers.ReadOnlyField(source="survey.name")
 
     class Meta:
         model = Observation
@@ -13,6 +14,7 @@ class ObservationSerializer(serializers.ModelSerializer):
             "id",
             "owner",
             "survey",
+            "survey_name",
             "title",
             "description",
             "image",
