@@ -9,6 +9,7 @@ function ObservationList() {
   const [nextPage, setNextPage] = useState(null);
   const navigate = useNavigate();
   const [previousPage, setPreviousPage] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
     api.get("/api/observations/")
@@ -62,7 +63,14 @@ function ObservationList() {
         <div
             key={obs.id}
             className="card mb-3 shadow-sm"
-            style={{ minHeight: "170px" }}
+            style={{
+                minHeight: "170px",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                borderColor: hoveredId === obs.id ? "#adb5bd" : "",
+                boxShadow: hoveredId === obs.id ? "0 6px 16px rgba(0,0,0,0.15)" : "",
+            }}
+            onMouseEnter={() => setHoveredId(obs.id)}
+            onMouseLeave={() => setHoveredId(null)}
         >
           <div className="card-body d-flex gap-3 align-items-center"
           style={{ cursor: "pointer" }}
@@ -119,7 +127,8 @@ function ObservationList() {
               <small>
                 <Link
                     to={`/observations/${obs.id}#comment-form`}
-                    className="text-muted text-decoration-underline"
+                    className="text-decoration-underline"
+                    
                     onClick={(e) => e.stopPropagation()}
                 >
                   💬 {

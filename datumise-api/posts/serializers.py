@@ -12,6 +12,7 @@ class ObservationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "owner",
+            "survey",
             "title",
             "description",
             "image",
