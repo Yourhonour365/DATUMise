@@ -40,6 +40,18 @@ function ObservationEditForm() {
     });
   };
 
+  const handleTitleBlur = () => {
+  setFormData((prevData) => ({
+    ...prevData,
+    title: prevData.title
+      .toLowerCase()
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" "),
+  }));
+};
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -60,7 +72,7 @@ function ObservationEditForm() {
         
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 mb-0">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
             Title
           </legend>
 
@@ -70,6 +82,7 @@ function ObservationEditForm() {
             name="title"
             value={title}
             onChange={handleChange}
+            onBlur={handleTitleBlur}
             maxLength={200}
             placeholder="Enter observation title"
             required
@@ -77,14 +90,14 @@ function ObservationEditForm() {
         </fieldset>
 
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 mb-0">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
             Description
           </legend>
 
           <Form.Control
             className="border-0"
             as="textarea"
-            rows={4}
+            rows={12}
             name="description"
             value={description}
             onChange={handleChange}
@@ -92,7 +105,7 @@ function ObservationEditForm() {
           />
         </fieldset>
 
-        <Button variant="primary" type="submit">
+        <Button className="mt-3" variant="primary" type="submit">
           Save Changes
         </Button>
       </Form>

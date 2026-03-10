@@ -20,6 +20,18 @@ function ObservationCreateForm() {
     });
   };
 
+  const handleTitleBlur = () => {
+    setFormData((prevData) => ({
+      ...prevData,
+      title: prevData.title
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" "),
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -47,7 +59,7 @@ function ObservationCreateForm() {
         
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 mb-0 pt-0">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
             Title
           </legend>
 
@@ -57,6 +69,7 @@ function ObservationCreateForm() {
             name="title"
             value={title}
             onChange={handleChange}
+            onBlur={handleTitleBlur}
             maxLength={200}
             placeholder="Enter observation title"
             required
@@ -64,7 +77,7 @@ function ObservationCreateForm() {
         </fieldset>
 
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 mb-0">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
             Description
           </legend>
 
@@ -80,7 +93,7 @@ function ObservationCreateForm() {
         </fieldset>
 
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 mb-0">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
             Image
           </legend>
 

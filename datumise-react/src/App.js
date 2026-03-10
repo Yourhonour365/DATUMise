@@ -103,7 +103,10 @@ function Observations() {
 
             
 
-            <p>{obs.description.slice(0, 120)}{obs.description.length > 120 && "..."}</p>
+            <p style={{ wordBreak: "break-word" }}>
+              {obs.description.slice(0, 120)}
+              {obs.description.length > 120 && "..."}
+            </p>
             <small>
               <Link to={`/observations/${obs.id}#comment-form`} className="text-muted text-decoration-underline">
                 💬 {
