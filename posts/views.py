@@ -67,7 +67,7 @@ class SurveyList(generics.ListAPIView):
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
 
-class SurveyDetail(generics.RetrieveAPIView):
+class SurveyDetail(generics.RetrieveUpdateAPIView):
     queryset = Survey.objects.all()
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]  
