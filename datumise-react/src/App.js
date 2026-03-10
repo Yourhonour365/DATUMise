@@ -5,7 +5,7 @@ import ObservationCreateForm from "./ObservationCreateForm";
 import ObservationDetail from "./ObservationDetail"; 
 import ObservationEditForm from "./ObservationEditForm";
 import ObservationList from "./ObservationList";
-
+import SurveyList from "./SurveyList";
 
 function Home() {
   return (
@@ -47,6 +47,7 @@ function App() {
         <Route path="/observations/create" element={<ObservationCreateForm />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
         <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
+        <Route path="/surveys" element={<SurveyList />} />
       </Routes>
     </Router>
   );
