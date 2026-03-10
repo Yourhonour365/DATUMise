@@ -7,6 +7,8 @@ function ObservationEditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [imageUrl, setImageUrl] = useState("");
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -22,6 +24,9 @@ function ObservationEditForm() {
           title: response.data.title,
           description: response.data.description,
         });
+
+        setImageUrl(response.data.image || "");
+
       } catch (err) {
         console.log("Full error:", err);
         console.log("Status:", err.response?.status);
@@ -68,7 +73,16 @@ function ObservationEditForm() {
       <h3 className="mb-3">Edit Observation</h3>
 
       <Form onSubmit={handleSubmit}>
-        
+          {imageUrl && (
+            <div className="mb-3 text-center">
+              <img
+                src={imageUrl}
+                alt={title}
+                className="img-fluid rounded"
+                style={{ maxHeight: "300px", objectFit: "contain" }}
+              />
+            </div>
+          )}
         
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
