@@ -1,12 +1,33 @@
 import React from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import api from "./api/api";
 
 function SurveyDetail() {
-  return (
-    <div className="container mt-4">
-      <h3>Survey Detail</h3>
-      <p>Survey detail coming soon.</p>
-    </div>
-  );
-}
+    const { id } = useParams();
+    const [survey, setSurvey] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSurvey = async () => {
+            try {
+            const response = await api.get(`/api/surveys/${id}/`);
+            setSurvey(response.data);
+            setLoading(false);
+            } catch (err) {
+            console.log(err);
+            }
+        };
+
+  fetchSurvey();
+}, [id]);
+    return (
+        <div className="container mt-4">
+        <h3>Survey Detail</h3>
+        {loading && <p>Loading survey...</p>}
+        {!loading && survey && <h5>{survey.name}</h5>}
+        </div>
+    );
+    }
 
 export default SurveyDetail;
