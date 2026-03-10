@@ -61,7 +61,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class SurveySerializer(serializers.ModelSerializer):
-    observations = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    observations = ObservationSerializer(many=True, read_only=True)
 
     class Meta:
         model = Survey
