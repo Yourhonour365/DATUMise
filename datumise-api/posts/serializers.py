@@ -61,6 +61,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class SurveySerializer(serializers.ModelSerializer):
+    observations = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
     class Meta:
         model = Survey
         fields = [
@@ -74,4 +76,5 @@ class SurveySerializer(serializers.ModelSerializer):
             "scheduled_for",
             "due_by",
             "created_at",
+            "observations",
         ]
