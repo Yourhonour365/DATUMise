@@ -70,10 +70,13 @@ function ObservationCreateForm() {
             value={title}
             onChange={handleChange}
             onBlur={handleTitleBlur}
-            maxLength={200}
+            maxLength={120}
             placeholder="Enter observation title"
             required
           />
+
+          <small className="text-muted d-block mt-1">{title.length} / 120</small>
+
         </fieldset>
 
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
