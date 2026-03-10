@@ -64,7 +64,7 @@ function ObservationList() {
             className="card mb-3 shadow-sm"
             style={{ minHeight: "170px" }}
         >
-          <div className="card-body d-flex gap-3 align-items-start"
+          <div className="card-body d-flex gap-3 align-items-center"
           style={{ cursor: "pointer" }}
           onClick={() => navigate(`/observations/${obs.id}`)}
           >
@@ -95,8 +95,7 @@ function ObservationList() {
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        minHeight: "48px",
+                        overflow: "hidden",                        
                     }}
                     >
                     {obs.title}
@@ -107,13 +106,16 @@ function ObservationList() {
               <p
                 style={{
                     wordBreak: "break-word",
-                    minHeight: "48px",
+                    marginBottom: "0.25rem",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 1,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
                 }}
                 >
                 {obs.description.slice(0, 120).split(" ").slice(0, -1).join(" ")}
                 {obs.description.length > 120 && "..."}
-                </p>
-
+             </p>
               <small>
                 <Link
                     to={`/observations/${obs.id}#comment-form`}
@@ -151,7 +153,7 @@ function ObservationList() {
             className="btn btn-outline-secondary btn-sm"
             onClick={() => handlePageChange(previousPage)}
           >
-            Previous
+            Prev
           </button>
         )}
 
