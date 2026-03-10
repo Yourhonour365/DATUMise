@@ -39,6 +39,11 @@ function SurveyDetail() {
                 })}
             </p>
             )}
+        {!loading && survey && (
+            <p className="text-muted">
+                Observations: {survey.observations?.length || 0}
+            </p>
+            )}
         </div>
     );
     }
