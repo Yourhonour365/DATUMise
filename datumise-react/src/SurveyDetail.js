@@ -29,6 +29,16 @@ function SurveyDetail() {
         {!loading && survey && (
         <p className="text-muted">Status: {survey.status}</p>
         )}
+        {!loading && survey && (
+            <p className="text-muted">
+                Created:{" "}
+                {new Date(survey.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                })}
+            </p>
+            )}
         </div>
     );
     }
