@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "./api/api";
+import { useNavigate } from "react-router-dom";
 
 function ObservationList() {
   const [observations, setObservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [nextPage, setNextPage] = useState(null);
+  const navigate = useNavigate();
   const [previousPage, setPreviousPage] = useState(null);
 
   useEffect(() => {
@@ -54,17 +56,25 @@ function ObservationList() {
 
       {!loading && observations.map((obs) => (
         <div key={obs.id} className="card mb-3 shadow-sm">
-          <div className="card-body d-flex gap-3 align-items-center">
-            {obs.image && (
-            <Link to={`/observations/${obs.id}`}>
-                <img
-                src={obs.image}
-                alt={obs.title}
-                className="img-fluid rounded mb-2"
-                style={{ maxHeight: "120px", objectFit: "contain" }}
-                />
-            </Link>
-            )}
+          <div className="card-body d-flex gap-3 align-items-start"
+          style={{ cursor: "pointer" }}
+          onClick={() => navigate(`/observations/${obs.id}`)}
+          >
+            <div style={{ width: "120px", height: "120px", flexShrink: 0 }}>
+                <Link to={`/observations/${obs.id}`}>
+                    <img
+                    src={obs.image || "/datumise-placeholder.svg"}
+                    alt={obs.title}
+                    className="img-fluid rounded"
+                    style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: obs.image ? "cover" : "contain",
+                        opacity: obs.image ? 1 : 0.7,
+                    }}
+                    />
+                </Link>
+                </div>
 
             <div style={{ flex: 1 }}>
               <h5>
@@ -83,8 +93,9 @@ function ObservationList() {
 
               <small>
                 <Link
-                  to={`/observations/${obs.id}#comment-form`}
-                  className="text-muted text-decoration-underline"
+                    to={`/observations/${obs.id}#comment-form`}
+                    className="text-muted text-decoration-underline"
+                    onClick={(e) => e.stopPropagation()}
                 >
                   💬 {
                     obs.comment_count === 0
