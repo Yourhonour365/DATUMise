@@ -5,6 +5,7 @@ from django.db import models
 
 class Survey(models.Model):
     STATUS_CHOICES = [
+        ("created", "Created"),
         ("live", "Live"),
         ("paused", "Paused"),
         ("completed", "Completed"),
@@ -32,7 +33,7 @@ class Survey(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="planned",
+        default="created",
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     due_by = models.DateTimeField(null=True, blank=True)
