@@ -23,7 +23,7 @@ function SurveyList() {
 
   return (
     <div className="container mt-4">
-      <h3>Surveys</h3>
+      <h3>Surveys ({surveys.length})</h3>
       {loading && <p>Loading surveys...</p>}
       {!loading &&
         surveys.map((survey) => (
