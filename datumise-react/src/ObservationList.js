@@ -56,12 +56,14 @@ function ObservationList() {
         <div key={obs.id} className="card mb-3 shadow-sm">
           <div className="card-body d-flex gap-3 align-items-center">
             {obs.image && (
-              <img
+            <Link to={`/observations/${obs.id}`}>
+                <img
                 src={obs.image}
                 alt={obs.title}
                 className="img-fluid rounded mb-2"
                 style={{ maxHeight: "120px", objectFit: "contain" }}
-              />
+                />
+            </Link>
             )}
 
             <div style={{ flex: 1 }}>
