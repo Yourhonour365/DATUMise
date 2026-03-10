@@ -31,7 +31,12 @@ function SurveyList() {
             <div className="card-body">
                 <h5 className="mb-1">{survey.name}</h5>
                 <small className="text-muted">
-                Status: {survey.status}
+                    Status: {survey.status} •{" "}
+                    {new Date(survey.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                    })}
                 </small>
             </div>
             </div>
