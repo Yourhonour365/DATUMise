@@ -163,7 +163,7 @@ const handleUpdateComment = async (commentId) => {
           
         </fieldset>
         <div className="mt-auto">
-            <p className="text-muted small">
+            <p className="text-muted small mb-1">
               {observation.owner} •{" "}
               {new Date(observation.created_at).toLocaleString("en-GB", {
                 day: "numeric",
@@ -187,12 +187,12 @@ const handleUpdateComment = async (commentId) => {
             )}
           </div>
         {!localStorage.getItem("token") ? (
-          <p className="text-muted fst-italic">
+          <p className="text-muted fst-italic small mb-1">
             🔒 Only logged-in users can add, edit, or delete observations.
           </p>
         ) : (
           !observation.is_owner && (
-            <p className="text-muted fst-italic">
+            <p className="text-muted fst-italic small mb-1">
               🔒 Only the owner of this observation can edit or delete it.
             </p>
           )
@@ -247,12 +247,12 @@ const handleUpdateComment = async (commentId) => {
           : "Comments"}
       </h3>
       {comments.length > 0 && !localStorage.getItem("token") && (
-        <p className="text-muted fst-italic">
+        <p className="text-muted fst-italic small mb-1">
           🔒 Only logged-in users can add, edit, or delete comments.
         </p>
       )}
             {comments.length > 0 && localStorage.getItem("token") && (
-        <p className="text-muted fst-italic">
+        <p className="text-muted fst-italic small mb-1">
           🔒 Only comment owners can edit comments.
         </p>
       )}
@@ -264,7 +264,7 @@ const handleUpdateComment = async (commentId) => {
         </p>
       ) : (
         comments.map((comment) => (
-          <div key={comment.id} className="card mb-3">
+          <div key={comment.id} className="card mt-3 mb-3">
             <div className="card-body">
   
   
