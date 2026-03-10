@@ -5,10 +5,13 @@ from django.db import models
 
 class Survey(models.Model):
     STATUS_CHOICES = [
-        ("planned", "Planned"),
-        ("active", "Active"),
+        ("live", "Live"),
         ("paused", "Paused"),
+        ("completed", "Completed"),
         ("submitted", "Submitted"),
+        ("missed", "Missed"),
+        ("overdue", "Overdue"),
+        ("cancelled", "Cancelled"),
     ]
 
     name = models.CharField(max_length=255)
