@@ -124,6 +124,11 @@ function ObservationList() {
                 {obs.description.slice(0, 120).split(" ").slice(0, -1).join(" ")}
                 {obs.description.length > 120 && "..."}
              </p>
+                {obs.survey_name && (
+                    <small className="text-muted d-block mb-1">
+                        Survey: {obs.survey_name}
+                    </small>
+                    )}
               <small>
                 <Link
                     to={`/observations/${obs.id}#comment-form`}
