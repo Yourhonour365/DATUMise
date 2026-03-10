@@ -44,6 +44,7 @@ function SurveyDetail() {
                 Observations: {survey.observations?.length || 0}
             </p>
             )}
+        
         </div>
     );
     }
