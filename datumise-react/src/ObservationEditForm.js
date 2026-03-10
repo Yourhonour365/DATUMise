@@ -99,7 +99,7 @@ function ObservationEditForm() {
       <Form onSubmit={handleSubmit}>
           <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
           <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-            Replace Image
+            Change Image
           </legend>
 
           <Form.Control

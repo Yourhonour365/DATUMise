@@ -216,7 +216,7 @@ const handleUpdateComment = async (commentId) => {
                     variant="secondary"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    Replace Image
+                    Change Image
                   </Button>
 
                   <Button variant="danger" onClick={handleDelete}>
@@ -399,19 +399,36 @@ const handleUpdateComment = async (commentId) => {
       centered
       size="lg"
     >
-      <Modal.Header closeButton>
+      <Modal.Header closeButton className="border-0">
         <Modal.Title>{observation.title}</Modal.Title>
       </Modal.Header>
 
       <Modal.Body className="text-center">
         {observation.image && (
           <img
+            key={observation.image}
             src={observation.image}
             alt={observation.title}
             className="img-fluid"
+            style={{ maxHeight: "80vh", objectFit: "contain" }}
           />
         )}
       </Modal.Body>
+      <Modal.Footer className="border-0 justify-content-center">
+        <Button
+          variant="secondary"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Change Image
+        </Button>
+
+        <Button
+          variant="primary"
+          onClick={() => setShowImageModal(false)}
+        >
+          Done
+        </Button>
+      </Modal.Footer>
     </Modal>
     </Container>
   );
