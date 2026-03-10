@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Container, Button, Form, Alert } from "react-bootstrap";
 import api from "./api/api";
@@ -6,7 +6,7 @@ import api from "./api/api";
 function ObservationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-
+  const fileInputRef = useRef(null);
   const [observation, setObservation] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentContent, setCommentContent] = useState("");
@@ -102,6 +102,32 @@ function ObservationDetail() {
     }
     };
 
+const handleImageReplace = async (event) => {
+  const selectedFile = event.target.files[0];
+  if (!selectedFile) return;
+
+  const formData = new FormData();
+  formData.append("title", observation.title);
+  formData.append("description", observation.description);
+  formData.append("image", selectedFile);
+
+  try {
+    await api.put(`/api/observations/${id}/`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    const response = await api.get(`/api/observations/${id}/`);
+    setObservation(response.data);
+    event.target.value = null;
+
+  } catch (err) {
+    console.error("Error replacing image:", err);
+  }
+};
+
+
 const handleEditClick = (comment) => {
   setEditingCommentId(comment.id);
   setEditCommentContent(comment.content);
@@ -178,15 +204,32 @@ const handleUpdateComment = async (commentId) => {
             </p>
 
             {observation.is_owner && (
-              <div className="d-flex gap-2">
-                <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
-                  Edit Observation
-                </Button>
+              <>
+                <div className="d-flex gap-2">
+                  <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
+                    Edit Observation
+                  </Button>
 
-                <Button variant="danger" onClick={handleDelete}>
-                  Delete Observation
-                </Button>
-              </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Replace Image
+                  </Button>
+
+                  <Button variant="danger" onClick={handleDelete}>
+                    Delete Observation
+                  </Button>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleImageReplace}
+                />
+              </>
             )}
           </div>
         {!localStorage.getItem("token") ? (
