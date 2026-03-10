@@ -152,11 +152,14 @@ const handleUpdateComment = async (commentId) => {
       )}
       <div style={{ flex: 1 }} className="d-flex flex-column">
         <fieldset className="border rounded p-3 mb-3">
-          <legend className="float-none w-auto px-2 fs-5">
+          <legend className="float-none w-auto px-2 fs-5 fw-bold text-dark mb-0">
             {observation.title}
           </legend>
 
-          <p className="mb-3" style={{ whiteSpace: "pre-line" }}>
+          <p
+            className="mb-3"
+            style={{ whiteSpace: "pre-line", wordBreak: "break-word" }}
+          >
             {observation.description}
           </p>
 
@@ -214,7 +217,7 @@ const handleUpdateComment = async (commentId) => {
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
           
-          <legend className="float-none w-auto px-2 fs-4 mb-0">
+          <legend className="float-none w-auto px-2 fs-5 fw-bold text-dark mb-0">
             Add Comment
           </legend>
 
