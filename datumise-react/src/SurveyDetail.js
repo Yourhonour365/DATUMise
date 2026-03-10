@@ -56,6 +56,7 @@ function SurveyDetail() {
                 year: "numeric",
                 })}
             </div>
+             <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
             </div>
 
           <h5 className="mt-4">
