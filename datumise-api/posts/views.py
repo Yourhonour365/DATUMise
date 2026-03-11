@@ -107,3 +107,23 @@ class ObservationLikeToggle(APIView):
 
         observation.likes.add(request.user)
         return Response({"liked": True, "likes_count": observation.likes.count()})
+
+class CommentLikeToggle(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except Comment.DoesNotExist:
+            return Response(
+                {"detail": "Comment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if comment.likes.filter(id=request.user.id).exists():
+            comment.likes.remove(request.user)
+            return Response({"liked": False, "likes_count": comment.likes.count()})
+
+        comment.likes.add(request.user)
+        return Response({"liked": True, "likes_count": comment.likes.count()})
+
