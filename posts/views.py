@@ -100,6 +100,14 @@ class ObservationLikeToggle(APIView):
                 {"detail": "Observation not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+       
+        if observation.owner == request.user:
+            return Response(
+                {"detail": "You cannot like your own observation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+
 
         if observation.likes.filter(id=request.user.id).exists():
             observation.likes.remove(request.user)
@@ -119,6 +127,13 @@ class CommentLikeToggle(APIView):
                 {"detail": "Comment not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if comment.owner == request.user:
+            return Response(
+                {"detail": "You cannot like your own comment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
 
         if comment.likes.filter(id=request.user.id).exists():
             comment.likes.remove(request.user)
