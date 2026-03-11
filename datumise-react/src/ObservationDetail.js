@@ -241,12 +241,14 @@ const handleCommentLike = async (commentId) => {
             {observation.description}
           </p>
 
-          <button
-            className="btn btn-outline-danger btn-sm mt-2"
-            onClick={handleLike}
-          >
-            {observation.is_liked ? "♥ Unlike" : "♡ Like"} ({observation.likes_count})
-          </button>
+          {!observation.is_owner && (
+            <button
+              className="btn btn-outline-danger btn-sm mt-2"
+              onClick={handleLike}
+            >
+              {observation.is_liked ? "♥ Unlike" : "♡ Like"} ({observation.likes_count})
+            </button>
+          )}
 
         </fieldset>
         <div className="mt-auto">
@@ -407,12 +409,14 @@ const handleCommentLike = async (commentId) => {
     <>
       <p className="mb-2">{comment.content}</p>
         
-        <button
-          className="btn btn-outline-danger btn-sm mb-2"
-          onClick={() => handleCommentLike(comment.id)}
-        >
-          {comment.is_liked ? "♥ Unlike" : "♡ Like"} ({comment.likes_count})
-        </button>
+        {!comment.is_owner && (
+          <button
+            className="btn btn-outline-danger btn-sm mb-2"
+            onClick={() => handleCommentLike(comment.id)}
+          >
+            {comment.is_liked ? "♥ Unlike" : "♡ Like"} ({comment.likes_count})
+          </button>
+        )}
 
       <div className="d-flex align-items-center gap-3 mb-2">
         <small className="text-muted">
