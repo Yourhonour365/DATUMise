@@ -96,6 +96,37 @@ class CommentSerializer(serializers.ModelSerializer):
         return request and request.user.is_authenticated and obj.likes.filter(id=request.user.id).exists()
     
 class SurveySerializer(serializers.ModelSerializer):
+    
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    client = serializers.StringRelatedField()
+    site = serializers.StringRelatedField()
+
+    client_id = serializers.IntegerField(source="client.id", read_only=True)
+    site_id = serializers.IntegerField(source="site.id", read_only=True)
+
+    class Meta:
+        model = Survey
+        fields = [
+            "id",
+            "name",
+            "client",
+            "client_id",
+            "site",
+            "site_id",
+            "created_by",
+            "assigned_to",
+            "status",
+            "status_display",
+            "scheduled_for",
+            "due_by",
+            "client_present",
+            "urgent",
+            "created_at",
+            
+        ]
+
+class SurveyDetailSerializer(serializers.ModelSerializer):
     observations = ObservationSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -125,3 +156,5 @@ class SurveySerializer(serializers.ModelSerializer):
             "created_at",
             "observations",
         ]
+
+
