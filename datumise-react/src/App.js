@@ -7,6 +7,7 @@ import ObservationEditForm from "./ObservationEditForm";
 import ObservationList from "./ObservationList";
 import SurveyList from "./SurveyList";
 import SurveyDetail from "./SurveyDetail";
+import Register from "./Register";
 
 function Home() {
   return (
@@ -25,13 +26,7 @@ function Login() {
   );
 }
 
-function Register() {
-  return (
-    <div className="container mt-5">
-      <h2>Register</h2>
-    </div>
-  );
-}
+
 
 
 
