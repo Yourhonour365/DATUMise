@@ -118,6 +118,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+ACCOUNT_UNIQUE_EMAIL = True
+
+REST_AUTH_REGISTER_SERIALIZERS = {
+    "REGISTER_SERIALIZER": "posts.serializers.CustomRegisterSerializer",
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -156,7 +161,7 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Keep registration simple for dev/testing
 ACCOUNT_EMAIL_VERIFICATION = "none"
-ACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_EMAIL_REQUIRED = True
 
 
 REST_FRAMEWORK = {
@@ -169,4 +174,8 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 4,
+}
+
+REST_AUTH = {
+    "REGISTER_SERIALIZER": "posts.serializers.CustomRegisterSerializer",
 }
