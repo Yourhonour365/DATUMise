@@ -28,29 +28,59 @@ function SurveyDetail() {
   }, [id]);
 
     const startSurvey = async () => {
-    try {
-        const response = await api.patch(`/api/surveys/${id}/`, {
-        status: "live",
-        });
-        setSurvey(response.data);
-    } catch (err) {
-        console.log(err);
-    }
+        try {
+            const response = await api.patch(`/api/surveys/${id}/`, {
+            status: "live",
+            });
+            setSurvey(response.data);
+        } catch (err) {
+            console.log(err);
+        }
     };
 
     const pauseSurvey = async () => {
-    try {
-        const response = await api.patch(`/api/surveys/${id}/`, {
-        status: "paused",
-        });
-        setSurvey(response.data);
-    } catch (err) {
-        console.log(err);
-    }
+        try {
+            const response = await api.patch(`/api/surveys/${id}/`, {
+            status: "paused",
+            });
+            setSurvey(response.data);
+        } catch (err) {
+            console.log(err);
+        }
     };
 
+    const resumeSurvey = async () => {
+        try {
+            await api.patch(`/api/surveys/${id}/`, {
+                status: "live",
+            });
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
+    const completeSurvey = async () => {
+        try {
+            await api.patch(`/api/surveys/${id}/`, {
+                status: "completed",
+            });
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
+    const submitSurvey = async () => {
+        try {
+            await api.patch(`/api/surveys/${id}/`, {
+                status: "submitted",
+            });
+            window.location.reload();
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
 
   return (
@@ -71,7 +101,7 @@ function SurveyDetail() {
             )}
             {survey.name}
           </h3>
-            {survey.status !== "live" && (
+            {survey.status === "created" && (
                 <button
                     className="btn btn-success mb-3"
                     onClick={startSurvey}
@@ -88,8 +118,48 @@ function SurveyDetail() {
                     Pause Survey
                 </button>
             )}
+            
+            {survey.status === "live" && (
+                <button
+                    className="btn btn-primary mb-3"
+                    onClick={completeSurvey}
+                >
+                    Complete Survey
+                </button>
+            )}
+
+            {survey.status === "paused" && (
+                <button
+                    className="btn btn-success mb-3"
+                    onClick={resumeSurvey}
+                >
+                    Resume Survey
+                </button>
+            )}
+
+            
+            {survey.status === "completed" && (
+                <button
+                    className="btn btn-dark mb-3"
+                    onClick={submitSurvey}
+                >
+                    Submit Survey
+                </button>
+            )}
+
           <div className="text-muted mb-3">
-            <div>Status: {survey.status}</div>
+            <div>
+                Status: 
+                <span className={`badge ms-2
+                    ${survey.status === "created" ? "bg-secondary" : ""}
+                    ${survey.status === "live" ? "bg-success" : ""}
+                    ${survey.status === "paused" ? "bg-warning text-dark" : ""}
+                    ${survey.status === "completed" ? "bg-primary" : ""}
+                    ${survey.status === "submitted" ? "bg-dark" : ""}
+                `}>
+                    {survey.status_display}
+                </span>
+            </div>
             <div>
                 Created{" "}
                 {new Date(survey.created_at).toLocaleDateString("en-GB", {
@@ -104,7 +174,12 @@ function SurveyDetail() {
           <h5 className="mt-4">
             Observations ({survey.observations?.length || 0})
           </h5>
-
+                <Link
+                    to={`/observations/survey/${survey.id}`}
+                    className="btn btn-outline-primary mb-3"
+                    >
+                    View All Observations
+                </Link>    
           {survey.observations?.length === 0 && (
             <p className="text-muted mt-3">
                 No observations have been added to this survey yet.
