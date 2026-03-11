@@ -8,20 +8,13 @@ import ObservationList from "./ObservationList";
 import SurveyList from "./SurveyList";
 import SurveyDetail from "./SurveyDetail";
 import Register from "./Register";
+import Login from "./Login";
 
 function Home() {
   return (
     <div className="container mt-5">
       <h1>DATUMise Observations</h1>
       <p>Structured site observations platform.</p>
-    </div>
-  );
-}
-
-function Login() {
-  return (
-    <div className="container mt-5">
-      <h2>Login</h2>
     </div>
   );
 }

@@ -22,7 +22,7 @@ function Register() {
     });
   };
 
-    const handleSubmit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setErrors({});
 
