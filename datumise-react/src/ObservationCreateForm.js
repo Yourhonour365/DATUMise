@@ -30,6 +30,9 @@ function ObservationCreateForm(props) {
   const fileInputRef = useRef(null);
   const titleInputRef = useRef(null);
 
+  
+
+
   const handleChange = (event) => {
     setFormData({
       ...formData,
@@ -70,10 +73,10 @@ function ObservationCreateForm(props) {
     }
 
     try {
-      await api.post("/api/observations/", submissionData);
+      const response = await api.post("/api/observations/", submissionData);
 
       if (props.onSuccess) {
-        props.onSuccess();
+        props.onSuccess(response.data);
       }
 
       clearForm();
@@ -92,17 +95,18 @@ function ObservationCreateForm(props) {
 
   return (
   <Container fluid className="pt-2 px-0">
-    <Form onSubmit={handleSubmit}>
+    <Form id="observation-create-form" onSubmit={handleSubmit}>
       <div className="row gx-3 gy-0 align-items-stretch">
         <div className="col-12 col-md-auto">
           <div className="mb-2">
             <Form.Control
-              ref={fileInputRef}
-              className="d-none"
-              type="file"
-              accept="image/*"
-              key={image ? image.name : "empty"}
-              onChange={(e) => {
+                ref={fileInputRef}
+                className="d-none"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                key={image ? image.name : "empty"}
+                onChange={(e) => {
                 const file = e.target.files[0];
                 setImage(file || null);
                 setImagePreview(file ? URL.createObjectURL(file) : "");
@@ -153,7 +157,7 @@ function ObservationCreateForm(props) {
         <div className="col-12 col-md">
           <fieldset className="border rounded pt-0 pb-1 px-2 d-flex flex-column h-100" style={{ marginTop: "-8px" }}>
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-              Title
+              Observation
             </legend>
 
             <Form.Control
@@ -166,8 +170,9 @@ function ObservationCreateForm(props) {
               onChange={handleChange}
               onBlur={handleTitleBlur}
               maxLength={120}
-              placeholder="Enter observation title"
+              placeholder="Enter observation"
               required
+              autoComplete="off"
               style={{
                 resize: "none",
                 lineHeight: "1.2",
@@ -183,7 +188,7 @@ function ObservationCreateForm(props) {
         <div className="col-12">
           <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-              Description
+              Notes
             </legend>
 
             <Form.Control
@@ -193,22 +198,78 @@ function ObservationCreateForm(props) {
               name="description"
               value={description}
               onChange={handleChange}
-              placeholder="Enter observation description"
+              placeholder="Enter notes"
+              autoComplete="off"
+              style={{ resize: "none" }}
             />
           </fieldset>
         </div>
       </div>
 
-      <div className="d-flex gap-2">
-        <Button variant="primary" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Adding..." : "Add Observation"}
-        </Button>
+          <div className="text-end mb-2">
+            <Button
+              variant="link"
+              size="sm"
+              type="button"
+              onClick={clearForm}
+              className="text-muted p-0 text-decoration-none"
+            >
+              Clear
+            </Button>
+          </div>
 
-        <Button variant="secondary" type="button" onClick={clearForm}>
-          Clear Form
-        </Button>
-      </div>
-    </Form>
+
+
+
+          <div className="d-flex align-items-center justify-content-between mt-3">
+          
+            <Button
+              variant="warning"
+              type="button"
+              onClick={() => {
+                props.onPauseSurvey?.();
+                props.onClose?.();
+              }}
+              className="me-2"
+            >
+              Pause Survey
+            </Button>
+          
+          <div className="text-center flex-grow-1 mx-2">
+            
+            <div className="flex-grow-1 d-flex justify-content-center">
+            <Button
+              variant="light"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
+              style={{ width: "56px", height: "56px" }}
+            >
+              <img
+                src="/camera.svg"
+                alt="Camera"
+                width="32"
+                height="32"
+              />
+            </Button>
+          </div>
+          
+          </div>
+          
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : "✓ Save & Next"}
+          </Button>
+
+
+
+
+          </div>
+
+</Form>
   </Container>
 );
 }

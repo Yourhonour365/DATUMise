@@ -12,7 +12,7 @@ function SurveyDetail() {
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [observationSuccess, setObservationSuccess] = useState(false);
   const [observationFading, setObservationFading] = useState(false);
-  
+  const [observationCount, setObservationCount] = useState(0);
 
 
   useEffect(() => {
@@ -25,6 +25,7 @@ function SurveyDetail() {
       try {
         const response = await api.get(`/api/surveys/${id}/`);
         setSurvey(response.data);
+        setObservationCount(response.data.observations?.length || 0);
         setLoading(false);
       } catch (err) {
         console.log(err);
@@ -100,7 +101,12 @@ function SurveyDetail() {
             console.log(err);
         }
     };
-
+  
+    useEffect(() => {
+    if (survey) {
+      setObservationCount(survey.observations?.length || 0);
+    }
+  }, [survey]);
 
   return (
     <div className="container mt-4">
@@ -275,27 +281,42 @@ function SurveyDetail() {
           centered
         >
           <Modal.Header closeButton className="px-3">
-            <Modal.Title>
-              Add Observation
-              {observationSuccess && (
-                <span
-                  className="ms-2 text-success fs-6 fw-light fst-italic"
-                  style={{
-                    opacity: observationFading ? 0 : 1,
-                    transition: "opacity 2s ease",
-                    visibility: observationSuccess ? "visible" : "hidden",
-                  }}
-                >
-                  observation added
+              <Modal.Title>
+                Add Observation
+                <span className="ms-2 badge bg-secondary">
+                  {observationCount}
                 </span>
-              )}
-            </Modal.Title>
-              </Modal.Header>
+
+                {observationSuccess && (
+                  <span
+                    className="ms-2 text-success fs-6 fw-light fst-italic"
+                    style={{
+                      opacity: observationFading ? 0 : 1,
+                      transition: "opacity 2s ease",
+                      visibility: observationSuccess ? "visible" : "hidden",
+                    }}
+                  >
+                    observation added
+                  </span>
+                )}
+              </Modal.Title>
+            </Modal.Header>
               <Modal.Body className="pt-2 pb-3">
                 <ObservationCreateForm 
-                  surveyId={survey?.id} 
+                  surveyId={survey?.id}
+                  onPauseSurvey={pauseSurvey}
                   onClose={() => setShowObservationModal(false)}
-                  onSuccess={() => {
+                  onSuccess={(newObservation) => {
+                    setObservationCount((prev) => prev + 1);
+                    
+                    setSurvey((prev) => ({
+                      ...prev,
+                      observations: [...(prev.observations || []), newObservation],
+                    }));
+                                        
+                    
+                    
+                    
                     setObservationSuccess(true);
                     setObservationFading(false);
 
@@ -309,16 +330,7 @@ function SurveyDetail() {
                   }}
                 />
               </Modal.Body>
-              <Modal.Footer>
-                <Button variant="secondary" onClick={() => setShowObservationModal(false)}>
-                  Close
-                </Button>
-                    {survey?.status === "live" && (
-                      <Button variant="warning" onClick={pauseSurvey}>
-                        Pause Survey
-                      </Button>
-                     )}
-              </Modal.Footer>
+              
             </Modal>
     </div>
   );
