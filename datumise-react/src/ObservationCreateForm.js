@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Form, Button, Container } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./api/api";
@@ -17,6 +17,7 @@ function ObservationCreateForm(props) {
       description: "",
     });
     setImage(null);
+    setImagePreview("");
   };
   
   
@@ -25,8 +26,10 @@ function ObservationCreateForm(props) {
   const [searchParams] = useSearchParams();
   const surveyId = props.surveyId || searchParams.get("survey");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  
+  const [imagePreview, setImagePreview] = useState("");
+  const fileInputRef = useRef(null);
+
+
   const handleChange = (event) => {
     setFormData({
       ...formData,
@@ -69,17 +72,17 @@ function ObservationCreateForm(props) {
     try {
       await api.post("/api/observations/", submissionData);
 
-      setSuccessMessage("Observation created and saved");
+      if (props.onSuccess) {
+        props.onSuccess();
+      }
 
       clearForm();
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-
       
+
+
     } catch (err) {
-      console.error("Create observation failed:", err);
+      console.error("Add observation failed:", err);
     }
 
       finally {
@@ -88,20 +91,68 @@ function ObservationCreateForm(props) {
   };
 
   return (
-    <Container className="mt-4">
-      <h3 className="mb-3">Create Observation</h3>
+    <Container fluid className="pt-2 px-0">
+      
 
 
-      {successMessage && (
-        <div className="alert alert-success py-2 mb-3" role="alert">
-          {successMessage}
-        </div>
-      )}
-
+      
 
       <Form onSubmit={handleSubmit}>
         
         
+        
+        
+        <div className="mb-2">
+          
+          
+          <Form.Control
+            ref={fileInputRef}
+            className="d-none"
+            type="file"
+            accept="image/*"
+            key={image ? image.name : "empty"}
+            onChange={(e) => {
+              const file = e.target.files[0];
+              setImage(file || null);
+              setImagePreview(file ? URL.createObjectURL(file) : "");
+            }}
+          />
+
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: "140px",
+              height: "140px",
+              border: "1px dashed #bbb",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              overflow: "hidden",
+              backgroundColor: "#f8f9fa",
+              marginTop: "4px",
+            }}
+          >
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="preview"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <span className="text-muted text-center">
+                Add image
+                <br />
+                <strong>+</strong>
+              </span>
+            )}
+          </div>
+        </div>
         
         <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
           <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
@@ -140,23 +191,11 @@ function ObservationCreateForm(props) {
           />
         </fieldset>
 
-        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-            Image
-          </legend>
-
-          <Form.Control
-            className="border-0"
-            type="file"
-            accept="image/*"
-            key={image ? image.name : "empty"}
-            onChange={(e) => setImage(e.target.files[0])}
-          />
-        </fieldset>
+        
 
         <div className="d-flex gap-2">
           <Button variant="primary" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Observation"}
+            {isSubmitting ? "Adding..." : "Add Observation"}
           </Button>
 
           <Button

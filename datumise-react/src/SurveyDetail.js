@@ -10,6 +10,10 @@ function SurveyDetail() {
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showObservationModal, setShowObservationModal] = useState(false);
+  const [observationSuccess, setObservationSuccess] = useState(false);
+  const [observationFading, setObservationFading] = useState(false);
+  
+
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -270,13 +274,39 @@ function SurveyDetail() {
           onHide={() => setShowObservationModal(false)}
           centered
         >
-          <Modal.Header closeButton>
-            <Modal.Title>Add Observation</Modal.Title>
+          <Modal.Header closeButton className="px-3">
+            <Modal.Title>
+              Add Observation
+              {observationSuccess && (
+                <span
+                  className="ms-2 text-success fs-6 fw-light fst-italic"
+                  style={{
+                    opacity: observationFading ? 0 : 1,
+                    transition: "opacity 2s ease",
+                    visibility: observationSuccess ? "visible" : "hidden",
+                  }}
+                >
+                  observation added
+                </span>
+              )}
+            </Modal.Title>
               </Modal.Header>
-              <Modal.Body>
+              <Modal.Body className="pt-2 pb-3">
                 <ObservationCreateForm 
-                surveyId={survey?.id} 
-                onClose={() => setShowObservationModal(false)} 
+                  surveyId={survey?.id} 
+                  onClose={() => setShowObservationModal(false)}
+                  onSuccess={() => {
+                    setObservationSuccess(true);
+                    setObservationFading(false);
+
+                    setTimeout(() => {
+                      setObservationFading(true);
+                    }, 1200);
+
+                    setTimeout(() => {
+                      setObservationSuccess(false);
+                    }, 3200);
+                  }}
                 />
               </Modal.Body>
               <Modal.Footer>
