@@ -13,7 +13,7 @@ function ObservationList() {
   const [hoveredId, setHoveredId] = useState(null);
   const { surveyId } = useParams();
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api.get(
@@ -29,6 +29,7 @@ function ObservationList() {
       })
       .catch((error) => {
         console.error("Error fetching observations:", error);
+        setError("You must be logged in to view observations.");
         setLoading(false);
       });
   }, [surveyId, searchTerm]);
@@ -68,6 +69,7 @@ function ObservationList() {
         
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-3">Observations ({observations.length})</h3>
+        {error && <p className="text-danger">{error}</p>}
         <Link to="/observations/create" className="btn btn-primary btn-sm">
           + New Observation
         </Link>
@@ -75,7 +77,7 @@ function ObservationList() {
 
       {loading && <p>Loading observations...</p>}
 
-      {!loading && observations.length === 0 && (
+      {!loading && !error && observations.length === 0 && (
         <p>No observations yet.</p>
       )}
 
