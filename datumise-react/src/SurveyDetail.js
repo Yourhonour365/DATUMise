@@ -188,7 +188,7 @@ function SurveyDetail() {
             <div>Client ID: {survey.client_id || "Not set"}</div>
             <div>Site ID: {survey.site_id || "Not set"}</div>
             
-            
+            <div>Surveyor: {survey.assigned_to || "Unassigned"}</div>
             
             <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
           </div>
