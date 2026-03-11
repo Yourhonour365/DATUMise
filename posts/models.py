@@ -3,6 +3,52 @@ from django.db import models
 
 # Create your models here.
 
+
+class Client(models.Model):
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+class ClientSite(models.Model):
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="sites",
+    )
+    name = models.CharField(max_length=255)
+    address = models.CharField(max_length=500, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.client.name} - {self.name}"
+
+class ClientContact(models.Model):
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="contacts",
+    )
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    role = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["first_name", "last_name"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
 class Survey(models.Model):
     STATUS_CHOICES = [
         ("created", "Created"),
@@ -16,8 +62,21 @@ class Survey(models.Model):
     ]
 
     name = models.CharField(max_length=255)
-    client = models.CharField(max_length=255, blank=True, null=True)
-    site = models.CharField(max_length=255, blank=True, null=True)
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="surveys",
+        null=True,
+        blank=True,
+    )
+
+    site = models.ForeignKey(
+        ClientSite,
+        on_delete=models.CASCADE,
+        related_name="surveys",
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -45,8 +104,8 @@ class Survey(models.Model):
         ordering = ["-created_at"]
 
     def is_incomplete(self):
-        return not self.client or not self.site
-
+        return self.client is None or self.site is None
+    
     def __str__(self):
         return self.name
 

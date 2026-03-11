@@ -99,13 +99,21 @@ class SurveySerializer(serializers.ModelSerializer):
     observations = ObservationSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
+    client = serializers.StringRelatedField()
+    site = serializers.StringRelatedField()
+
+    client_id = serializers.IntegerField(source="client.id", read_only=True)
+    site_id = serializers.IntegerField(source="site.id", read_only=True)
+
     class Meta:
         model = Survey
         fields = [
             "id",
             "name",
             "client",
+            "client_id",
             "site",
+            "site_id",
             "created_by",
             "assigned_to",
             "status",
