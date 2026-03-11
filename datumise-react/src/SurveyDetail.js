@@ -158,12 +158,14 @@ function SurveyDetail() {
                 </button>
             )}
             
-            <Link
-              to={`/observations/create?survey=${survey.id}`}
-              className="btn btn-outline-success mb-3 ms-2"
-            >
-              Add Observation
-            </Link>
+            {survey.status === "live" && (
+              <Link
+                to={`/observations/create?survey=${survey.id}`}
+                className="btn btn-outline-success mb-3 ms-2"
+              >
+                Add Observation
+              </Link>
+            )}
 
 
 
