@@ -9,7 +9,17 @@ function ObservationCreateForm(props) {
     description: "",
   });
   const [image, setImage] = useState(null);
-
+ 
+ 
+  const clearForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+    });
+    setImage(null);
+  };
+  
+  
   const { title, description } = formData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,8 +53,8 @@ function ObservationCreateForm(props) {
       setIsSubmitting(true);
     
     const submissionData = new FormData();
-    submissionData.append("title", title);
-    submissionData.append("description", description);
+      submissionData.append("title", title);
+      submissionData.append("description", description);
     if (surveyId) {
       submissionData.append("survey", surveyId);
     }
@@ -122,6 +132,7 @@ function ObservationCreateForm(props) {
             className="border-0"
             type="file"
             accept="image/*"
+            key={image ? image.name : "empty"}
             onChange={(e) => setImage(e.target.files[0])}
           />
         </fieldset>
@@ -134,11 +145,12 @@ function ObservationCreateForm(props) {
           <Button
             variant="secondary"
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={clearForm}
           >
-            Cancel
+            Clear Form
           </Button>
-</div>
+          
+        </div>
       </Form>
     </Container>
   );
