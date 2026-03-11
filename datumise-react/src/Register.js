@@ -30,7 +30,8 @@ function Register() {
       await api.post("/api/auth/registration/", formData);
       navigate("/login");
     } catch (err) {
-      setErrors(err.response?.data || { detail: "Registration failed." });
+          console.log("Registration error:", err.response?.data);
+        setErrors(err.response?.data || { detail: "Registration failed." });
     }
   };
 
