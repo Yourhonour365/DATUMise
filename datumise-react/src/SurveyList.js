@@ -96,12 +96,21 @@ function SurveyList() {
                 onClick={() => navigate(`/surveys/${survey.id}`)}
             >
             <div className="card-body">
+                
+                
                 <h5 className="mb-1">
                     {survey.urgent && (
                         <span className="badge bg-danger me-2">URGENT</span>
                     )}
                     {survey.name}
                 </h5>
+
+                    <div className="small text-muted">{survey.client || "No client assigned"}</div>    
+                    <div className="small text-muted">{survey.site || "No site assigned"}</div>
+                    <div className="small text-muted">
+                      Surveyor: {survey.assigned_to || "Unassigned"}
+                    </div>
+
                 <small className="text-muted">
                     Status: 
                     <span className={`badge ms-1
