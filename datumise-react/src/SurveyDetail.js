@@ -274,7 +274,10 @@ function SurveyDetail() {
           <Modal.Title>Add Observation</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <ObservationCreateForm surveyId={survey?.id} />
+          <ObservationCreateForm 
+          surveyId={survey?.id} 
+          onClose={() => setShowObservationModal(false)} 
+        />
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowObservationModal(false)}>
