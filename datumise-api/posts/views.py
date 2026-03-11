@@ -9,6 +9,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import Count
+
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
@@ -76,7 +78,9 @@ class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
     ]
 
 class SurveyList(generics.ListCreateAPIView):
-    queryset = Survey.objects.all().order_by("-created_at")
+    queryset = Survey.objects.annotate(
+        observation_count=Count("observations")
+    ).order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
 

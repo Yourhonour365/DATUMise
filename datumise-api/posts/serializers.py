@@ -97,6 +97,7 @@ class CommentSerializer(serializers.ModelSerializer):
     
 class SurveySerializer(serializers.ModelSerializer):
     
+    observation_count = serializers.IntegerField(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     client = serializers.StringRelatedField()
@@ -126,7 +127,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "client_present",
             "urgent",
             "created_at",
-            
+            "observation_count",
         ]
 
 class SurveyDetailSerializer(serializers.ModelSerializer):
@@ -140,7 +141,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
     created_by = serializers.StringRelatedField()
-    
+
     class Meta:
         model = Survey
         fields = [
