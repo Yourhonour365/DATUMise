@@ -29,6 +29,7 @@ function ObservationList() {
       })
       .catch((error) => {
         console.error("Error fetching observations:", error);
+        setLoading(false);
       });
   }, [surveyId, searchTerm]);
 
