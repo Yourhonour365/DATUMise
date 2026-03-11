@@ -30,20 +30,9 @@ class ObservationList(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
-        active_survey = Survey.objects.filter(
-            created_by=self.request.user,
-            status="active"
-        ).order_by("-created_at").first()
+        serializer.save(owner=self.request.user)
 
-        if not active_survey:
-            active_survey = Survey.objects.create(
-                name=f"Survey - {timezone.now().strftime('%d %b %Y')}",
-                created_by=self.request.user,
-                status="active",
-            )
-
-        serializer.save(owner=self.request.user, survey=active_survey)
-
+        
 class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
     serializer_class = ObservationSerializer
