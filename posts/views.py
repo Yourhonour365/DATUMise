@@ -6,7 +6,9 @@ from .permissions import IsOwnerOrReadOnly
 from django.utils import timezone
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
@@ -86,3 +88,22 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
     queryset = Survey.objects.all()
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]  
+
+class ObservationLikeToggle(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            observation = Observation.objects.get(pk=pk)
+        except Observation.DoesNotExist:
+            return Response(
+                {"detail": "Observation not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if observation.likes.filter(id=request.user.id).exists():
+            observation.likes.remove(request.user)
+            return Response({"liked": False, "likes_count": observation.likes.count()})
+
+        observation.likes.add(request.user)
+        return Response({"liked": True, "likes_count": observation.likes.count()})
