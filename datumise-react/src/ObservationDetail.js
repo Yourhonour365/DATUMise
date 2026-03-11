@@ -168,7 +168,25 @@ const handleLike = async () => {
   }
 };
 
+const handleCommentLike = async (commentId) => {
+  try {
+    const response = await api.post(`/api/comments/${commentId}/like/`);
 
+    setComments((prevComments) =>
+      prevComments.map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              is_liked: response.data.liked,
+              likes_count: response.data.likes_count,
+            }
+          : comment
+      )
+    );
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   return (
     <Container className="mt-4">
@@ -229,7 +247,7 @@ const handleLike = async () => {
           >
             {observation.is_liked ? "♥ Unlike" : "♡ Like"} ({observation.likes_count})
           </button>
-          
+
         </fieldset>
         <div className="mt-auto">
             <p className="text-muted small mb-1">
@@ -388,6 +406,13 @@ const handleLike = async () => {
   ) : (
     <>
       <p className="mb-2">{comment.content}</p>
+        
+        <button
+          className="btn btn-outline-danger btn-sm mb-2"
+          onClick={() => handleCommentLike(comment.id)}
+        >
+          {comment.is_liked ? "♥ Unlike" : "♡ Like"} ({comment.likes_count})
+        </button>
 
       <div className="d-flex align-items-center gap-3 mb-2">
         <small className="text-muted">

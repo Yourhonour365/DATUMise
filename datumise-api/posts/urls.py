@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import ObservationList, ObservationDetail, CommentList, CommentDetail, SurveyList, SurveyDetail, ObservationLikeToggle
-
+from .views import ObservationList, ObservationDetail, CommentList, CommentDetail, SurveyList, SurveyDetail, ObservationLikeToggle, CommentLikeToggle
 
 urlpatterns = [
     path("observations/", ObservationList.as_view(), name="observation-list"),
@@ -10,4 +9,5 @@ urlpatterns = [
     path("surveys/", SurveyList.as_view(), name="survey-list"),
     path("surveys/<int:pk>/", SurveyDetail.as_view()),
     path("observations/<int:pk>/like/", ObservationLikeToggle.as_view(), name="observation-like"),
+    path("comments/<int:pk>/like/", CommentLikeToggle.as_view(), name="comment-like"),
 ]
