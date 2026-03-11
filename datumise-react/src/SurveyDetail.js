@@ -160,27 +160,38 @@ function SurveyDetail() {
 
           <div className="text-muted mb-3">
             <div>
-                Status: 
-                <span className={`badge ms-2
-                    ${survey.status === "created" ? "bg-secondary" : ""}
-                    ${survey.status === "live" ? "bg-success" : ""}
-                    ${survey.status === "paused" ? "bg-warning text-dark" : ""}
-                    ${survey.status === "completed" ? "bg-primary" : ""}
-                    ${survey.status === "submitted" ? "bg-dark" : ""}
-                `}>
-                    {survey.status_display}
-                </span>
+              Status:
+              <span
+                className={`badge ms-2
+                  ${survey.status === "created" ? "bg-secondary" : ""}
+                  ${survey.status === "live" ? "bg-success" : ""}
+                  ${survey.status === "paused" ? "bg-warning text-dark" : ""}
+                  ${survey.status === "completed" ? "bg-primary" : ""}
+                  ${survey.status === "submitted" ? "bg-dark" : ""}
+                `}
+              >
+                {survey.status_display}
+              </span>
             </div>
+
             <div>
-                Created{" "}
-                {new Date(survey.created_at).toLocaleDateString("en-GB", {
+              Created{" "}
+              {new Date(survey.created_at).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
-                })}
+              })}
             </div>
-             <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
-            </div>
+
+            <div>Client: {survey.client || "Not set"}</div>
+            <div>Site: {survey.site || "Not set"}</div>
+            <div>Client ID: {survey.client_id || "Not set"}</div>
+            <div>Site ID: {survey.site_id || "Not set"}</div>
+            
+            
+            
+            <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
+          </div>
 
           <h5 className="mt-4">
             Observations ({survey.observations?.length || 0})
