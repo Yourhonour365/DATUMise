@@ -80,10 +80,12 @@ function SurveyList() {
       {error && <p className="text-danger">{error}</p>}
 
       {loading && <p>Loading surveys...</p>}
-
+      {!loading && surveys.length === 0 && (
+        <p className="text-muted">No surveys found.</p>
+      )}
       {!loading &&
           [...surveys]
-          
+
             .sort((a, b) => b.urgent - a.urgent)
             .map((survey) => (
 
