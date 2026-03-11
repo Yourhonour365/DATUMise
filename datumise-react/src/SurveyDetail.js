@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from "react";
+import { Modal, Button } from "react-bootstrap";
 import { useParams, Link } from "react-router-dom";
 import api from "./api/api";
+import ObservationCreateForm from "./ObservationCreateForm";
+
 
 function SurveyDetail() {
   const { id } = useParams();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showObservationModal, setShowObservationModal] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -159,12 +163,12 @@ function SurveyDetail() {
             )}
             
             {survey.status === "live" && (
-              <Link
-                to={`/observations/create?survey=${survey.id}`}
+              <button
                 className="btn btn-outline-success mb-3 ms-2"
+                onClick={() => setShowObservationModal(true)}
               >
                 Add Observation
-              </Link>
+              </button>
             )}
 
 
@@ -212,7 +216,7 @@ function SurveyDetail() {
             Observations ({survey.observations?.length || 0})
           </h5>
                 <Link
-                    to={`/observations/survey/${survey.id}`}
+                    to={`/observations/survey/${survey?.id}`}
                     className="btn btn-outline-primary mb-3"
                     >
                     View All Observations
@@ -261,6 +265,28 @@ function SurveyDetail() {
           </div>
         </>
       )}
+        <Modal
+        show={showObservationModal}
+        onHide={() => setShowObservationModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Add Observation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <ObservationCreateForm surveyId={survey?.id} />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowObservationModal(false)}>
+            Close
+          </Button>
+          {survey?.status === "live" && (
+            <Button variant="warning" onClick={pauseSurvey}>
+              Pause Survey
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
