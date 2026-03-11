@@ -155,6 +155,21 @@ const handleUpdateComment = async (commentId) => {
   }
 };
 
+const handleLike = async () => {
+  try {
+    const response = await api.post(`/api/observations/${id}/like/`);
+    setObservation((prevObservation) => ({
+      ...prevObservation,
+      is_liked: response.data.liked,
+      likes_count: response.data.likes_count,
+    }));
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+
+
   return (
     <Container className="mt-4">
       <div className="mb-3">
@@ -208,6 +223,12 @@ const handleUpdateComment = async (commentId) => {
             {observation.description}
           </p>
 
+          <button
+            className="btn btn-outline-danger btn-sm mt-2"
+            onClick={handleLike}
+          >
+            {observation.is_liked ? "♥ Unlike" : "♡ Like"} ({observation.likes_count})
+          </button>
           
         </fieldset>
         <div className="mt-auto">
