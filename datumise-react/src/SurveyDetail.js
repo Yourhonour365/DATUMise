@@ -72,10 +72,21 @@ function SurveyDetail() {
     };
 
     const submitSurvey = async () => {
+        const confirmed = window.confirm(
+            "Submit survey for office review?\n\n" +
+            "The office team will be able to start reviewing the report.\n" +
+            "You can still add additional observations or comments if needed, " +
+            "but these may be marked as post-submission additions."
+        );
+
+        if (!confirmed) return;
+
         try {
             await api.patch(`/api/surveys/${id}/`, {
                 status: "submitted",
             });
+
+            alert("Survey submitted for office review.");
             window.location.reload();
         } catch (err) {
             console.log(err);
