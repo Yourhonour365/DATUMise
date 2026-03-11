@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "./api/api";
 import { useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 function ObservationList() {
   const [observations, setObservations] = useState([]);
@@ -10,9 +11,16 @@ function ObservationList() {
   const navigate = useNavigate();
   const [previousPage, setPreviousPage] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
+  const { surveyId } = useParams();
+  const [searchTerm, setSearchTerm] = useState("");
+
 
   useEffect(() => {
-    api.get("/api/observations/")
+    api.get(
+        surveyId
+            ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
+            : `/api/observations/?search=${searchTerm}`
+    )
       .then((response) => {
         setObservations(response.data.results);
         setNextPage(response.data.next);
@@ -22,7 +30,7 @@ function ObservationList() {
       .catch((error) => {
         console.error("Error fetching observations:", error);
       });
-  }, []);
+  }, [surveyId, searchTerm]);
 
   const handlePageChange = (url) => {
     window.scrollTo(0, 0);
@@ -42,6 +50,21 @@ function ObservationList() {
 
   return (
     <div className="container mt-5">
+
+        <input
+            type="text"
+            className="form-control mb-3"
+            placeholder="Search observations..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button
+            className="btn btn-outline-secondary btn-sm mb-3"
+            onClick={() => setSearchTerm("")}
+            >
+            Clear Search
+        </button>
+        
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-3">Observations ({observations.length})</h3>
         <Link to="/observations/create" className="btn btn-primary btn-sm">

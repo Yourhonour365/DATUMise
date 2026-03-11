@@ -45,6 +45,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/observations" element={<ObservationList />} />
+        <Route path="/observations/survey/:surveyId" element={<ObservationList />} />
         <Route path="/observations/create" element={<ObservationCreateForm />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
         <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
