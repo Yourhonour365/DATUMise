@@ -28,7 +28,7 @@ function ObservationCreateForm(props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
   const fileInputRef = useRef(null);
-
+  const titleInputRef = useRef(null);
 
   const handleChange = (event) => {
     setFormData({
@@ -91,125 +91,125 @@ function ObservationCreateForm(props) {
   };
 
   return (
-    <Container fluid className="pt-2 px-0">
-      
+  <Container fluid className="pt-2 px-0">
+    <Form onSubmit={handleSubmit}>
+      <div className="row gx-3 gy-0 align-items-stretch">
+        <div className="col-12 col-md-auto">
+          <div className="mb-2">
+            <Form.Control
+              ref={fileInputRef}
+              className="d-none"
+              type="file"
+              accept="image/*"
+              key={image ? image.name : "empty"}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                setImage(file || null);
+                setImagePreview(file ? URL.createObjectURL(file) : "");
 
+                if (file) {
+                  setTimeout(() => titleInputRef.current?.focus(), 100);
+                }
+              }}
+            />
 
-      
-
-      <Form onSubmit={handleSubmit}>
-        
-        
-        
-        
-        <div className="mb-2">
-          
-          
-          <Form.Control
-            ref={fileInputRef}
-            className="d-none"
-            type="file"
-            accept="image/*"
-            key={image ? image.name : "empty"}
-            onChange={(e) => {
-              const file = e.target.files[0];
-              setImage(file || null);
-              setImagePreview(file ? URL.createObjectURL(file) : "");
-            }}
-          />
-
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: "140px",
-              height: "140px",
-              border: "1px dashed #bbb",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              overflow: "hidden",
-              backgroundColor: "#f8f9fa",
-              marginTop: "4px",
-            }}
-          >
-            {imagePreview ? (
-              <img
-                src={imagePreview}
-                alt="preview"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-            ) : (
-              <span className="text-muted text-center">
-                Add image
-                <br />
-                <strong>+</strong>
-              </span>
-            )}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: "140px",
+                height: "140px",
+                border: "1px dashed #bbb",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                overflow: "hidden",
+                backgroundColor: "#f8f9fa",
+                
+              }}
+            >
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="preview"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <span className="text-muted text-center">
+                  Add image
+                  <br />
+                  <strong>+</strong>
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        
-        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-            Title
-          </legend>
 
-          <Form.Control
-            className="border-0"
-            type="text"
-            name="title"
-            value={title}
-            onChange={handleChange}
-            onBlur={handleTitleBlur}
-            maxLength={120}
-            placeholder="Enter observation title"
-            required
-          />
+        <div className="col-12 col-md">
+          <fieldset className="border rounded pt-0 pb-1 px-2 d-flex flex-column h-100" style={{ marginTop: "-8px" }}>
+            <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
+              Title
+            </legend>
 
-          <small className="text-muted d-block mt-1">{title.length} / 120</small>
+            <Form.Control
+              ref={titleInputRef}
+              className="border-0 p-1 h-100"
+              as="textarea"
+              rows={3}
+              name="title"
+              value={title}
+              onChange={handleChange}
+              onBlur={handleTitleBlur}
+              maxLength={120}
+              placeholder="Enter observation title"
+              required
+              style={{
+                resize: "none",
+                lineHeight: "1.2",
+              }}
+            />
 
-        </fieldset>
-
-        <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-            Description
-          </legend>
-
-          <Form.Control
-            className="border-0"
-            as="textarea"
-            rows={4}
-            name="description"
-            value={description}
-            onChange={handleChange}
-            placeholder="Enter observation description"
-          />
-        </fieldset>
-
-        
-
-        <div className="d-flex gap-2">
-          <Button variant="primary" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Adding..." : "Add Observation"}
-          </Button>
-
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={clearForm}
-          >
-            Clear Form
-          </Button>
-          
+            <small className="text-muted d-block mt-1">
+              {title.length} / 120
+            </small>
+          </fieldset>
         </div>
-      </Form>
-    </Container>
-  );
-}
 
+        <div className="col-12">
+          <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+            <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
+              Description
+            </legend>
+
+            <Form.Control
+              className="border-0"
+              as="textarea"
+              rows={4}
+              name="description"
+              value={description}
+              onChange={handleChange}
+              placeholder="Enter observation description"
+            />
+          </fieldset>
+        </div>
+      </div>
+
+      <div className="d-flex gap-2">
+        <Button variant="primary" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Adding..." : "Add Observation"}
+        </Button>
+
+        <Button variant="secondary" type="button" onClick={clearForm}>
+          Clear Form
+        </Button>
+      </div>
+    </Form>
+  </Container>
+);
+}
 export default ObservationCreateForm;
