@@ -82,7 +82,7 @@ class SurveyList(generics.ListCreateAPIView):
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["status"]
-    search_fields = ["name", "client", "site"]
+    search_fields = ["name", "client__name", "site__name"]
 
 class SurveyDetail(generics.RetrieveUpdateAPIView):
     queryset = Survey.objects.all()
