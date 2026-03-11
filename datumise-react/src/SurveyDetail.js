@@ -266,30 +266,30 @@ function SurveyDetail() {
         </>
       )}
         <Modal
-        show={showObservationModal}
-        onHide={() => setShowObservationModal(false)}
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Add Observation</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <ObservationCreateForm 
-          surveyId={survey?.id} 
-          onClose={() => setShowObservationModal(false)} 
-        />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowObservationModal(false)}>
-            Close
-          </Button>
-          {survey?.status === "live" && (
-            <Button variant="warning" onClick={pauseSurvey}>
-              Pause Survey
-            </Button>
-          )}
-        </Modal.Footer>
-      </Modal>
+          show={showObservationModal}
+          onHide={() => setShowObservationModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Add Observation</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <ObservationCreateForm 
+                surveyId={survey?.id} 
+                onClose={() => setShowObservationModal(false)} 
+                />
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowObservationModal(false)}>
+                  Close
+                </Button>
+                    {survey?.status === "live" && (
+                      <Button variant="warning" onClick={pauseSurvey}>
+                        Pause Survey
+                      </Button>
+                     )}
+              </Modal.Footer>
+            </Modal>
     </div>
   );
 }
