@@ -62,6 +62,16 @@ function SurveyList() {
             <option value="submitted">Submitted</option>
         </select>
 
+        <button
+            className="btn btn-outline-secondary btn-sm mb-3"
+            onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("");
+            }}
+            >
+            Clear Filters
+        </button>
+        
       <h3 className="mb-4">Surveys ({surveys.length})</h3>
       {loading && <p>Loading surveys...</p>}
       {!loading &&
