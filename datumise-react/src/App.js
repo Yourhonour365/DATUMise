@@ -28,6 +28,16 @@ function Home() {
 function App() {
   return (
     <Router>
+
+      <nav className="navbar navbar-light bg-light px-3">
+        <Link className="navbar-brand" to="/">DATUMise</Link>
+
+        <div>
+          <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
+          <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
+        </div>
+      </nav>
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
