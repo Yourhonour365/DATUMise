@@ -25,7 +25,7 @@ function ObservationCreateForm(props) {
   const [searchParams] = useSearchParams();
   const surveyId = props.surveyId || searchParams.get("survey");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [successMessage, setSuccessMessage] = useState("");
   
   const handleChange = (event) => {
     setFormData({
@@ -68,7 +68,16 @@ function ObservationCreateForm(props) {
 
     try {
       await api.post("/api/observations/", submissionData);
-      window.location.reload();
+
+      setSuccessMessage("Observation created and saved");
+
+      clearForm();
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+
+      
     } catch (err) {
       console.error("Create observation failed:", err);
     }
@@ -81,6 +90,14 @@ function ObservationCreateForm(props) {
   return (
     <Container className="mt-4">
       <h3 className="mb-3">Create Observation</h3>
+
+
+      {successMessage && (
+        <div className="alert alert-success py-2 mb-3" role="alert">
+          {successMessage}
+        </div>
+      )}
+
 
       <Form onSubmit={handleSubmit}>
         
