@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from django.db.models import Count
 from .models import Observation, Comment, Survey
-from .serializers import ObservationSerializer, CommentSerializer, SurveySerializer
+from .serializers import ObservationSerializer, CommentSerializer, SurveySerializer, SurveyDetailSerializer
 from .permissions import IsOwnerOrReadOnly
 from django.utils import timezone
 from rest_framework import filters
@@ -86,8 +86,8 @@ class SurveyList(generics.ListCreateAPIView):
 
 class SurveyDetail(generics.RetrieveUpdateAPIView):
     queryset = Survey.objects.all()
-    serializer_class = SurveySerializer
-    permission_classes = [permissions.IsAuthenticated]  
+    serializer_class = SurveyDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 class ObservationLikeToggle(APIView):
     permission_classes = [permissions.IsAuthenticated]
