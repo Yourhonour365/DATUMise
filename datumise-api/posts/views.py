@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Count
-
+from rest_framework.exceptions import ValidationError
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
@@ -30,6 +30,11 @@ class ObservationList(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
+        survey = serializer.validated_data.get("survey")
+
+        if survey and survey.status != "live":
+            raise ValidationError("Observations can only be added to a live survey.")
+
         serializer.save(owner=self.request.user)
 
         
