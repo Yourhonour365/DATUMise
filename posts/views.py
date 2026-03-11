@@ -12,7 +12,7 @@ from rest_framework import status
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ["title", "description"]
     
