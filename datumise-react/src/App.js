@@ -26,16 +26,52 @@ function Home() {
   
 
 function App() {
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/auth/logout/");
+    } catch (err) {
+      console.log("Logout error:", err.response?.data);
+    } finally {
+      localStorage.removeItem("token");
+      setIsLoggedIn(false);
+      window.location.href = "/";
+    }
+  };
+
+
+const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
+
+
+
+
+
   return (
     <Router>
 
       <nav className="navbar navbar-light bg-light px-3">
+        
         <Link className="navbar-brand" to="/">DATUMise</Link>
-
+        <Link className="btn btn-outline-dark btn-sm me-2" to="/observations">
+          Observations
+        </Link>
+        <Link className="btn btn-outline-dark btn-sm me-2" to="/surveys">
+          Surveys
+        </Link>
+        
         <div>
-          <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
-          <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
+          {isLoggedIn ? (
+            <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
+              <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
+            </>
+          )}
         </div>
+      
       </nav>
 
       <Routes>

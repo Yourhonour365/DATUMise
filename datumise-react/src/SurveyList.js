@@ -25,7 +25,8 @@ function SurveyList() {
             setPreviousPage(response.data.previous);
             setLoading(false);
             } catch (err) {
-            console.log(err);
+              console.log(err);
+              setLoading(false);
             }
         };
 

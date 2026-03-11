@@ -24,8 +24,9 @@ function Login() {
     setErrors({});
 
     try {
-      await api.post("/api/auth/login/", formData);
-      navigate("/");
+      const response = await api.post("/api/auth/login/", formData);
+        localStorage.setItem("token", response.data.key);
+        window.location.href = "/";
     } catch (err) {
       console.log("Login error:", err.response?.data);
       setErrors(err.response?.data || { detail: "Login failed." });
