@@ -74,6 +74,13 @@ class Observation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     image = models.ImageField(upload_to="images/", blank=True, null=True)
     
+
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="liked_observations",
+        blank=True,
+    )
+
     class Meta:
         ordering = ["-created_at"]
 
@@ -93,6 +100,12 @@ class Comment(models.Model):
     )
     content = models.TextField(max_length=2000)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="liked_comments",
+        blank=True,
+    )
 
     class Meta:
         ordering = ["-created_at"]
