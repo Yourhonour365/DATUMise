@@ -7,7 +7,9 @@ class ObservationSerializer(serializers.ModelSerializer):
     is_owner = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(read_only=True)
     survey_name = serializers.ReadOnlyField(source="survey.name")
-
+    likes_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    
     class Meta:
         model = Observation
         fields = [
@@ -22,16 +24,28 @@ class ObservationSerializer(serializers.ModelSerializer):
             "updated_at",
             "comment_count",
             "is_owner",
+            "likes_count",
+            "is_liked",
         ]
 
     def get_is_owner(self, obj):
         request = self.context.get("request")
         return request and request.user == obj.owner
 
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        return request and request.user.is_authenticated and obj.likes.filter(id=request.user.id).exists()
+
 class CommentSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
     is_owner = serializers.SerializerMethodField()
     is_observation_owner = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Comment
@@ -43,7 +57,10 @@ class CommentSerializer(serializers.ModelSerializer):
             "created_at",
             "is_owner",
             "is_observation_owner",
+            "likes_count",
+            "is_liked",
         ]
+
         read_only_fields = [
             "owner",
             "created_at",
@@ -59,7 +76,13 @@ class CommentSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         return bool(request and request.user == obj.observation.owner)
 
+    def get_likes_count(self, obj):
+        return obj.likes.count()
 
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        return request and request.user.is_authenticated and obj.likes.filter(id=request.user.id).exists()
+    
 class SurveySerializer(serializers.ModelSerializer):
     observations = ObservationSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
