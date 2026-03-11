@@ -3,7 +3,7 @@ import { Form, Button, Container } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./api/api";
 
-function ObservationCreateForm() {
+function ObservationCreateForm(props) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -13,8 +13,8 @@ function ObservationCreateForm() {
   const { title, description } = formData;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const surveyId = searchParams.get("survey");
-  
+  const surveyId = props.surveyId || searchParams.get("survey");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   
   const handleChange = (event) => {
@@ -38,7 +38,10 @@ function ObservationCreateForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
+    
+    if (isSubmitting) return;
+      setIsSubmitting(true);
+    
     const submissionData = new FormData();
     submissionData.append("title", title);
     submissionData.append("description", description);
@@ -55,9 +58,13 @@ function ObservationCreateForm() {
 
     try {
       await api.post("/api/observations/", submissionData);
-      navigate(`/surveys/${surveyId}`);
+      window.location.reload();
     } catch (err) {
       console.error("Create observation failed:", err);
+    }
+
+      finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -120,8 +127,8 @@ function ObservationCreateForm() {
         </fieldset>
 
         <div className="d-flex gap-2">
-          <Button variant="primary" type="submit">
-            Create Observation
+          <Button variant="primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Observation"}
           </Button>
 
           <Button
