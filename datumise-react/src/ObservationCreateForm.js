@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Form, Button, Container } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./api/api";
 
 function ObservationCreateForm() {
@@ -12,7 +12,11 @@ function ObservationCreateForm() {
 
   const { title, description } = formData;
   const navigate = useNavigate();
-
+  const [searchParams] = useSearchParams();
+  const surveyId = searchParams.get("survey");
+  
+  
+  
   const handleChange = (event) => {
     setFormData({
       ...formData,
@@ -38,13 +42,20 @@ function ObservationCreateForm() {
     const submissionData = new FormData();
     submissionData.append("title", title);
     submissionData.append("description", description);
+    if (surveyId) {
+      submissionData.append("survey", surveyId);
+    }
+    
+    
+    
+    
     if (image) {
       submissionData.append("image", image);
     }
 
     try {
       await api.post("/api/observations/", submissionData);
-      navigate("/observations");
+      navigate(`/surveys/${surveyId}`);
     } catch (err) {
       console.error("Create observation failed:", err);
     }

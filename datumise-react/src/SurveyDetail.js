@@ -157,6 +157,18 @@ function SurveyDetail() {
                     Submit Survey
                 </button>
             )}
+            
+            <Link
+              to={`/observations/create?survey=${survey.id}`}
+              className="btn btn-outline-success mb-3 ms-2"
+            >
+              Add Observation
+            </Link>
+
+
+
+
+
 
           <div className="text-muted mb-3">
             <div>
@@ -190,7 +202,7 @@ function SurveyDetail() {
             
             <div>Surveyor: {survey.assigned_to || "Unassigned"}</div>
             <div>Created by: {survey.created_by || "Unknown"}</div>
-            
+
             <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
           </div>
 
