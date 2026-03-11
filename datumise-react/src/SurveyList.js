@@ -110,7 +110,9 @@ function SurveyList() {
                     <div className="small text-muted">
                       Surveyor: {survey.assigned_to || "Unassigned"}
                     </div>
-
+                    <div className="small text-muted">
+                      Observations: {survey.observation_count ?? 0}
+                    </div>
                 <small className="text-muted">
                     Status: 
                     <span className={`badge ms-1
