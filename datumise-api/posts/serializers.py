@@ -105,6 +105,8 @@ class SurveySerializer(serializers.ModelSerializer):
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
+    created_by = serializers.StringRelatedField()
+
 
     class Meta:
         model = Survey
@@ -137,6 +139,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
+    created_by = serializers.StringRelatedField()
     
     class Meta:
         model = Survey
