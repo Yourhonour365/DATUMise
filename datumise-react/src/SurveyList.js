@@ -13,25 +13,27 @@ function SurveyList() {
  const [statusFilter, setStatusFilter] = useState("");
  const [nextPage, setNextPage] = useState(null);
  const [previousPage, setPreviousPage] = useState(null);
+ const [error, setError] = useState("");
 
     useEffect(() => {
-        const fetchSurveys = async () => {
-            try {
-            const response = await api.get(
-                `/api/surveys/?search=${searchTerm}&status=${statusFilter}`
-            );
-            setSurveys(response.data.results);
-            setNextPage(response.data.next);
-            setPreviousPage(response.data.previous);
-            setLoading(false);
-            } catch (err) {
-              console.log(err);
-              setLoading(false);
-            }
-        };
+      const fetchSurveys = async () => {
+        try {
+          const response = await api.get(
+            `/api/surveys/?search=${searchTerm}&status=${statusFilter}`
+          );
+          setSurveys(response.data.results);
+          setNextPage(response.data.next);
+          setPreviousPage(response.data.previous);
+          setLoading(false);
+        } catch (err) {
+          console.log(err);
+          setError("Failed to load surveys.");
+          setLoading(false);
+        }
+      };
 
-  fetchSurveys();
-}, [searchTerm, statusFilter]);
+      fetchSurveys();
+    }, [searchTerm, statusFilter]);
 
   return (
     <div className="container mt-4">
@@ -74,9 +76,14 @@ function SurveyList() {
         </button>
         
       <h3 className="mb-4">Surveys ({surveys.length})</h3>
+
+      {error && <p className="text-danger">{error}</p>}
+
       {loading && <p>Loading surveys...</p>}
+
       {!loading &&
-        [...surveys]
+          [...surveys]
+          
             .sort((a, b) => b.urgent - a.urgent)
             .map((survey) => (
 
