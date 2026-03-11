@@ -75,7 +75,7 @@ class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
         IsOwnerOrReadOnly,
     ]
 
-class SurveyList(generics.ListAPIView):
+class SurveyList(generics.ListCreateAPIView):
     queryset = Survey.objects.all().order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
