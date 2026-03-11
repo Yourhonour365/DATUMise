@@ -134,7 +134,7 @@ function ObservationCreateForm(props) {
           <Button
             variant="secondary"
             type="button"
-            onClick={() => navigate("/observations")}
+            onClick={() => window.location.reload()}
           >
             Cancel
           </Button>
