@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Modal } from "react-bootstrap";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
@@ -13,7 +12,7 @@ function SurveyCapture() {
   const [durationTick, setDurationTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState(false);
   const [actionBarEl, setActionBarEl] = useState(null);
-  const [showPrevious, setShowPrevious] = useState(false);
+  const [viewingIndex, setViewingIndex] = useState(null);
 
   const fetchSurvey = async () => {
     try {
@@ -69,14 +68,36 @@ function SurveyCapture() {
       ...prev,
       observations: [...(prev.observations || []), newObservation],
     }));
+    setViewingIndex(null);
     setSuccessMessage(false);
     setTimeout(() => setSuccessMessage(true), 100);
     setTimeout(() => setSuccessMessage(false), 3000);
   };
 
-  const previousObservation = survey?.observations?.length
-    ? survey.observations[survey.observations.length - 1]
-    : null;
+  const observations = survey?.observations || [];
+  const viewedObservation = viewingIndex !== null ? observations[viewingIndex] : null;
+
+  const canStepBack = viewingIndex === null
+    ? observations.length > 0
+    : viewingIndex > 0;
+
+  const handleStepBack = () => {
+    if (viewingIndex === null) {
+      if (observations.length > 0) setViewingIndex(observations.length - 1);
+    } else if (viewingIndex > 0) {
+      setViewingIndex(viewingIndex - 1);
+    }
+  };
+
+  const handleStepForward = () => {
+    if (viewingIndex !== null) {
+      if (viewingIndex < observations.length - 1) {
+        setViewingIndex(viewingIndex + 1);
+      } else {
+        setViewingIndex(null);
+      }
+    }
+  };
 
   if (loading) return <p className="container mt-4">Loading survey...</p>;
 
@@ -98,7 +119,9 @@ function SurveyCapture() {
       <div className="survey-capture-header">
         <div>
           <div className="fw-semibold" style={{ fontSize: "0.95rem", lineHeight: 1.2 }}>
-            Add Observation #{observationCount + 1}
+            {viewingIndex !== null
+              ? `Observation #${viewingIndex + 1}`
+              : `Add Observation #${observationCount + 1}`}
           </div>
           <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
             <span
@@ -141,58 +164,49 @@ function SurveyCapture() {
       </div>
 
       <div className="survey-capture-body">
-        <ObservationCreateForm
-          surveyId={survey.id}
-          onPauseSurvey={pauseSurvey}
-          onClose={() => navigate(`/surveys/${id}`)}
-          onSuccess={handleSuccess}
-          captureMode
-          actionBarTarget={actionBarEl}
-          onShowPrevious={previousObservation ? () => setShowPrevious(true) : null}
-        />
+        {viewedObservation && (
+          <div className="observation-preview">
+            <small className="text-muted d-block mb-2">
+              {new Date(viewedObservation.created_at).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </small>
+            {viewedObservation.image && (
+              <img
+                src={viewedObservation.image}
+                alt={viewedObservation.title}
+                className="img-fluid rounded mb-3"
+                style={{ maxHeight: "50vh", objectFit: "contain", width: "100%" }}
+              />
+            )}
+            <p className="fw-semibold mb-1">{viewedObservation.title}</p>
+            {viewedObservation.description && (
+              <p className="text-muted mb-1" style={{ fontSize: "0.9rem" }}>
+                {viewedObservation.description}
+              </p>
+            )}
+          </div>
+        )}
+        <div style={viewingIndex !== null ? { display: "none" } : undefined}>
+          <ObservationCreateForm
+            surveyId={survey.id}
+            onPauseSurvey={pauseSurvey}
+            onClose={() => navigate(`/surveys/${id}`)}
+            onSuccess={handleSuccess}
+            captureMode
+            actionBarTarget={actionBarEl}
+            onStepBack={canStepBack ? handleStepBack : null}
+            onStepForward={viewingIndex !== null ? handleStepForward : null}
+            isViewingPrevious={viewingIndex !== null}
+            onReturnToCurrent={() => setViewingIndex(null)}
+          />
+        </div>
       </div>
       <div className="survey-capture-actions" ref={setActionBarEl} />
-
-      <Modal
-        show={showPrevious}
-        onHide={() => setShowPrevious(false)}
-        centered
-      >
-        <Modal.Header closeButton className="py-2">
-          <Modal.Title style={{ fontSize: "1rem" }}>
-            Previous Observation
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="pt-2 pb-3">
-          {previousObservation && (
-            <>
-              {previousObservation.image && (
-                <img
-                  src={previousObservation.image}
-                  alt={previousObservation.title}
-                  className="img-fluid rounded mb-3"
-                  style={{ maxHeight: "40vh", objectFit: "contain", width: "100%" }}
-                />
-              )}
-              <p className="fw-semibold mb-1">{previousObservation.title}</p>
-              {previousObservation.description && (
-                <p className="text-muted mb-1" style={{ fontSize: "0.9rem" }}>
-                  {previousObservation.description}
-                </p>
-              )}
-              <small className="text-muted">
-                {new Date(previousObservation.created_at).toLocaleString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </small>
-            </>
-          )}
-        </Modal.Body>
-      </Modal>
     </div>
   );
 }
