@@ -299,19 +299,6 @@ function ObservationCreateForm(props) {
 
           {!props.captureMode && (
             <>
-              <div
-                className="text-danger text-end pe-2"
-                style={{
-                  fontSize: "0.75rem",
-                  minHeight: "18px",
-                  opacity: title.trim() || imagePreview ? 1 : 0,
-                  transition: "opacity 0.25s ease",
-                }}
-              >
-                {!imagePreview && title.trim() && "Add image"}
-                {imagePreview && !title.trim() && "Add Observation"}
-              </div>
-
               <div className="d-flex flex-column gap-3 mt-0">
                 <Button
                   variant="warning"
@@ -342,6 +329,20 @@ function ObservationCreateForm(props) {
                   </Button>
                 </div>
 
+                <div
+                  className="text-danger text-center"
+                  style={{
+                    fontSize: "0.75rem",
+                    minHeight: "18px",
+                    marginBottom: "-0.75rem",
+                    opacity: title.trim() || imagePreview ? 1 : 0,
+                    transition: "opacity 0.25s ease",
+                  }}
+                >
+                  {!imagePreview && title.trim() && "Add image"}
+                  {imagePreview && !title.trim() && "Add Observation"}
+                </div>
+
                 <Button
                   variant="primary"
                   type="submit"
@@ -362,7 +363,7 @@ function ObservationCreateForm(props) {
           className="text-danger text-center"
           style={{
             fontSize: "0.68rem",
-            height: "10px",
+            height: "16px",
             opacity: !props.isViewingPrevious && (title.trim() || imagePreview) ? 1 : 0,
             transition: "opacity 0.25s ease",
           }}
