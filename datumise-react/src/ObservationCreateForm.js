@@ -19,6 +19,7 @@ function ObservationCreateForm(props) {
     setImage(null);
     setImagePreview("");
     localStorage.removeItem("datumise-observation-draft");
+    localStorage.removeItem("datumise-observation-image");
   };
   
   
@@ -38,10 +39,22 @@ function ObservationCreateForm(props) {
     if (savedDraft) {
       try {
         const parsedDraft = JSON.parse(savedDraft);
+        
+        
         setFormData({
           title: parsedDraft.title || "",
           description: parsedDraft.description || "",
         });
+
+        const savedImage = localStorage.getItem("datumise-observation-image");
+        if (savedImage) {
+          setImagePreview(savedImage);
+        }
+
+
+
+
+
       } catch (err) {
         console.error("Failed to load observation draft:", err);
       }
@@ -129,15 +142,29 @@ function ObservationCreateForm(props) {
                 accept="image/*"
                 capture="environment"
                 key={image ? image.name : "empty"}
+                
                 onChange={(e) => {
-                const file = e.target.files[0];
-                setImage(file || null);
-                setImagePreview(file ? URL.createObjectURL(file) : "");
+                  const file = e.target.files[0];
+                  setImage(file || null);
 
-                if (file) {
-                  setTimeout(() => titleInputRef.current?.focus(), 100);
-                }
-              }}
+                  if (file) {
+                    const previewUrl = URL.createObjectURL(file);
+                    setImagePreview(previewUrl);
+
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      localStorage.setItem("datumise-observation-image", reader.result);
+                    };
+                    reader.readAsDataURL(file);
+
+                    setTimeout(() => titleInputRef.current?.focus(), 100);
+                  } else {
+                    setImagePreview("");
+                    localStorage.removeItem("datumise-observation-image");
+                  }
+                }}
+
+
             />
 
             <div
