@@ -74,23 +74,10 @@ useEffect(() => {
   }
 };
 
-    const completeSurvey = async () => {
-        try {
-            await api.patch(`/api/surveys/${id}/`, {
-                status: "completed",
-            });
-            window.location.reload();
-        } catch (err) {
-            console.log(err);
-        }
-    };
-
     const submitSurvey = async () => {
         const confirmed = window.confirm(
-            "Submit survey for office review?\n\n" +
-            "The office team will be able to start reviewing the report.\n" +
-            "You can still add additional observations or comments if needed, " +
-            "but these may be marked as post-submission additions."
+            "Submit survey?\n\n" +
+            "The survey will be finalised and no further observations can be added."
         );
 
         if (!confirmed) return;
@@ -99,8 +86,6 @@ useEffect(() => {
             await api.patch(`/api/surveys/${id}/`, {
                 status: "submitted",
             });
-
-            alert("Survey submitted for office review.");
             window.location.reload();
         } catch (err) {
             console.log(err);
@@ -194,7 +179,7 @@ const formatSurveyDuration = (startTime, _tick) => {
               {survey.status === "live" && (
                 <>
                   <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
-                  <button className="btn btn-primary btn-sm" onClick={completeSurvey}>Complete</button>
+                  <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
                   <button
                     className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
                     onClick={() => setShowObservationModal(true)}
@@ -211,25 +196,6 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
               {survey.status === "paused" && (
                 <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
-              )}
-              {survey.status === "completed" && (
-                <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
-              )}
-              {survey.status === "submitted" && survey.is_surveyor && (
-                <>
-                  <button
-                    className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
-                    onClick={() => setShowObservationModal(true)}
-                  >
-                    + Observation
-                  </button>
-                  <Link
-                    to={`/surveys/${id}/capture`}
-                    className="btn btn-outline-success btn-sm d-lg-none"
-                  >
-                    + Observation
-                  </Link>
-                </>
               )}
             </div>
           </div>
@@ -280,21 +246,12 @@ const formatSurveyDuration = (startTime, _tick) => {
           </div>
 
           {/* ---- Observations toolbar ---- */}
-          <div className="d-flex align-items-center justify-content-between mb-2">
-            <h6 className="mb-0">
-              Observations
-              <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
-                ({survey.observations?.length || 0})
-              </span>
-            </h6>
-            <Link
-              to={`/observations/survey/${survey?.id}`}
-              className="btn btn-outline-primary btn-sm"
-              style={{ fontSize: "0.75rem" }}
-            >
-              View All
-            </Link>
-          </div>
+          <h6 className="mb-2">
+            Observations
+            <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
+              ({survey.observations?.length || 0})
+            </span>
+          </h6>
 
           {/* ---- Observation list ---- */}
           {survey.observations?.length === 0 && (

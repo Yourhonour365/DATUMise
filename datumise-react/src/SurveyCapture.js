@@ -72,9 +72,26 @@ function SurveyCapture() {
   const pauseSurvey = async () => {
     try {
       await api.patch(`/api/surveys/${id}/`, { status: "paused" });
-      navigate(`/surveys/${id}`);
     } catch (err) {
       console.log(err);
+    }
+    navigate(`/surveys/${id}`);
+  };
+
+  const resumeSurvey = async () => {
+    try {
+      const response = await api.patch(`/api/surveys/${id}/`, { status: "live" });
+      setSurvey(response.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const closeSurvey = () => {
+    if (survey?.status === "live") {
+      pauseSurvey();
+    } else {
+      navigate(`/surveys/${id}`);
     }
   };
 
@@ -251,7 +268,7 @@ function SurveyCapture() {
           type="button"
           className="btn-close"
           aria-label="Close"
-          onClick={pauseSurvey}
+          onClick={closeSurvey}
           style={{ transform: "scale(0.85)", marginLeft: "auto" }}
         />
       </div>
@@ -436,6 +453,17 @@ function SurveyCapture() {
                 height="20"
               />
             </button>
+            {survey.status === "paused" && survey.is_surveyor && (
+              <button
+                type="button"
+                onClick={resumeSurvey}
+                className="capture-action-btn capture-action-confirm"
+                aria-label="Resume survey"
+                style={{ borderRadius: "50%", fontSize: "0.6rem", fontWeight: 600, color: "#fff", lineHeight: 1.2, textAlign: "center" }}
+              >
+                Resume<br />Survey
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate(`/surveys/${id}`)}
