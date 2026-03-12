@@ -308,7 +308,27 @@ const formatSurveyDuration = (startTime, _tick) => {
       )}
         <Modal
           show={showObservationModal}
-          onHide={() => setShowObservationModal(false)}
+          onHide={() => {
+            const draft = localStorage.getItem("datumise-observation-draft");
+            const image = localStorage.getItem("datumise-observation-image");
+
+            const hasText =
+              draft && JSON.parse(draft) && (
+                JSON.parse(draft).title?.trim() ||
+                JSON.parse(draft).description?.trim()
+              );
+
+            const hasImage = !!image;
+
+            if (hasText || hasImage) {
+              const confirmed = window.confirm(
+                "Close observation?\n\nYour draft will be saved, but this observation has not been saved to the survey yet."
+              );
+              if (!confirmed) return;
+            }
+
+            setShowObservationModal(false);
+          }}
           centered
         >
           <Modal.Header closeButton className="px-3">

@@ -270,7 +270,15 @@ function ObservationCreateForm(props) {
               variant="link"
               size="sm"
               type="button"
-              onClick={clearForm}
+              onClick={() => {
+                if (title.trim() || description.trim() || imagePreview) {
+                  const confirmed = window.confirm(
+                    "Clear observation?\n\nThis will remove the image and any text you have entered."
+                  );
+                  if (!confirmed) return;
+                }
+                clearForm();
+              }}
               className="text-muted p-0 text-decoration-none"
             >
               Clear
