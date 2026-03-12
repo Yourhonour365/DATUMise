@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 import ObservationDetail from "./ObservationDetail"; 
@@ -26,7 +26,11 @@ function Home() {
 
   
 
-function App() {
+function AppLayout() {
+  const location = useLocation();
+  const isCaptureMode = /^\/surveys\/\d+\/capture/.test(location.pathname);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
 
   const handleLogout = async () => {
     try {
@@ -40,40 +44,34 @@ function App() {
     }
   };
 
-
-const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
-
-
-
-
-
   return (
-    <Router>
+    <>
+      {!isCaptureMode && (
+        <nav className="navbar navbar-light bg-light px-3">
 
-      <nav className="navbar navbar-light bg-light px-3">
-        
-        <Link className="navbar-brand" to="/">DATUMise</Link>
-        <Link className="btn btn-outline-dark btn-sm me-2" to="/observations">
-          Observations
-        </Link>
-        <Link className="btn btn-outline-dark btn-sm me-2" to="/surveys">
-          Surveys
-        </Link>
-        
-        <div>
-          {isLoggedIn ? (
-            <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
-              Logout
-            </button>
-          ) : (
-            <>
-              <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
-              <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
-            </>
-          )}
-        </div>
-      
-      </nav>
+          <Link className="navbar-brand" to="/">DATUMise</Link>
+          <Link className="btn btn-outline-dark btn-sm me-2" to="/observations">
+            Observations
+          </Link>
+          <Link className="btn btn-outline-dark btn-sm me-2" to="/surveys">
+            Surveys
+          </Link>
+
+          <div>
+            {isLoggedIn ? (
+              <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
+                Logout
+              </button>
+            ) : (
+              <>
+                <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
+                <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
+              </>
+            )}
+          </div>
+
+        </nav>
+      )}
 
       <Routes>
         <Route path="/" element={<Home />} />
@@ -88,6 +86,14 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
         <Route path="/surveys/:id" element={<SurveyDetail />} />
         <Route path="/surveys/:id/capture" element={<SurveyCapture />} />
       </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppLayout />
     </Router>
   );
 }

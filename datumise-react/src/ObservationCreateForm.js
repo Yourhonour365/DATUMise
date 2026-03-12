@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Form, Button, Container, Modal } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./api/api";
@@ -219,13 +220,13 @@ function ObservationCreateForm(props) {
               ref={titleInputRef}
               className="border-0 p-1 h-100"
               as="textarea"
-              rows={3}
+              rows={4}
               name="title"
               value={title}
               onChange={handleChange}
               onBlur={handleTitleBlur}
               maxLength={120}
-              placeholder="Enter observation"
+              placeholder="Add observation description"
               required
               autoComplete="off"
               style={{
@@ -253,7 +254,7 @@ function ObservationCreateForm(props) {
             <Form.Control
               className="border-0"
               as="textarea"
-              rows={4}
+              rows={2}
               name="description"
               value={description}
               onChange={handleChange}
@@ -286,60 +287,128 @@ function ObservationCreateForm(props) {
           </div>
 
 
-           <div
-              className="text-danger text-end pe-2"
-              style={{
-                fontSize: "0.75rem",
-                minHeight: "18px",
-                opacity: title.trim() || imagePreview ? 1 : 0,
-                transition: "opacity 0.25s ease",
-              }}
-            >
-              {!imagePreview && title.trim() && "Add image to proceed"}
-              {imagePreview && !title.trim() && "Add Observation"}
-            </div>
-
-          <div className="d-flex flex-column gap-3 mt-0">
-              <Button
-                variant="warning"
-                type="button"
-                onClick={() => {
-                  props.onPauseSurvey?.();
-                  props.onClose?.();
+          {!props.captureMode && (
+            <>
+              <div
+                className="text-danger text-end pe-2"
+                style={{
+                  fontSize: "0.75rem",
+                  minHeight: "18px",
+                  opacity: title.trim() || imagePreview ? 1 : 0,
+                  transition: "opacity 0.25s ease",
                 }}
-                className="w-100"
               >
-                Pause Survey
-              </Button>
-
-              <div className="d-flex justify-content-center">
-                <Button
-                  variant="light"
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
-                  style={{ width: "56px", height: "56px" }}
-                >
-                  <img
-                    src="/camera.svg"
-                    alt="Camera"
-                    width="32"
-                    height="32"
-                  />
-                </Button>
+                {!imagePreview && title.trim() && "Add image"}
+                {imagePreview && !title.trim() && "Add Observation"}
               </div>
 
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isSubmitting || !imagePreview || !title.trim()}
-                className="w-100"
-              >
-                {isSubmitting ? "Saving..." : "✓ Save & Next"}
-              </Button>
-            </div>
+              <div className="d-flex flex-column gap-3 mt-0">
+                <Button
+                  variant="warning"
+                  type="button"
+                  onClick={() => {
+                    props.onPauseSurvey?.();
+                    props.onClose?.();
+                  }}
+                  className="w-100"
+                >
+                  Pause Survey
+                </Button>
+
+                <div className="d-flex justify-content-center">
+                  <Button
+                    variant="light"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
+                    style={{ width: "56px", height: "56px" }}
+                  >
+                    <img
+                      src="/camera.svg"
+                      alt="Camera"
+                      width="32"
+                      height="32"
+                    />
+                  </Button>
+                </div>
+
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={isSubmitting || !imagePreview || !title.trim()}
+                  className="w-100"
+                >
+                  {isSubmitting ? "Saving..." : "✓ Save & Next"}
+                </Button>
+              </div>
+            </>
+          )}
 
             </Form>
+
+    {props.captureMode && props.actionBarTarget && createPortal(
+      <>
+        <div
+          className="text-danger text-center"
+          style={{
+            fontSize: "0.75rem",
+            minHeight: "16px",
+            opacity: title.trim() || imagePreview ? 1 : 0,
+            transition: "opacity 0.25s ease",
+            marginBottom: "0.25rem",
+          }}
+        >
+          {!imagePreview && title.trim() && "Add image"}
+          {imagePreview && !title.trim() && "Add Observation"}
+        </div>
+        <div className="d-flex align-items-center justify-content-center gap-4">
+          <button
+            type="button"
+            onClick={() => props.onShowPrevious?.()}
+            disabled={!props.onShowPrevious}
+            className="capture-action-btn capture-action-secondary"
+            aria-label="Previous observation"
+          >
+            <img src="/datumise_back.svg" alt="" width="20" height="20" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              props.onPauseSurvey?.();
+              props.onClose?.();
+            }}
+            className="capture-action-btn capture-action-secondary"
+            aria-label="Pause Survey"
+          >
+            <img src="/datumise_pause.svg" alt="" width="20" height="20" />
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="capture-action-btn capture-action-secondary"
+            aria-label="Take Photo"
+          >
+            <img src="/camera.svg" alt="" width="26" height="26" />
+          </button>
+          <button
+            type="submit"
+            form="observation-create-form"
+            disabled={isSubmitting || !imagePreview || !title.trim()}
+            className="capture-action-btn capture-action-primary"
+            aria-label="Save and Next"
+          >
+            <img
+              src="/datumise_next_.svg"
+              alt=""
+              width="22"
+              height="22"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+          </button>
+        </div>
+      </>,
+      props.actionBarTarget
+    )}
 
 
     <Modal
@@ -362,41 +431,39 @@ function ObservationCreateForm(props) {
         )}
       </Modal.Body>
 
-      <Modal.Footer>
-        
-        <Button
-          variant="primary"
-          onClick={() => setShowImagePreviewModal(false)}
-        >
-          Keep image & close
-        </Button>
-        
-        
-        
-        
-        
-        
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setShowImagePreviewModal(false);
-            fileInputRef.current?.click();
-          }}
-        >
-          Change image
-        </Button>
-
-        <Button
-          variant="danger"
+      <Modal.Footer className="justify-content-center gap-4 border-0 pt-0">
+        <button
+          type="button"
           onClick={() => {
             setImage(null);
             setImagePreview("");
             localStorage.removeItem("datumise-observation-image");
             setShowImagePreviewModal(false);
           }}
+          className="capture-action-btn capture-action-danger"
+          aria-label="Delete image"
         >
-          Delete image
-        </Button>
+          <img src="/datumise_delete.svg" alt="" width="20" height="20" style={{ filter: "brightness(0) invert(1)" }} />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowImagePreviewModal(false);
+            fileInputRef.current?.click();
+          }}
+          className="capture-action-btn capture-action-secondary"
+          aria-label="Change image"
+        >
+          <img src="/camera.svg" alt="" width="26" height="26" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowImagePreviewModal(false)}
+          className="capture-action-btn capture-action-confirm"
+          aria-label="Keep image"
+        >
+          <img src="/datumise_ok.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+        </button>
       </Modal.Footer>
     </Modal>
 

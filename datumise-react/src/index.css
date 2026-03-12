@@ -44,10 +44,11 @@ code {
 .survey-capture-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
+  align-items: flex-start;
+  padding: 0.5rem 2rem;
   border-bottom: 1px solid #dee2e6;
   flex-shrink: 0;
+  gap: 0.75rem;
 }
 
 .survey-capture-body {
@@ -55,4 +56,66 @@ code {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 0.75rem 1rem;
+}
+
+.survey-capture-actions {
+  flex-shrink: 0;
+  padding: 0.5rem 2rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #dee2e6;
+  background: #fff;
+}
+
+
+/* --- Capture action bar buttons --- */
+
+.capture-action-btn {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+
+.capture-action-btn:active {
+  opacity: 0.7;
+}
+
+.capture-action-secondary {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.capture-action-secondary:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.capture-action-primary {
+  background: #0d6efd;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35);
+}
+
+.capture-action-primary:disabled {
+  background: #adb5bd;
+  box-shadow: none;
+  cursor: default;
+  opacity: 0.65;
+}
+
+.capture-action-danger {
+  background: #dc3545;
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
+.capture-action-confirm {
+  background: #198754;
+  box-shadow: 0 2px 6px rgba(25, 135, 84, 0.3);
 }

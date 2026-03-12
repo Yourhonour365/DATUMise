@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Modal } from "react-bootstrap";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
@@ -11,6 +12,8 @@ function SurveyCapture() {
   const [observationCount, setObservationCount] = useState(0);
   const [durationTick, setDurationTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState(false);
+  const [actionBarEl, setActionBarEl] = useState(null);
+  const [showPrevious, setShowPrevious] = useState(false);
 
   const fetchSurvey = async () => {
     try {
@@ -62,10 +65,18 @@ function SurveyCapture() {
 
   const handleSuccess = (newObservation) => {
     setObservationCount((prev) => prev + 1);
+    setSurvey((prev) => ({
+      ...prev,
+      observations: [...(prev.observations || []), newObservation],
+    }));
     setSuccessMessage(false);
     setTimeout(() => setSuccessMessage(true), 100);
     setTimeout(() => setSuccessMessage(false), 3000);
   };
+
+  const previousObservation = survey?.observations?.length
+    ? survey.observations[survey.observations.length - 1]
+    : null;
 
   if (loading) return <p className="container mt-4">Loading survey...</p>;
 
@@ -86,21 +97,25 @@ function SurveyCapture() {
     <div className="survey-capture">
       <div className="survey-capture-header">
         <div>
-          <div className="fw-semibold" style={{ fontSize: "1.1rem" }}>
+          <div className="fw-semibold" style={{ fontSize: "0.95rem", lineHeight: 1.2 }}>
             Add Observation #{observationCount + 1}
           </div>
-          <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "1rem" }}>
+          <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
             <span
-              className="text-muted"
+              className="text-muted d-inline-flex align-items-center"
               style={{
                 opacity: successMessage ? 0 : 1,
                 transition: "opacity 0.9s ease",
                 position: "absolute",
                 left: 0,
                 top: 0,
+                gap: "0.35em",
+                whiteSpace: "nowrap",
               }}
             >
-              {survey.name} &middot; Duration{" "}
+              {survey.name}{" "}
+              {new Date(survey.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+              <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
               {formatSurveyDuration(survey.created_at, durationTick)}
             </span>
             <span
@@ -117,12 +132,12 @@ function SurveyCapture() {
             </span>
           </div>
         </div>
-        <Link
-          to={`/surveys/${id}`}
-          className="btn btn-outline-secondary btn-sm"
-        >
-          Back
-        </Link>
+        <button
+          type="button"
+          className="btn-close"
+          aria-label="Close"
+          onClick={() => navigate(`/surveys/${id}`)}
+        />
       </div>
 
       <div className="survey-capture-body">
@@ -131,8 +146,53 @@ function SurveyCapture() {
           onPauseSurvey={pauseSurvey}
           onClose={() => navigate(`/surveys/${id}`)}
           onSuccess={handleSuccess}
+          captureMode
+          actionBarTarget={actionBarEl}
+          onShowPrevious={previousObservation ? () => setShowPrevious(true) : null}
         />
       </div>
+      <div className="survey-capture-actions" ref={setActionBarEl} />
+
+      <Modal
+        show={showPrevious}
+        onHide={() => setShowPrevious(false)}
+        centered
+      >
+        <Modal.Header closeButton className="py-2">
+          <Modal.Title style={{ fontSize: "1rem" }}>
+            Previous Observation
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 pb-3">
+          {previousObservation && (
+            <>
+              {previousObservation.image && (
+                <img
+                  src={previousObservation.image}
+                  alt={previousObservation.title}
+                  className="img-fluid rounded mb-3"
+                  style={{ maxHeight: "40vh", objectFit: "contain", width: "100%" }}
+                />
+              )}
+              <p className="fw-semibold mb-1">{previousObservation.title}</p>
+              {previousObservation.description && (
+                <p className="text-muted mb-1" style={{ fontSize: "0.9rem" }}>
+                  {previousObservation.description}
+                </p>
+              )}
+              <small className="text-muted">
+                {new Date(previousObservation.created_at).toLocaleString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </small>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }
