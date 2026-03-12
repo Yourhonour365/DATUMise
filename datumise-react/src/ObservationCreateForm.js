@@ -395,8 +395,11 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             onClick={() => {
-              if (props.isViewingPrevious) props.onReturnToCurrent?.();
-              fileInputRef.current?.click();
+              if (props.isViewingPrevious) {
+                props.onCaptureForPrevious?.();
+              } else {
+                fileInputRef.current?.click();
+              }
             }}
             className="capture-action-btn capture-action-secondary"
             aria-label="Take Photo"
