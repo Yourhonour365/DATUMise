@@ -108,7 +108,18 @@ useEffect(() => {
     if (survey) {
       setObservationCount(survey.observations?.length || 0);
     }
-  }, [survey]);
+    }, [survey]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setDurationTick((prev) => prev + 1);
+      }, 60000);
+
+      return () => clearInterval(interval);
+    }, []);
+
+
+
 
 const formatSurveyDuration = (startTime, _tick) => {
   if (!startTime) return "";
