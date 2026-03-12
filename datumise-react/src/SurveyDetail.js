@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
 import { useParams, Link } from "react-router-dom";
 import api from "./api/api";
@@ -13,28 +13,30 @@ function SurveyDetail() {
   const [observationSuccess, setObservationSuccess] = useState(false);
   const [observationFading, setObservationFading] = useState(false);
   const [observationCount, setObservationCount] = useState(0);
+  const [durationTick, setDurationTick] = useState(0);
+  const observationsListRef = useRef(null);
+  
+const fetchSurvey = async () => {
+  try {
+    const response = await api.get(`/api/surveys/${id}/`);
+    setSurvey(response.data);
+    setObservationCount(response.data.observations?.length || 0);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
+useEffect(() => {
+  if (!localStorage.getItem("token")) {
+    setLoading(false);
+    return;
+  }
 
-  useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchSurvey = async () => {
-      try {
-        const response = await api.get(`/api/surveys/${id}/`);
-        setSurvey(response.data);
-        setObservationCount(response.data.observations?.length || 0);
-        setLoading(false);
-      } catch (err) {
-        console.log(err);
-        setLoading(false);
-      }
-    };
-
-    fetchSurvey();
-  }, [id]);
+  fetchSurvey();
+}, [id]);
+    
 
     const startSurvey = async () => {
         try {
@@ -59,15 +61,15 @@ function SurveyDetail() {
     };
 
     const resumeSurvey = async () => {
-        try {
-            await api.patch(`/api/surveys/${id}/`, {
-                status: "live",
-            });
-            window.location.reload();
-        } catch (err) {
-            console.log(err);
-        }
-    };
+  try {
+    const response = await api.patch(`/api/surveys/${id}/`, {
+      status: "live",
+    });
+    setSurvey(response.data);
+  } catch (err) {
+    console.log(err);
+  }
+};
 
     const completeSurvey = async () => {
         try {
@@ -107,6 +109,21 @@ function SurveyDetail() {
       setObservationCount(survey.observations?.length || 0);
     }
   }, [survey]);
+
+const formatSurveyDuration = (startTime, _tick) => {
+  if (!startTime) return "";
+
+  const start = new Date(startTime);
+  const now = new Date();
+  const diffMs = now - start;
+
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+};
 
   return (
     <div className="container mt-4">
@@ -237,42 +254,45 @@ function SurveyDetail() {
             </p>
          )}
 
-          <div className="mt-3">
-            {survey.observations?.map((observation) => (
-              <Link
-                key={observation.id}
-                to={`/observations/${observation.id}`}
-                state={{ fromSurvey: true, surveyId: survey.id }}
-                className="text-decoration-none text-dark"
-              >
-                <div className="border rounded p-3 mb-3">
-                  {observation.image && (
-                    <img
-                      src={observation.image}
-                      alt={observation.title}
-                      className="img-fluid mb-2"
-                      style={{ maxHeight: "150px", objectFit: "cover" }}
-                    />
-                  )}
+          <div id="observations-list" className="mt-3">
+              {survey?.observations?.map((observation, index) => (
+                <Link
+                  key={observation.id}
+                  to={`/observations/${observation.id}`}
+                  state={{ fromSurvey: true, surveyId: survey.id }}
+                  className="text-decoration-none text-dark"
+                >
+                  <div className="border rounded p-3 mb-3">
+                    <small className="text-muted">
+                      {survey.observations.length - index} of {survey.observations.length}
+                    </small>
 
-                  <h6 className="mb-1">{observation.title}</h6>
+                    {observation.image && (
+                      <img
+                        src={observation.image}
+                        alt={observation.title}
+                        className="img-fluid mb-2"
+                        style={{ maxHeight: "150px", objectFit: "cover" }}
+                      />
+                    )}
 
-                  <p className="mb-0 text-muted">{observation.description}</p>
+                    <h6 className="mb-1">{observation.title}</h6>
 
-                  <p className="small text-muted mt-2">
-                    {new Date(observation.created_at).toLocaleDateString(
-                      "en-GB",
-                      {
+                    <p className="mb-0 text-muted">{observation.description}</p>
+
+                    <p className="small text-muted mt-2">
+                      {new Date(observation.created_at).toLocaleString("en-GB", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
-                      }
-                    )}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
         </>
       )}
         <Modal
@@ -282,41 +302,45 @@ function SurveyDetail() {
         >
           <Modal.Header closeButton className="px-3">
               <Modal.Title>
-                Add Observation
-                <span className="ms-2 badge bg-secondary">
-                  {observationCount}
-                </span>
+                  Add Observation #{observationCount + 1}
 
-                {observationSuccess && (
                   <span
-                    className="ms-2 text-success fs-6 fw-light fst-italic"
+                    className={
+                      observationSuccess
+                        ? "ms-2 text-success fw-light fst-italic"
+                        : "text-muted ms-2"
+                    }
                     style={{
-                      opacity: observationFading ? 0 : 1,
-                      transition: "opacity 2s ease",
-                      visibility: observationSuccess ? "visible" : "hidden",
+                      fontSize: observationSuccess ? "0.8rem" : "0.72rem",
+                      transition: "opacity 1.2s ease",
+                      opacity: observationSuccess && observationFading ? 0 : 1,
                     }}
                   >
-                    observation added
+                    {observationSuccess
+                      ? "observation added"
+                      : `• Duration ${formatSurveyDuration(survey?.created_at, durationTick)}`}
                   </span>
-                )}
-              </Modal.Title>
+                </Modal.Title>
             </Modal.Header>
               <Modal.Body className="pt-2 pb-3">
                 <ObservationCreateForm 
                   surveyId={survey?.id}
                   onPauseSurvey={pauseSurvey}
                   onClose={() => setShowObservationModal(false)}
+                 
+                 
+                 
+                 
                   onSuccess={(newObservation) => {
                     setObservationCount((prev) => prev + 1);
-                    
+
                     setSurvey((prev) => ({
                       ...prev,
                       observations: [...(prev.observations || []), newObservation],
                     }));
-                                        
-                    
-                    
-                    
+
+                    fetchSurvey();
+
                     setObservationSuccess(true);
                     setObservationFading(false);
 
@@ -328,6 +352,10 @@ function SurveyDetail() {
                       setObservationSuccess(false);
                     }, 3200);
                   }}
+
+
+
+
                 />
               </Modal.Body>
               
