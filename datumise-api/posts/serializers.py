@@ -96,7 +96,7 @@ class CommentSerializer(serializers.ModelSerializer):
         return request and request.user.is_authenticated and obj.likes.filter(id=request.user.id).exists()
     
 class SurveySerializer(serializers.ModelSerializer):
-    
+
     observation_count = serializers.IntegerField(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -107,7 +107,16 @@ class SurveySerializer(serializers.ModelSerializer):
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
     created_by = serializers.StringRelatedField()
+    is_owner = serializers.SerializerMethodField()
+    is_surveyor = serializers.SerializerMethodField()
 
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user == obj.created_by)
+
+    def get_is_surveyor(self, obj):
+        request = self.context.get("request")
+        return bool(request and (request.user == obj.assigned_to or request.user == obj.created_by))
 
     class Meta:
         model = Survey
@@ -128,6 +137,8 @@ class SurveySerializer(serializers.ModelSerializer):
             "urgent",
             "created_at",
             "observation_count",
+            "is_owner",
+            "is_surveyor",
         ]
 
 class SurveyDetailSerializer(serializers.ModelSerializer):
@@ -141,6 +152,16 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
     created_by = serializers.StringRelatedField()
+    is_owner = serializers.SerializerMethodField()
+    is_surveyor = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        return bool(request and request.user == obj.created_by)
+
+    def get_is_surveyor(self, obj):
+        request = self.context.get("request")
+        return bool(request and (request.user == obj.assigned_to or request.user == obj.created_by))
 
     class Meta:
         model = Survey
@@ -161,6 +182,8 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
             "urgent",
             "created_at",
             "observations",
+            "is_owner",
+            "is_surveyor",
         ]
 
 

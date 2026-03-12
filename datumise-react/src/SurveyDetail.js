@@ -15,8 +15,9 @@ function SurveyDetail() {
   const [observationFading, setObservationFading] = useState(false);
   const [observationCount, setObservationCount] = useState(0);
   const [durationTick, setDurationTick] = useState(0);
+  const [showDetails, setShowDetails] = useState(false);
   const observationsListRef = useRef(null);
-  
+
 const fetchSurvey = async () => {
   try {
     const response = await api.get(`/api/surveys/${id}/`);
@@ -37,7 +38,7 @@ useEffect(() => {
 
   fetchSurvey();
 }, [id]);
-    
+
 
     const startSurvey = async () => {
         try {
@@ -67,11 +68,7 @@ useEffect(() => {
       status: "live",
     });
     setSurvey(response.data);
-    if (window.innerWidth < 992) {
-      navigate(`/surveys/${id}/capture`);
-    } else {
-      setShowObservationModal(true);
-    }
+    navigate(`/surveys/${id}/capture`);
   } catch (err) {
     console.log(err);
   }
@@ -109,7 +106,7 @@ useEffect(() => {
             console.log(err);
         }
     };
-  
+
     useEffect(() => {
     if (survey) {
       setObservationCount(survey.observations?.length || 0);
@@ -143,8 +140,7 @@ const formatSurveyDuration = (startTime, _tick) => {
 };
 
   return (
-    <div className="container mt-4">
-      
+    <div className="container mt-3">
 
       {!localStorage.getItem("token") && (
         <p className="text-muted">Please log in to view survey details.</p>
@@ -154,171 +150,204 @@ const formatSurveyDuration = (startTime, _tick) => {
 
       {!loading && survey && (
         <>
-          <h3 className="mb-3">
-            {survey.urgent && (
-                <span className="badge bg-danger me-2">URGENT</span>
-            )}
-            {survey.name}
-          </h3>
-            {survey.status === "created" && (
-                <button
-                    className="btn btn-success mb-3"
-                    onClick={startSurvey}
-                    >
-                    Start Survey
-                </button>
-            )}
-
-            {survey.status === "live" && (
-                <button
-                    className="btn btn-warning mb-3 ms-2"
-                    onClick={pauseSurvey}
-                    >
-                    Pause Survey
-                </button>
-            )}
-            
-            {survey.status === "live" && (
-                <button
-                    className="btn btn-primary mb-3"
-                    onClick={completeSurvey}
+          {/* ---- Header: title + status + actions ---- */}
+          <div className="d-flex align-items-start justify-content-between mb-2 gap-2 flex-wrap">
+            <div style={{ minWidth: 0 }}>
+              <h4 className="mb-1" style={{ lineHeight: 1.2 }}>
+                {survey.urgent && (
+                  <span className="badge bg-danger me-2" style={{ fontSize: "0.65rem", verticalAlign: "middle" }}>URGENT</span>
+                )}
+                {survey.name}
+              </h4>
+              <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: "0.82rem" }}>
+                <span
+                  className={`badge ${
+                    survey.status === "created" ? "bg-secondary" :
+                    survey.status === "live" ? "bg-success" :
+                    survey.status === "paused" ? "bg-warning text-dark" :
+                    survey.status === "completed" ? "bg-primary" :
+                    survey.status === "submitted" ? "bg-dark" : ""
+                  }`}
+                  style={{ fontSize: "0.7rem" }}
                 >
-                    Complete Survey
-                </button>
-            )}
-
-            {survey.status === "paused" && (
-                <button
-                    className="btn btn-success mb-3"
-                    onClick={resumeSurvey}
-                >
-                    Resume Survey
-                </button>
-            )}
-
-            
-            {survey.status === "completed" && (
-                <button
-                    className="btn btn-dark mb-3"
-                    onClick={submitSurvey}
-                >
-                    Submit Survey
-                </button>
-            )}
-            
-            {survey.status === "live" && (
-              <button
-                className="btn btn-outline-success mb-3 ms-2 d-none d-lg-inline-block"
-                onClick={() => setShowObservationModal(true)}
-              >
-                Add Observation
-              </button>
-            )}
-
-            {survey.status === "live" && (
-              <Link
-                to={`/surveys/${id}/capture`}
-                className="btn btn-outline-success mb-3 ms-2 d-lg-none"
-              >
-                Add Observation
-              </Link>
-            )}
-
-
-
-
-
-
-          <div className="text-muted mb-3">
-            <div>
-              Status:
-              <span
-                className={`badge ms-2
-                  ${survey.status === "created" ? "bg-secondary" : ""}
-                  ${survey.status === "live" ? "bg-success" : ""}
-                  ${survey.status === "paused" ? "bg-warning text-dark" : ""}
-                  ${survey.status === "completed" ? "bg-primary" : ""}
-                  ${survey.status === "submitted" ? "bg-dark" : ""}
-                `}
-              >
-                {survey.status_display}
-              </span>
+                  {survey.status_display}
+                </span>
+                <span>
+                  {new Date(survey.created_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "2-digit",
+                  })}
+                </span>
+                {survey.status === "live" && (
+                  <span className="d-inline-flex align-items-center gap-1">
+                    <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
+                    {formatSurveyDuration(survey.created_at, durationTick)}
+                  </span>
+                )}
+              </div>
             </div>
-
-            <div>
-              Created{" "}
-              {new Date(survey.created_at).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+            <div className="d-flex gap-2 flex-shrink-0 flex-wrap">
+              {survey.status === "created" && (
+                <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
+              )}
+              {survey.status === "live" && (
+                <>
+                  <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
+                  <button className="btn btn-primary btn-sm" onClick={completeSurvey}>Complete</button>
+                  <button
+                    className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
+                    onClick={() => setShowObservationModal(true)}
+                  >
+                    + Observation
+                  </button>
+                  <Link
+                    to={`/surveys/${id}/capture`}
+                    className="btn btn-outline-success btn-sm d-lg-none"
+                  >
+                    + Observation
+                  </Link>
+                </>
+              )}
+              {survey.status === "paused" && (
+                <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
+              )}
+              {survey.status === "completed" && (
+                <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
+              )}
+              {survey.status === "submitted" && survey.is_surveyor && (
+                <>
+                  <button
+                    className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
+                    onClick={() => setShowObservationModal(true)}
+                  >
+                    + Observation
+                  </button>
+                  <Link
+                    to={`/surveys/${id}/capture`}
+                    className="btn btn-outline-success btn-sm d-lg-none"
+                  >
+                    + Observation
+                  </Link>
+                </>
+              )}
             </div>
-
-            <div>Client: {survey.client || "Not set"}</div>
-            <div>Site: {survey.site || "Not set"}</div>
-            <div>Client ID: {survey.client_id || "Not set"}</div>
-            <div>Site ID: {survey.site_id || "Not set"}</div>
-            
-            <div>Surveyor: {survey.assigned_to || "Unassigned"}</div>
-            <div>Created by: {survey.created_by || "Unknown"}</div>
-
-            <div>Client present: {survey.client_present ? "Yes" : "No"}</div>
           </div>
 
-          <h5 className="mt-4">
-            Observations ({survey.observations?.length || 0})
-          </h5>
-                <Link
-                    to={`/observations/survey/${survey?.id}`}
-                    className="btn btn-outline-primary mb-3"
-                    >
-                    View All Observations
-                </Link>    
+          {/* ---- Collapsible survey details ---- */}
+          <div className="mb-3">
+            <button
+              type="button"
+              className="btn btn-link btn-sm text-muted p-0 text-decoration-none"
+              onClick={() => setShowDetails((prev) => !prev)}
+              style={{ fontSize: "0.78rem" }}
+            >
+              {showDetails ? "Hide details" : "Survey details"}
+              <span className="ms-1" style={{ fontSize: "0.6rem" }}>{showDetails ? "\u25B2" : "\u25BC"}</span>
+            </button>
+            {showDetails && (
+              <div className="survey-details-grid mt-2">
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Client</span>
+                  <span>{survey.client || "Not set"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Site</span>
+                  <span>{survey.site || "Not set"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Surveyor</span>
+                  <span>{survey.assigned_to || "Unassigned"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Created by</span>
+                  <span>{survey.created_by || "Unknown"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Client ID</span>
+                  <span>{survey.client_id || "Not set"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Site ID</span>
+                  <span>{survey.site_id || "Not set"}</span>
+                </div>
+                <div className="survey-detail-item">
+                  <span className="survey-detail-label">Client present</span>
+                  <span>{survey.client_present ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ---- Observations toolbar ---- */}
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <h6 className="mb-0">
+              Observations
+              <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
+                ({survey.observations?.length || 0})
+              </span>
+            </h6>
+            <Link
+              to={`/observations/survey/${survey?.id}`}
+              className="btn btn-outline-primary btn-sm"
+              style={{ fontSize: "0.75rem" }}
+            >
+              View All
+            </Link>
+          </div>
+
+          {/* ---- Observation list ---- */}
           {survey.observations?.length === 0 && (
-            <p className="text-muted mt-3">
-                No observations have been added to this survey yet.
+            <p className="text-muted" style={{ fontSize: "0.85rem" }}>
+              No observations have been added to this survey yet.
             </p>
-         )}
+          )}
 
-          <div id="observations-list" className="mt-3">
-              {survey?.observations?.map((observation, index) => (
-                <Link
-                  key={observation.id}
-                  to={`/observations/${observation.id}`}
-                  state={{ fromSurvey: true, surveyId: survey.id }}
-                  className="text-decoration-none text-dark"
-                >
-                  <div className="border rounded p-3 mb-3">
-                    <small className="text-muted">
-                      {survey.observations.length - index} of {survey.observations.length}
-                    </small>
-
-                    {observation.image && (
-                      <img
-                        src={observation.image}
-                        alt={observation.title}
-                        className="img-fluid mb-2"
-                        style={{ maxHeight: "150px", objectFit: "cover" }}
-                      />
+          <div id="observations-list">
+            {survey?.observations?.map((observation, index) => (
+              <Link
+                key={observation.id}
+                to={
+                  `/surveys/${id}/capture`
+                }
+                state={
+                  { viewObservationId: observation.id }
+                }
+                className="text-decoration-none text-dark"
+              >
+                <div className="observation-row">
+                  {observation.image ? (
+                    <img
+                      src={observation.image}
+                      alt=""
+                      className="observation-row-thumb"
+                    />
+                  ) : (
+                    <div className="observation-row-thumb observation-row-thumb-empty">
+                      <span style={{ fontSize: "0.65rem" }}>No img</span>
+                    </div>
+                  )}
+                  <div className="observation-row-content">
+                    <div className="observation-row-title">{observation.title}</div>
+                    {observation.description && (
+                      <div className="observation-row-desc">{observation.description}</div>
                     )}
-
-                    <h6 className="mb-1">{observation.title}</h6>
-
-                    <p className="mb-0 text-muted">{observation.description}</p>
-
-                    <p className="small text-muted mt-2">
-                      {new Date(observation.created_at).toLocaleString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
+                    <div className="observation-row-meta">
+                      <span>#{survey.observations.length - index}</span>
+                      <span>
+                        {new Date(observation.created_at).toLocaleString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </>
       )}
         <Modal
@@ -389,17 +418,17 @@ const formatSurveyDuration = (startTime, _tick) => {
               </Modal.Title>
             </Modal.Header>
               <Modal.Body className="pt-2 pb-3">
-                <ObservationCreateForm 
+                <ObservationCreateForm
                   surveyId={survey?.id}
                   onPauseSurvey={pauseSurvey}
-                  
+
                   onClose={() => {
                     setShowObservationModal(false);
                   }}
-                                  
-                 
-                 
-                 
+
+
+
+
                   onSuccess={(newObservation) => {
                     setObservationCount((prev) => prev + 1);
 
@@ -431,7 +460,7 @@ const formatSurveyDuration = (startTime, _tick) => {
 
                 />
               </Modal.Body>
-              
+
             </Modal>
     </div>
   );

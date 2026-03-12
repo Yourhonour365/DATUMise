@@ -114,7 +114,7 @@ function SurveyList() {
                       Observations: {survey.observation_count ?? 0}
                     </div>
                 <small className="text-muted">
-                    Status: 
+                    Status:
                     <span className={`badge ms-1
                         ${survey.status === "created" ? "bg-secondary" : ""}
                         ${survey.status === "live" ? "bg-success" : ""}
@@ -131,6 +131,24 @@ function SurveyList() {
                         year: "numeric",
                     })}
                 </small>
+                {survey.status === "paused" && (
+                  <div className="mt-2">
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.patch(`/api/surveys/${survey.id}/`, { status: "live" });
+                          navigate(`/surveys/${survey.id}/capture`);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    >
+                      Resume Survey
+                    </button>
+                  </div>
+                )}
             </div>
             </div>
                 ))}
