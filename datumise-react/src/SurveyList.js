@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "./api/api";
 import { useNavigate } from "react-router-dom";
+import BackToTop from "./BackToTop";
 
 /* ------------------------------------------------------------------ */
 /*  Helper: build LINE 1 (schedule / due / urgency / client presence) */
@@ -282,6 +283,7 @@ function SurveyList() {
           </button>
         </div>
       )}
+      <BackToTop />
     </div>
   );
 }

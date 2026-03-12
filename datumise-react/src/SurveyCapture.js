@@ -87,11 +87,18 @@ function SurveyCapture() {
     }
   };
 
+  const returnPath = location.state?.returnPath || `/surveys/${id}`;
+  const returnObsId = location.state?.viewObservationId;
+
+  const goBack = () => {
+    navigate(returnPath, { state: { scrollToObservation: returnObsId } });
+  };
+
   const closeSurvey = () => {
     if (survey?.status === "live") {
       pauseSurvey();
     } else {
-      navigate(`/surveys/${id}`);
+      goBack();
     }
   };
 
@@ -466,11 +473,11 @@ function SurveyCapture() {
             )}
             <button
               type="button"
-              onClick={() => navigate(`/surveys/${id}`)}
+              onClick={goBack}
               className="capture-action-btn capture-action-primary"
               aria-label="Back to survey"
             >
-              <img src="/datumise_ok.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
           </div>
         )}
