@@ -358,22 +358,18 @@ function ObservationCreateForm(props) {
 
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
-        {!props.isViewingPrevious && (
-          <div
-            className="text-danger text-center"
-            style={{
-              fontSize: "0.75rem",
-              minHeight: "16px",
-              opacity: title.trim() || imagePreview ? 1 : 0,
-              transition: "opacity 0.25s ease",
-              marginBottom: "0.25rem",
-            }}
-          >
-            {!imagePreview && title.trim() && "Add image"}
-            {imagePreview && !title.trim() && "Add Observation"}
-          </div>
-        )}
-        {props.isViewingPrevious && <div style={{ height: "16px", marginBottom: "0.25rem" }} />}
+        <div
+          className="text-danger text-center"
+          style={{
+            fontSize: "0.68rem",
+            height: "10px",
+            opacity: !props.isViewingPrevious && (title.trim() || imagePreview) ? 1 : 0,
+            transition: "opacity 0.25s ease",
+          }}
+        >
+          {!props.isViewingPrevious && !imagePreview && title.trim() && "Add image"}
+          {!props.isViewingPrevious && imagePreview && !title.trim() && "Add Observation"}
+        </div>
         <div className={`d-flex align-items-center justify-content-center ${props.isViewingPrevious ? "capture-actions-compact" : "gap-4"}`}>
           <button
             type="button"
