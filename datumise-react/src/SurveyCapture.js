@@ -160,6 +160,7 @@ function SurveyCapture() {
           className="btn-close"
           aria-label="Close"
           onClick={() => navigate(`/surveys/${id}`)}
+          style={{ transform: "scale(0.85)", marginLeft: "auto" }}
         />
       </div>
 
