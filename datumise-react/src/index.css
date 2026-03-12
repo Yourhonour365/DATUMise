@@ -390,7 +390,7 @@ fieldset {
   display: flex;
   gap: 0.75rem;
   padding: 0.5rem;
-  border-bottom: none;
+  border: 1px solid transparent;
   align-items: flex-start;
   background: #f0ece4;
   border-radius: 8px;
@@ -399,6 +399,11 @@ fieldset {
 
 .observation-row:hover {
   background: #e8e4dc;
+  border-color: #9a8255;
+}
+
+.observation-row-highlight {
+  border-color: #9a8255;
 }
 
 .observation-row-thumb {
