@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "./api/api";
+import BackToTop from "./BackToTop";
 
 function ObservationList() {
   const [observations, setObservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
   const [nextPage, setNextPage] = useState(null);
   const { surveyId } = useParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +31,20 @@ function ObservationList() {
         setLoading(false);
       });
   }, [surveyId, searchTerm]);
+
+  const hasScrolled = useRef(false);
+
+  useEffect(() => {
+    const scrollTo = location.state?.scrollToObservation;
+    if (scrollTo && !loading && observations.length > 0 && !hasScrolled.current) {
+      const el = document.getElementById(`obs-${scrollTo}`);
+      if (el) {
+        hasScrolled.current = true;
+        el.scrollIntoView({ block: "center" });
+        window.history.replaceState({}, "");
+      }
+    }
+  }, [loading, observations, location.state?.scrollToObservation]);
 
   const handleLoadMore = (url) => {
     api
@@ -82,11 +98,12 @@ function ObservationList() {
           observations.map((obs) => (
             <div
               key={obs.id}
+              id={`obs-${obs.id}`}
               className="observation-row"
               style={{ cursor: "pointer" }}
               onClick={() =>
                 obs.survey
-                  ? navigate(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id } })
+                  ? navigate(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id, returnPath: surveyId ? `/observations/survey/${surveyId}` : "/observations" } })
                   : navigate(`/observations/${obs.id}`)
               }
             >
@@ -133,6 +150,7 @@ function ObservationList() {
           </button>
         </div>
       )}
+      <BackToTop />
     </div>
   );
 }

@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
+import BackToTop from "./BackToTop";
 
 
 function SurveyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showObservationModal, setShowObservationModal] = useState(false);
@@ -38,6 +40,20 @@ useEffect(() => {
 
   fetchSurvey();
 }, [id]);
+
+const hasScrolledRef = useRef(false);
+
+useEffect(() => {
+  const scrollTo = location.state?.scrollToObservation;
+  if (scrollTo && survey?.observations && !hasScrolledRef.current) {
+    const el = document.getElementById(`obs-${scrollTo}`);
+    if (el) {
+      hasScrolledRef.current = true;
+      el.scrollIntoView({ block: "center" });
+      window.history.replaceState({}, "");
+    }
+  }
+}, [survey?.observations, location.state?.scrollToObservation]);
 
 
     const startSurvey = async () => {
@@ -135,21 +151,25 @@ const formatSurveyDuration = (startTime, _tick) => {
 
       {!loading && survey && (
         <>
-          {/* ---- Header: title + status + actions ---- */}
-          <div className="d-flex align-items-start justify-content-between mb-2 gap-2 flex-wrap">
-            <div style={{ minWidth: 0 }}>
-              <h4 className="mb-1" style={{ lineHeight: 1.2 }}>
-                {survey.urgent && (
-                  <span className="badge bg-danger me-2" style={{ fontSize: "0.65rem", verticalAlign: "middle" }}>URGENT</span>
-                )}
-                {survey.name}
-              </h4>
-              <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: "0.82rem" }}>
+          {/* ---- Row 1: schedule + status + actions ---- */}
+          <div className="d-flex align-items-center justify-content-between mb-1 gap-2 flex-wrap">
+            <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+              <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2 }}>
+                {(() => {
+                  const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
+                  if (!scheduled) return "Unscheduled";
+                  const dateStr = scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                  const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
+                  if (!hasTime) return `${dateStr} \u00B7 Provisional`;
+                  const timeStr = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                  return `${dateStr} \u00B7 ${timeStr}`;
+                })()}
+              </span>
+              {survey.status !== "paused" && (
                 <span
                   className={`badge ${
                     survey.status === "created" ? "bg-secondary" :
                     survey.status === "live" ? "bg-success" :
-                    survey.status === "paused" ? "bg-warning text-dark" :
                     survey.status === "completed" ? "bg-primary" :
                     survey.status === "submitted" ? "bg-dark" : ""
                   }`}
@@ -157,22 +177,15 @@ const formatSurveyDuration = (startTime, _tick) => {
                 >
                   {survey.status_display}
                 </span>
-                <span>
-                  {new Date(survey.created_at).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "2-digit",
-                  })}
+              )}
+              {survey.status === "live" && (
+                <span className="d-inline-flex align-items-center gap-1 text-muted" style={{ fontSize: "0.78rem" }}>
+                  <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
+                  {formatSurveyDuration(survey.created_at, durationTick)}
                 </span>
-                {survey.status === "live" && (
-                  <span className="d-inline-flex align-items-center gap-1">
-                    <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
-                    {formatSurveyDuration(survey.created_at, durationTick)}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
-            <div className="d-flex gap-2 flex-shrink-0 flex-wrap">
+            <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
               {survey.status === "created" && (
                 <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
               )}
@@ -197,51 +210,83 @@ const formatSurveyDuration = (startTime, _tick) => {
               {survey.status === "paused" && (
                 <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
               )}
+              <button
+                type="button"
+                className="btn p-0 border-0 bg-transparent"
+                onClick={() => setShowDetails((prev) => !prev)}
+                aria-label={showDetails ? "Hide survey details" : "Show survey details"}
+                style={{ opacity: 0.4 }}
+              >
+                <img src="/datumise-down-chev.svg" alt="" width="16" height="16" style={{ transform: showDetails ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+              </button>
             </div>
+          </div>
+
+          {/* ---- Row 2: client / site ---- */}
+          <div className="text-muted mb-0" style={{ fontSize: "0.82rem", fontWeight: 500 }}>
+            {survey.client && survey.site
+              ? `${survey.client} \u2013 ${survey.site}`
+              : survey.client || survey.site || "No client / site"}
+          </div>
+
+          {/* ---- Row 3: due + surveyor + client present + urgent ---- */}
+          <div className="d-flex align-items-center gap-2 text-muted mb-1 flex-wrap" style={{ fontSize: "0.78rem" }}>
+            {survey.due_by && (
+              <>
+                <span>Due {new Date(survey.due_by).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                <span>{"\u00B7"}</span>
+              </>
+            )}
+            <span>{survey.assigned_to || "Unassigned"}</span>
+            <span>{"\u00B7"}</span>
+            <span>{survey.client_present ? "Client present" : "Client not present"}</span>
+            {survey.urgent && (
+              <>
+                <span>{"\u00B7"}</span>
+                <span className="badge bg-danger" style={{ fontSize: "0.65rem" }}>URGENT</span>
+              </>
+            )}
           </div>
 
           {/* ---- Collapsible survey details ---- */}
           <div className="mb-3">
-            <button
-              type="button"
-              className="btn btn-link btn-sm text-muted p-0 text-decoration-none"
-              onClick={() => setShowDetails((prev) => !prev)}
-              style={{ fontSize: "0.78rem" }}
-            >
-              {showDetails ? "Hide details" : "Survey details"}
-              <span className="ms-1" style={{ fontSize: "0.6rem" }}>{showDetails ? "\u25B2" : "\u25BC"}</span>
-            </button>
             {showDetails && (
-              <div className="survey-details-grid mt-2">
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Client</span>
-                  <span>{survey.client || "Not set"}</span>
+              <>
+                <div className="survey-details-grid mt-2">
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Survey name</span>
+                    <span>{survey.name || "Unnamed"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Client</span>
+                    <span>{survey.client || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Site</span>
+                    <span>{survey.site || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Surveyor</span>
+                    <span>{survey.assigned_to || "Unassigned"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Created by</span>
+                    <span>{survey.created_by || "Unknown"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Client ID</span>
+                    <span>{survey.client_id || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Site ID</span>
+                    <span>{survey.site_id || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Client present</span>
+                    <span>{survey.client_present ? "Yes" : "No"}</span>
+                  </div>
                 </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Site</span>
-                  <span>{survey.site || "Not set"}</span>
-                </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Surveyor</span>
-                  <span>{survey.assigned_to || "Unassigned"}</span>
-                </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Created by</span>
-                  <span>{survey.created_by || "Unknown"}</span>
-                </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Client ID</span>
-                  <span>{survey.client_id || "Not set"}</span>
-                </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Site ID</span>
-                  <span>{survey.site_id || "Not set"}</span>
-                </div>
-                <div className="survey-detail-item">
-                  <span className="survey-detail-label">Client present</span>
-                  <span>{survey.client_present ? "Yes" : "No"}</span>
-                </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -264,11 +309,12 @@ const formatSurveyDuration = (startTime, _tick) => {
             {survey?.observations?.map((observation, index) => (
               <Link
                 key={observation.id}
+                id={`obs-${observation.id}`}
                 to={
                   `/surveys/${id}/capture`
                 }
                 state={
-                  { viewObservationId: observation.id }
+                  { viewObservationId: observation.id, returnPath: `/surveys/${id}` }
                 }
                 className="text-decoration-none text-dark"
               >
@@ -290,7 +336,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                       <div className="observation-row-desc">{observation.description}</div>
                     )}
                     <div className="observation-row-meta">
-                      <span>#{survey.observations.length - index}</span>
+                      <span>#{survey.observations.length - index} of {survey.observations.length}</span>
                       <span>
                         {new Date(observation.created_at).toLocaleString("en-GB", {
                           day: "numeric",
@@ -419,6 +465,8 @@ const formatSurveyDuration = (startTime, _tick) => {
               </Modal.Body>
 
             </Modal>
+
+      <BackToTop />
     </div>
   );
 }
