@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Container, Button, Form, Alert,Modal } from "react-bootstrap";
 import api from "./api/api";
+import BackToTop from "./BackToTop";
+import ReturnButton from "./ReturnButton";
 
 function ObservationDetail() {
   const { id } = useParams();
@@ -469,11 +471,11 @@ const handleCommentLike = async (commentId) => {
       centered
       size="lg"
     >
-      <Modal.Header closeButton className="border-0 pb-2">
+      <Modal.Header closeButton className="pb-2">
         <Modal.Title>{observation.title}</Modal.Title>
       </Modal.Header>
 
-      <Modal.Body className="text-center pt-2 pb-4">
+      <Modal.Body className="text-center pt-2 pb-4" style={{ background: "#2c3e50" }}>
         {observation.image ? (
           <img
             key={observation.image}
@@ -486,7 +488,7 @@ const handleCommentLike = async (commentId) => {
           <p className="text-muted fst-italic">No image yet.</p>
         )}
       </Modal.Body>
-      <Modal.Footer className="border-0 pt-0 pb-4">
+      <Modal.Footer className="pt-0 pb-4">
         <div className="d-flex justify-content-center gap-2 w-100">
           {observation.is_owner && (
             <Button
@@ -508,6 +510,8 @@ const handleCommentLike = async (commentId) => {
         </div>
       </Modal.Footer>
     </Modal>
+      <ReturnButton to="/observations" />
+      <BackToTop />
     </Container>
   );
 }

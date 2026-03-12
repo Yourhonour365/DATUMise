@@ -32,7 +32,9 @@ function ObservationCreateForm(props) {
   const [imagePreview, setImagePreview] = useState("");
   const fileInputRef = useRef(null);
   const titleInputRef = useRef(null);
+  const reopenPreviewRef = useRef(false);
   const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
   
   useEffect(() => {
     const savedDraft = localStorage.getItem("datumise-observation-draft");
@@ -131,10 +133,10 @@ function ObservationCreateForm(props) {
   };
 
   return (
-  <div className="pt-2 px-0">
-    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3">
-      <div className="d-flex flex-column gap-2">
-        <div>
+  <div className="pt-2 px-0 d-flex flex-column h-100">
+    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3 d-flex flex-column flex-grow-1">
+      <div className="d-flex flex-column gap-2 flex-grow-1">
+        <div className="flex-grow-1">
           <div className="mb-2">
             <Form.Control
                 ref={fileInputRef}
@@ -158,7 +160,12 @@ function ObservationCreateForm(props) {
                     };
                     reader.readAsDataURL(file);
 
-                    setTimeout(() => titleInputRef.current?.focus(), 100);
+                    if (reopenPreviewRef.current) {
+                      reopenPreviewRef.current = false;
+                      setTimeout(() => setShowImagePreviewModal(true), 100);
+                    } else {
+                      setTimeout(() => titleInputRef.current?.focus(), 100);
+                    }
                   } else {
                     setImagePreview("");
                     localStorage.removeItem("datumise-observation-image");
@@ -179,14 +186,14 @@ function ObservationCreateForm(props) {
                   style={{
                     width: "140px",
                     height: "140px",
-                    border: "1px dashed #bbb",
+                    border: !imagePreview && title.trim() ? "2px solid #008000" : "none",
                     borderRadius: "8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
                     overflow: "hidden",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "#ecf0f1",
                   }}
                 >
               {imagePreview ? (
@@ -211,7 +218,7 @@ function ObservationCreateForm(props) {
         </div>
 
         <div>
-          <fieldset className="border rounded pt-0 pb-1 px-2 d-flex flex-column h-100" style={{ marginTop: "-8px" }}>
+          <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column h-100" style={{ marginTop: "-8px", backgroundColor: title.trim() ? "#f0ece4" : "#ecf0f1", border: imagePreview && !title.trim() ? "2px solid #008000" : "none" }}>
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
               Observation
             </legend>
@@ -232,13 +239,16 @@ function ObservationCreateForm(props) {
               style={{
                 resize: "none",
                 lineHeight: "1.2",
+                backgroundColor: "transparent",
               }}
             />
 
             <div className="d-flex justify-content-between align-items-center mt-1">
               <small
-                className={title.length >= 100 ? "text-warning" : "text-muted"}
-                style={{ fontSize: "0.72rem" }}
+                style={{
+                  fontSize: "0.72rem",
+                  color: title.length >= 120 ? "#2c3e50" : title.length >= 100 ? "#e67e22" : "#2c3e50",
+                }}
               >
                 {title.length} / 120
               </small>
@@ -261,29 +271,36 @@ function ObservationCreateForm(props) {
         </div>
 
         <div>
-          <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
+          <fieldset
+            className="rounded pt-0 pb-2 px-2 mb-3"
+            style={{ backgroundColor: description.trim() ? "#f0ece4" : "#ecf0f1", border: "none", cursor: "pointer" }}
+            onClick={() => setShowNotesModal(true)}
+          >
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
               Notes
             </legend>
-
-            <Form.Control
-              className="border-0"
-              as="textarea"
-              rows={2}
-              name="description"
-              value={description}
-              onChange={handleChange}
-              placeholder="Enter notes"
-              autoComplete="off"
-              style={{ resize: "none" }}
-            />
-
+            <div className="p-1" style={{
+              height: "calc(1.2em * 4)",
+              lineHeight: "1.2",
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: "vertical",
+            }}>
+              {description ? (
+                <span style={{ overflowWrap: "anywhere" }}>{description}</span>
+              ) : (
+                <span style={{ color: "#6c757d" }}>Enter notes</span>
+              )}
+            </div>
             {description.length > 0 && (
-              <div className="d-flex justify-content-end mt-1">
+              <div className="d-flex justify-content-between align-items-center mt-1">
+                <small style={{ fontSize: "0.72rem", color: description.length >= 280 ? "#2c3e50" : description.length >= 240 ? "#e67e22" : "#2c3e50" }}>{description.length} / 280</small>
                 <button
                   type="button"
                   className="field-clear-btn"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const updatedData = { ...formData, description: "" };
                     setFormData(updatedData);
                     localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
@@ -317,26 +334,28 @@ function ObservationCreateForm(props) {
                     variant="light"
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
-                    style={{ width: "56px", height: "56px" }}
+                    className="rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    style={{ width: "56px", height: "56px", background: "#FF7518", border: "none" }}
                   >
                     <img
                       src="/camera.svg"
                       alt="Camera"
                       width="32"
                       height="32"
+                      style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }}
                     />
                   </Button>
                 </div>
 
                 <div
-                  className="text-danger text-center"
+                  className="text-center"
                   style={{
                     fontSize: "0.75rem",
                     minHeight: "18px",
                     marginBottom: "-0.75rem",
                     opacity: title.trim() || imagePreview ? 1 : 0,
                     transition: "opacity 0.25s ease",
+                    color: "#fef0e0",
                   }}
                 >
                   {!imagePreview && title.trim() && "Add image"}
@@ -359,38 +378,28 @@ function ObservationCreateForm(props) {
 
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
-        <div
-          className="text-danger text-center"
-          style={{
-            fontSize: "0.68rem",
-            height: "16px",
-            opacity: !props.isViewingPrevious && (title.trim() || imagePreview) ? 1 : 0,
-            transition: "opacity 0.25s ease",
-          }}
-        >
-          {!props.isViewingPrevious && !imagePreview && title.trim() && "Add image"}
-          {!props.isViewingPrevious && imagePreview && !title.trim() && "Add Observation"}
-        </div>
-        <div className={`d-flex align-items-center justify-content-center ${props.isViewingPrevious ? "capture-actions-compact" : "gap-4"}`}>
-          <button
-            type="button"
-            onClick={() => props.onStepBack?.()}
-            disabled={!props.onStepBack}
-            className="capture-action-btn capture-action-secondary"
-            aria-label="Previous observation"
-          >
-            <img src="/datumise_back.svg" alt="" width="20" height="20" />
-          </button>
+        <div className="d-flex align-items-center justify-content-center gap-4">
           <button
             type="button"
             onClick={() => {
               props.onPauseSurvey?.();
               props.onClose?.();
             }}
-            className="capture-action-btn capture-action-secondary"
+            className="capture-action-btn"
             aria-label="Pause Survey"
+            style={{ background: "#95a5a6", border: "none" }}
           >
-            <img src="/datumise_pause.svg" alt="" width="20" height="20" />
+            <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => props.onStepBack?.()}
+            disabled={!props.onStepBack}
+            className="capture-action-btn"
+            aria-label="Previous observation"
+            style={{ background: "#ddf0e3", border: "none" }}
+          >
+            <img src="/datumise_back.svg" alt="" width="20" height="20" />
           </button>
           <button
             type="button"
@@ -401,59 +410,83 @@ function ObservationCreateForm(props) {
                 fileInputRef.current?.click();
               }
             }}
-            className="capture-action-btn capture-action-secondary"
+            className="capture-action-btn"
             aria-label="Take Photo"
+            style={{ background: "#FF7518", border: "none" }}
           >
-            <img src="/camera.svg" alt="" width="26" height="26" />
+            <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
           {props.isViewingPrevious ? (
             <button
               type="button"
               onClick={() => props.onStepForward?.()}
-              className="capture-action-btn capture-action-primary"
+              className="capture-action-btn"
               aria-label="Next"
+              style={{ background: "#ddf0e3", border: "none" }}
             >
               <img
                 src="/datumise_next_.svg"
                 alt=""
                 width="22"
                 height="22"
-                style={{ filter: "brightness(0) invert(1)" }}
               />
             </button>
           ) : (
-            <button
-              type="submit"
-              form="observation-create-form"
-              disabled={isSubmitting || !imagePreview || !title.trim()}
-              className="capture-action-btn capture-action-primary"
-              aria-label="Save and Next"
-            >
-              <img
-                src="/datumise_next_.svg"
-                alt=""
-                width="22"
-                height="22"
-                style={{ filter: "brightness(0) invert(1)" }}
-              />
-            </button>
+            <div style={{ position: "relative" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "100%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  fontSize: "0.68rem",
+                  opacity: (title.trim() || imagePreview) ? 1 : 0,
+                  transition: "opacity 0.25s ease",
+                  color: "#fef0e0",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {!imagePreview && title.trim() && "Add image to proceed"}
+                {imagePreview && !title.trim() && "Add observation to proceed"}
+              </div>
+              <button
+                type="submit"
+                form="observation-create-form"
+                disabled={isSubmitting || !imagePreview || !title.trim()}
+                className={`capture-action-btn ${imagePreview && title.trim() ? "capture-action-ready" : (imagePreview || title.trim()) ? "capture-action-warning" : ""}`}
+                aria-label="Save and Next"
+                style={{ background: (imagePreview || title.trim()) ? undefined : "#ddf0e3", border: "none" }}
+              >
+                <img
+                  src="/datumise_next_.svg"
+                  alt=""
+                  width="22"
+                  height="22"
+                />
+              </button>
+            </div>
           )}
-          {props.isViewingPrevious && (
-            <button
-              type="button"
-              onClick={() => props.onReturnToCurrent?.()}
-              className="capture-action-btn capture-action-primary"
-              aria-label="Return to current observation"
-            >
-              <img
-                src="/datumise_end_right.svg"
-                alt=""
-                width="20"
-                height="20"
-                style={{ filter: "brightness(0) invert(1)" }}
-              />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => props.onReturnToCurrent?.()}
+            disabled={!(props.isViewingPrevious && props.onReturnToCurrent)}
+            className="capture-action-btn"
+            aria-label="Return to current observation"
+            style={{
+              background: props.isViewingPrevious && props.onReturnToCurrent ? "#ddf0e3" : "#2c3e50",
+              border: "none",
+              opacity: props.isViewingPrevious && props.onReturnToCurrent ? 1 : 0,
+              transition: "opacity 1.2s ease, background 1.2s ease",
+              pointerEvents: props.isViewingPrevious && props.onReturnToCurrent ? "auto" : "none",
+            }}
+          >
+            <img
+              src="/datumise_end_right.svg"
+              alt=""
+              width="20"
+              height="20"
+            />
+          </button>
         </div>
       </>,
       props.actionBarTarget
@@ -469,7 +502,7 @@ function ObservationCreateForm(props) {
         <Modal.Title>Image preview</Modal.Title>
       </Modal.Header>
 
-      <Modal.Body className="text-center">
+      <Modal.Body className="text-center" style={{ background: "#2c3e50" }}>
         {imagePreview && (
           <img
             src={imagePreview}
@@ -480,7 +513,7 @@ function ObservationCreateForm(props) {
         )}
       </Modal.Body>
 
-      <Modal.Footer className="justify-content-center gap-4 border-0 pt-0">
+      <Modal.Footer className="justify-content-center gap-4">
         <button
           type="button"
           onClick={() => {
@@ -492,32 +525,105 @@ function ObservationCreateForm(props) {
           className="capture-action-btn capture-action-danger"
           aria-label="Delete image"
         >
-          <img src="/datumise_delete.svg" alt="" width="20" height="20" style={{ filter: "brightness(0) invert(1)" }} />
+          <img src="/datumise_delete.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
         </button>
         <button
           type="button"
           onClick={() => {
+            reopenPreviewRef.current = true;
             setShowImagePreviewModal(false);
             fileInputRef.current?.click();
           }}
-          className="capture-action-btn capture-action-secondary"
+          className="capture-action-btn"
           aria-label="Change image"
+          style={{ background: "#FF7518", border: "none" }}
         >
-          <img src="/camera.svg" alt="" width="26" height="26" />
+          <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
         </button>
         <button
           type="button"
           onClick={() => setShowImagePreviewModal(false)}
-          className="capture-action-btn capture-action-confirm"
-          aria-label="Keep image"
+          className="capture-action-btn"
+          aria-label="Save"
+          style={{ background: "#008000", border: "none" }}
         >
-          <img src="/datumise_ok.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+          <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowImagePreviewModal(false)}
+          className="capture-action-btn"
+          aria-label="Go back"
+          style={{ background: "#dce7fa", border: "none" }}
+        >
+          <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
         </button>
       </Modal.Footer>
     </Modal>
 
-
-
+    <Modal
+      show={showNotesModal}
+      onHide={() => setShowNotesModal(false)}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Notes</Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
+        <Form.Control
+          as="textarea"
+          rows={8}
+          value={description}
+          onChange={(e) => {
+            if (e.target.value.length <= 280) {
+              const updatedData = { ...formData, description: e.target.value };
+              setFormData(updatedData);
+              localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
+            }
+          }}
+          placeholder="Enter notes"
+          maxLength={280}
+          autoFocus
+          style={{ resize: "none", lineHeight: "1.25", fontSize: "0.9rem", backgroundColor: description.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
+        />
+        <div className="d-flex justify-content-between mt-1">
+          <small style={{ fontSize: "0.72rem", color: description.length >= 280 ? "#2c3e50" : description.length >= 240 ? "#e67e22" : "#2c3e50" }}>{description.length} / 280</small>
+          {description.length > 0 && (
+            <button
+              type="button"
+              className="field-clear-btn"
+              onClick={() => {
+                const updatedData = { ...formData, description: "" };
+                setFormData(updatedData);
+                localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </Modal.Body>
+      <Modal.Footer className="justify-content-center gap-4 pt-0">
+        <button
+          type="button"
+          onClick={() => setShowNotesModal(false)}
+          className="capture-action-btn"
+          aria-label="Save"
+          style={{ background: "#008000", border: "none" }}
+        >
+          <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowNotesModal(false)}
+          className="capture-action-btn"
+          aria-label="Go back"
+          style={{ background: "#dce7fa", border: "none" }}
+        >
+          <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+        </button>
+      </Modal.Footer>
+    </Modal>
 
 
 
