@@ -235,12 +235,27 @@ function ObservationCreateForm(props) {
               }}
             />
 
-            <small
-              className={`d-block mt-1 ${title.length >= 100 ? "text-warning" : "text-muted"}`}
-              style={{ fontSize: "0.72rem" }}
-            >
-              {title.length} / 120
-            </small>
+            <div className="d-flex justify-content-between align-items-center mt-1">
+              <small
+                className={title.length >= 100 ? "text-warning" : "text-muted"}
+                style={{ fontSize: "0.72rem" }}
+              >
+                {title.length} / 120
+              </small>
+              {title.length > 0 && (
+                <button
+                  type="button"
+                  className="field-clear-btn"
+                  onClick={() => {
+                    const updatedData = { ...formData, title: "" };
+                    setFormData(updatedData);
+                    localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
           </fieldset>
         </div>
@@ -262,30 +277,25 @@ function ObservationCreateForm(props) {
               autoComplete="off"
               style={{ resize: "none" }}
             />
+
+            {description.length > 0 && (
+              <div className="d-flex justify-content-end mt-1">
+                <button
+                  type="button"
+                  className="field-clear-btn"
+                  onClick={() => {
+                    const updatedData = { ...formData, description: "" };
+                    setFormData(updatedData);
+                    localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </fieldset>
         </div>
       </div>
-
-          <div className="d-flex justify-content-end px-2 mb-2">
-            <Button
-              variant="link"
-              size="sm"
-              type="button"
-              onClick={() => {
-                if (title.trim() || description.trim() || imagePreview) {
-                  const confirmed = window.confirm(
-                    "Clear observation?\n\nThis will remove the image and any text you have entered."
-                  );
-                  if (!confirmed) return;
-                }
-                clearForm();
-              }}
-              className="text-muted p-0 text-decoration-none"
-            >
-              Clear
-            </Button>
-          </div>
-
 
           {!props.captureMode && (
             <>
@@ -348,24 +358,27 @@ function ObservationCreateForm(props) {
 
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
-        <div
-          className="text-danger text-center"
-          style={{
-            fontSize: "0.75rem",
-            minHeight: "16px",
-            opacity: title.trim() || imagePreview ? 1 : 0,
-            transition: "opacity 0.25s ease",
-            marginBottom: "0.25rem",
-          }}
-        >
-          {!imagePreview && title.trim() && "Add image"}
-          {imagePreview && !title.trim() && "Add Observation"}
-        </div>
+        {!props.isViewingPrevious && (
+          <div
+            className="text-danger text-center"
+            style={{
+              fontSize: "0.75rem",
+              minHeight: "16px",
+              opacity: title.trim() || imagePreview ? 1 : 0,
+              transition: "opacity 0.25s ease",
+              marginBottom: "0.25rem",
+            }}
+          >
+            {!imagePreview && title.trim() && "Add image"}
+            {imagePreview && !title.trim() && "Add Observation"}
+          </div>
+        )}
+        {props.isViewingPrevious && <div style={{ height: "16px", marginBottom: "0.25rem" }} />}
         <div className="d-flex align-items-center justify-content-center gap-4">
           <button
             type="button"
-            onClick={() => props.onShowPrevious?.()}
-            disabled={!props.onShowPrevious}
+            onClick={() => props.onStepBack?.()}
+            disabled={!props.onStepBack}
             className="capture-action-btn capture-action-secondary"
             aria-label="Previous observation"
           >
@@ -384,27 +397,63 @@ function ObservationCreateForm(props) {
           </button>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (props.isViewingPrevious) props.onReturnToCurrent?.();
+              fileInputRef.current?.click();
+            }}
             className="capture-action-btn capture-action-secondary"
             aria-label="Take Photo"
           >
             <img src="/camera.svg" alt="" width="26" height="26" />
           </button>
-          <button
-            type="submit"
-            form="observation-create-form"
-            disabled={isSubmitting || !imagePreview || !title.trim()}
-            className="capture-action-btn capture-action-primary"
-            aria-label="Save and Next"
-          >
-            <img
-              src="/datumise_next_.svg"
-              alt=""
-              width="22"
-              height="22"
-              style={{ filter: "brightness(0) invert(1)" }}
-            />
-          </button>
+          {props.isViewingPrevious ? (
+            <button
+              type="button"
+              onClick={() => props.onStepForward?.()}
+              className="capture-action-btn capture-action-primary"
+              aria-label="Next"
+            >
+              <img
+                src="/datumise_next_.svg"
+                alt=""
+                width="22"
+                height="22"
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              form="observation-create-form"
+              disabled={isSubmitting || !imagePreview || !title.trim()}
+              className="capture-action-btn capture-action-primary"
+              aria-label="Save and Next"
+            >
+              <img
+                src="/datumise_next_.svg"
+                alt=""
+                width="22"
+                height="22"
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
+            </button>
+          )}
+          {props.isViewingPrevious && (
+            <button
+              type="button"
+              onClick={() => props.onReturnToCurrent?.()}
+              className="capture-action-btn capture-action-primary"
+              aria-label="Return to current observation"
+            >
+              <img
+                src="/datumise_end_right.svg"
+                alt=""
+                width="20"
+                height="20"
+                style={{ filter: "brightness(0) invert(1)" }}
+              />
+            </button>
+          )}
         </div>
       </>,
       props.actionBarTarget
