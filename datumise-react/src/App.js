@@ -93,7 +93,7 @@ function AppLayout() {
   return (
     <>
       {/* ---- Desktop nav (hidden on mobile) ---- */}
-      <nav className="app-nav-desktop navbar navbar-light bg-light px-3">
+      <nav className="app-nav-desktop navbar px-3" style={{ background: "#FF7518", borderBottom: "none" }}>
         <Link className="navbar-brand" to="/">DATUMise</Link>
         <Link className="btn btn-outline-dark btn-sm me-2" to="/observations">
           Observations

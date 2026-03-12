@@ -19,13 +19,13 @@ function BackToTop() {
       aria-label="Back to top"
       style={{
         position: "fixed",
-        bottom: "1.5rem",
+        bottom: "1.25rem",
         right: "1.5rem",
         width: "44px",
         height: "44px",
         borderRadius: "50%",
         border: "none",
-        background: "rgba(0,0,0,0.5)",
+        background: "#dce7fa",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -33,7 +33,7 @@ function BackToTop() {
         boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
       }}
     >
-      <img src="/datumise-down-chev.svg" alt="" width="18" height="18" style={{ transform: "rotate(180deg)", filter: "brightness(0) invert(1)" }} />
+      <img src="/datumise-down-chev.svg" alt="" width="18" height="18" style={{ transform: "rotate(180deg)", filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
     </button>
   );
 }

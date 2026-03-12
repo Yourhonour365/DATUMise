@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 import BackToTop from "./BackToTop";
+import ReturnButton from "./ReturnButton";
 
 
 function SurveyDetail() {
@@ -89,6 +90,15 @@ useEffect(() => {
     console.log(err);
   }
 };
+
+    const assignSurvey = async () => {
+        try {
+            const response = await api.post(`/api/surveys/${id}/assign/`);
+            setSurvey(response.data);
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
     const submitSurvey = async () => {
         const confirmed = window.confirm(
@@ -186,10 +196,13 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
             </div>
             <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
-              {survey.status === "created" && (
+              {!survey.assigned_to && (survey.status === "created" || survey.status === "paused") && (
+                <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign</button>
+              )}
+              {survey.status === "created" && survey.is_surveyor && (
                 <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
               )}
-              {survey.status === "live" && (
+              {survey.status === "live" && survey.is_surveyor && (
                 <>
                   <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
                   <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
@@ -207,7 +220,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                   </Link>
                 </>
               )}
-              {survey.status === "paused" && (
+              {survey.status === "paused" && survey.is_surveyor && (
                 <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
               )}
               <button
@@ -466,6 +479,7 @@ const formatSurveyDuration = (startTime, _tick) => {
 
             </Modal>
 
+      <ReturnButton to="/surveys" />
       <BackToTop />
     </div>
   );

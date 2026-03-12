@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "./api/api";
 import { useNavigate } from "react-router-dom";
 import BackToTop from "./BackToTop";
+import ReturnButton from "./ReturnButton";
 
 /* ------------------------------------------------------------------ */
 /*  Helper: build LINE 1 (schedule / due / urgency / client presence) */
@@ -236,7 +237,8 @@ function SurveyList() {
       {nextPage && (
         <div className="d-md-none text-center mt-3 mb-3">
           <button
-            className="btn btn-outline-secondary btn-sm"
+            className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+            style={{ width: "44px", height: "44px", background: "#FF7518", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
             onClick={() =>
               api.get(nextPage).then((response) => {
                 setSurveys((prev) => [...prev, ...response.data.results]);
@@ -244,8 +246,9 @@ function SurveyList() {
                 setPreviousPage(response.data.previous);
               })
             }
+            aria-label="Load more"
           >
-            Load more
+            <img src="/datumise-load.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
         </div>
       )}
@@ -283,6 +286,7 @@ function SurveyList() {
           </button>
         </div>
       )}
+      <ReturnButton to="/" />
       <BackToTop />
     </div>
   );

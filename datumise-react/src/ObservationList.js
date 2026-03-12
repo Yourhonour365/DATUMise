@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "./api/api";
 import BackToTop from "./BackToTop";
+import ReturnButton from "./ReturnButton";
 
 function ObservationList() {
   const [observations, setObservations] = useState([]);
@@ -124,7 +125,6 @@ function ObservationList() {
                   <div className="observation-row-desc">{obs.description}</div>
                 )}
                 <div className="observation-row-meta">
-                  {obs.survey_name && <span>{obs.survey_name}</span>}
                   <span>
                     {new Date(obs.created_at).toLocaleString("en-GB", {
                       day: "numeric",
@@ -143,13 +143,16 @@ function ObservationList() {
       {nextPage && (
         <div className="text-center mt-3 mb-3">
           <button
-            className="btn btn-outline-secondary btn-sm"
+            className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+            style={{ width: "44px", height: "44px", background: "#FF7518", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
             onClick={() => handleLoadMore(nextPage)}
+            aria-label="Load more"
           >
-            Load more
+            <img src="/datumise-load.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
         </div>
       )}
+      <ReturnButton to="/" />
       <BackToTop />
     </div>
   );

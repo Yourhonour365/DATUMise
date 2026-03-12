@@ -188,7 +188,7 @@ function SurveyCapture() {
           obs.id === viewedObservation.id ? { ...obs, image: response.data.image } : obs
         ),
       }));
-      setShowPreviewImageModal(false);
+      setShowPreviewImageModal(true);
     } catch (err) {
       console.error("Failed to replace image:", err);
     } finally {
@@ -283,7 +283,7 @@ function SurveyCapture() {
       <div className="survey-capture-body">
         {viewedObservation && (
           <div className="observation-preview">
-            <small className="text-muted d-block mb-2">
+            <small className="text-muted d-block" style={{ fontSize: "0.7rem", paddingTop: "0.15rem", paddingBottom: "0.15rem" }}>
               {new Date(viewedObservation.created_at).toLocaleString("en-GB", {
                 day: "numeric",
                 month: "short",
@@ -291,6 +291,7 @@ function SurveyCapture() {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
+              {viewedObservation.owner && ` • ${viewedObservation.owner}`}
             </small>
 
             {viewedObservation.image ? (
@@ -298,8 +299,8 @@ function SurveyCapture() {
                 src={viewedObservation.image}
                 alt={viewedObservation.title}
                 className="rounded mb-3"
-                onClick={() => isLive && setShowPreviewImageModal(true)}
-                style={{ width: "100%", height: "220px", objectFit: "cover", cursor: isLive ? "pointer" : "default" }}
+                onClick={() => setShowPreviewImageModal(true)}
+                style={{ width: "100%", height: "220px", objectFit: "cover", cursor: "pointer" }}
               />
             ) : isLive ? (
               <div
@@ -428,7 +429,21 @@ function SurveyCapture() {
               onStepBack={canStepBack ? handleStepBack : null}
               onStepForward={viewingIndex !== null ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
-              onReturnToCurrent={() => { resetEditState(); setViewingIndex(null); }}
+              onReturnToCurrent={(() => {
+                const draft = localStorage.getItem("datumise-observation-draft");
+                const draftImage = localStorage.getItem("datumise-observation-image");
+                const hasDraft = draftImage || (draft && JSON.parse(draft).title?.trim());
+                // Hide if on latest observation and draft is empty
+                if (viewingIndex === 0 && !hasDraft) return null;
+                return () => {
+                  resetEditState();
+                  if (hasDraft) {
+                    setViewingIndex(null);
+                  } else {
+                    setViewingIndex(0);
+                  }
+                };
+              })()}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
             />
           </div>
@@ -441,8 +456,9 @@ function SurveyCapture() {
               type="button"
               onClick={handleStepBack}
               disabled={!canStepBack}
-              className="capture-action-btn capture-action-secondary"
+              className="capture-action-btn"
               aria-label="Previous observation"
+              style={{ background: "#ddf0e3", border: "none" }}
             >
               <img src="/datumise_back.svg" alt="" width="20" height="20" />
             </button>
@@ -450,8 +466,9 @@ function SurveyCapture() {
               type="button"
               onClick={handleStepForward}
               disabled={viewingIndex === null || viewingIndex <= 0}
-              className="capture-action-btn capture-action-secondary"
+              className="capture-action-btn"
               aria-label="Next observation"
+              style={{ background: "#ddf0e3", border: "none" }}
             >
               <img
                 src="/datumise_next_.svg"
@@ -474,10 +491,11 @@ function SurveyCapture() {
             <button
               type="button"
               onClick={goBack}
-              className="capture-action-btn capture-action-primary"
+              className="capture-action-btn"
               aria-label="Back to survey"
+              style={{ background: "#dce7fa", border: "none" }}
             >
-              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
             </button>
           </div>
         )}
@@ -501,20 +519,20 @@ function SurveyCapture() {
         onHide={() => setShowPreviewImageModal(false)}
         centered
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Image preview</Modal.Title>
+        <Modal.Header closeButton className="py-1 px-3" style={{ minHeight: "auto" }}>
+          <small className="text-muted">Image preview</small>
         </Modal.Header>
-        <Modal.Body className="text-center">
+        <Modal.Body className="text-center p-1" style={{ background: "#2c3e50" }}>
           {viewedObservation?.image && (
             <img
               src={viewedObservation.image}
               alt="Observation"
               className="img-fluid"
-              style={{ maxHeight: "70vh", objectFit: "contain" }}
+              style={{ maxHeight: "80vh", objectFit: "contain" }}
             />
           )}
         </Modal.Body>
-        <Modal.Footer className="justify-content-center gap-4 border-0 pt-0">
+        <Modal.Footer className="justify-content-center gap-4">
           <button
             type="button"
             onClick={handleDeleteImage}
@@ -522,7 +540,7 @@ function SurveyCapture() {
             className="capture-action-btn capture-action-danger"
             aria-label="Delete image"
           >
-            <img src="/datumise_delete.svg" alt="" width="20" height="20" style={{ filter: "brightness(0) invert(1)" }} />
+            <img src="/datumise_delete.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
           <button
             type="button"
@@ -530,18 +548,29 @@ function SurveyCapture() {
               setShowPreviewImageModal(false);
               previewFileInputRef.current?.click();
             }}
-            className="capture-action-btn capture-action-secondary"
+            className="capture-action-btn"
             aria-label="Replace image"
+            style={{ background: "#FF7518", border: "none" }}
           >
-            <img src="/camera.svg" alt="" width="26" height="26" />
+            <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
           <button
             type="button"
             onClick={() => setShowPreviewImageModal(false)}
-            className="capture-action-btn capture-action-confirm"
-            aria-label="Keep image"
+            className="capture-action-btn"
+            aria-label="Save"
+            style={{ background: "#008000", border: "none" }}
           >
-            <img src="/datumise_ok.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+            <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPreviewImageModal(false)}
+            className="capture-action-btn"
+            aria-label="Go back"
+            style={{ background: "#dce7fa", border: "none" }}
+          >
+            <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
           </button>
         </Modal.Footer>
       </Modal>
@@ -555,49 +584,63 @@ function SurveyCapture() {
         <Modal.Header closeButton>
           <Modal.Title>{editingField === "title" ? "Edit Observation" : "Edit Notes"}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
           <textarea
             className="form-control"
-            rows={editingField === "title" ? 4 : 3}
+            rows={editingField === "title" ? 4 : 8}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            maxLength={editingField === "title" ? 120 : undefined}
+            maxLength={editingField === "title" ? 120 : 280}
             autoFocus
-            style={{ resize: "none", lineHeight: "1.3" }}
+            style={{ resize: "none", lineHeight: "1.25", fontSize: "0.9rem", backgroundColor: editValue.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
           />
-          {editingField === "title" && (
-            <small className="text-muted" style={{ fontSize: "0.72rem" }}>
-              {editValue.length} / 120
+          <div className="d-flex justify-content-between" style={{ marginTop: "0.65rem", marginBottom: "0.5rem" }}>
+            <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 120 ? "#2c3e50" : editValue.length >= 100 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
+              {editValue.length} / {editingField === "title" ? 120 : 280}
             </small>
-          )}
+            {editValue.length > 0 && (
+              <button
+                type="button"
+                className="field-clear-btn"
+                onClick={() => setEditValue("")}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </Modal.Body>
-        <Modal.Footer className="justify-content-center gap-4 border-0 pt-0">
-          <button
-            type="button"
-            onClick={() => resetEditState()}
-            className="capture-action-btn capture-action-secondary"
-            aria-label="Cancel"
-          >
-            <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>&times;</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditValue("")}
-            disabled={!editValue}
-            className="capture-action-btn capture-action-danger"
-            aria-label="Clear text"
-          >
-            <img src="/datumise_delete.svg" alt="" width="20" height="20" style={{ filter: "brightness(0) invert(1)" }} />
-          </button>
-          <button
-            type="button"
-            disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
-            onClick={saveField}
-            className="capture-action-btn capture-action-confirm"
-            aria-label="Save"
-          >
-            <img src="/datumise_ok.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
-          </button>
+        <Modal.Footer className="justify-content-center gap-4 flex-column">
+          {editingField === "title" && !editValue.trim() && (
+            <div style={{
+              fontSize: "0.68rem",
+              color: "#fef0e0",
+              textAlign: "center",
+              marginBottom: "-0.25rem",
+            }}>
+              Add observation to proceed
+            </div>
+          )}
+          <div className="d-flex justify-content-center gap-4">
+            <button
+              type="button"
+              disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
+              onClick={saveField}
+              className={`capture-action-btn ${editingField === "title" && !editValue.trim() ? "capture-action-warning" : ""}`}
+              aria-label="Save"
+              style={{ background: editingField === "title" && !editValue.trim() ? undefined : "#008000", border: "none" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: editingField === "title" && !editValue.trim() ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
+            <button
+              type="button"
+              onClick={() => resetEditState()}
+              className="capture-action-btn"
+              aria-label="Cancel"
+              style={{ background: "#dce7fa", border: "none" }}
+            >
+              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+            </button>
+          </div>
         </Modal.Footer>
       </Modal>
     </div>
