@@ -57,7 +57,8 @@ function ObservationCreateForm(props) {
     
     if (isSubmitting) return;
       setIsSubmitting(true);
-    
+       
+       
     const submissionData = new FormData();
       submissionData.append("title", title);
       submissionData.append("description", description);
