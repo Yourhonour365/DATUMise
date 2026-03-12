@@ -130,10 +130,10 @@ function ObservationCreateForm(props) {
   };
 
   return (
-  <Container fluid className="pt-2 px-0">
-    <Form id="observation-create-form" onSubmit={handleSubmit}>
-      <div className="row gx-3 gy-0 align-items-stretch">
-        <div className="col-12 col-md-auto">
+  <div className="pt-2 px-0">
+    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3">
+      <div className="d-flex flex-column gap-2">
+        <div>
           <div className="mb-2">
             <Form.Control
                 ref={fileInputRef}
@@ -209,7 +209,7 @@ function ObservationCreateForm(props) {
           </div>
         </div>
 
-        <div className="col-12 col-md">
+        <div>
           <fieldset className="border rounded pt-0 pb-1 px-2 d-flex flex-column h-100" style={{ marginTop: "-8px" }}>
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
               Observation
@@ -244,7 +244,7 @@ function ObservationCreateForm(props) {
           </fieldset>
         </div>
 
-        <div className="col-12">
+        <div>
           <fieldset className="border rounded pt-0 pb-2 px-2 mb-3">
             <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
               Notes
@@ -265,7 +265,7 @@ function ObservationCreateForm(props) {
         </div>
       </div>
 
-          <div className="text-end mb-2">
+          <div className="d-flex justify-content-end px-2 mb-2">
             <Button
               variant="link"
               size="sm"
@@ -299,55 +299,47 @@ function ObservationCreateForm(props) {
               {imagePreview && !title.trim() && "Add Observation"}
             </div>
 
-          <div className="d-flex align-items-center justify-content-between mt-0">
-          
-            <Button
-              variant="warning"
-              type="button"
-              onClick={() => {
-                props.onPauseSurvey?.();
-                props.onClose?.();
-              }}
-              className="me-2"
-            >
-              Pause Survey
-            </Button>
-          
-          <div className="text-center flex-grow-1 mx-2">
-            
-            <div className="flex-grow-1 d-flex justify-content-center">
-            <Button
-              variant="light"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
-              style={{ width: "56px", height: "56px" }}
-            >
-              <img
-                src="/camera.svg"
-                alt="Camera"
-                width="32"
-                height="32"
-              />
-            </Button>
-          </div>
-          
-          </div>
-          
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={isSubmitting || !imagePreview || !title.trim()}
-          >
-            {isSubmitting ? "Saving..." : "✓ Save & Next"}
-          </Button>
+          <div className="d-flex flex-column gap-3 mt-0">
+              <Button
+                variant="warning"
+                type="button"
+                onClick={() => {
+                  props.onPauseSurvey?.();
+                  props.onClose?.();
+                }}
+                className="w-100"
+              >
+                Pause Survey
+              </Button>
 
+              <div className="d-flex justify-content-center">
+                <Button
+                  variant="light"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-circle d-flex align-items-center justify-content-center shadow-sm border"
+                  style={{ width: "56px", height: "56px" }}
+                >
+                  <img
+                    src="/camera.svg"
+                    alt="Camera"
+                    width="32"
+                    height="32"
+                  />
+                </Button>
+              </div>
 
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={isSubmitting || !imagePreview || !title.trim()}
+                className="w-100"
+              >
+                {isSubmitting ? "Saving..." : "✓ Save & Next"}
+              </Button>
+            </div>
 
-
-          </div>
-
-</Form>
+            </Form>
 
 
     <Modal
@@ -422,7 +414,7 @@ function ObservationCreateForm(props) {
 
 
 
-  </Container>
+  </div>
 );
 }
 export default ObservationCreateForm;

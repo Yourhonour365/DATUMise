@@ -202,11 +202,20 @@ const formatSurveyDuration = (startTime, _tick) => {
             
             {survey.status === "live" && (
               <button
-                className="btn btn-outline-success mb-3 ms-2"
+                className="btn btn-outline-success mb-3 ms-2 d-none d-lg-inline-block"
                 onClick={() => setShowObservationModal(true)}
               >
                 Add Observation
               </button>
+            )}
+
+            {survey.status === "live" && (
+              <Link
+                to={`/surveys/${id}/capture`}
+                className="btn btn-outline-success mb-3 ms-2 d-lg-none"
+              >
+                Add Observation
+              </Link>
             )}
 
 
@@ -330,51 +339,48 @@ const formatSurveyDuration = (startTime, _tick) => {
             setShowObservationModal(false);
           }}
           centered
+          dialogClassName="observation-modal"
         >
           <Modal.Header closeButton className="px-3">
-              
-              
               <Modal.Title>
+                <div className="fw-semibold">
                   Add Observation #{observationCount + 1}
-
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.72rem",
+                    lineHeight: "1",
+                    minHeight: "1rem",
+                    position: "relative",
+                    marginTop: "0.25rem",
+                  }}
+                >
                   <span
-                    className="ms-3"
+                    className="text-muted"
                     style={{
-                      display: "inline-grid",
-                      minWidth: "150px",
-                      verticalAlign: "baseline",
+                      opacity: observationSuccess ? 0 : 1,
+                      transition: "opacity 0.9s ease",
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
                     }}
                   >
-                    <span
-                      className="text-muted"
-                      style={{
-                        gridArea: "1 / 1",
-                        fontSize: "0.72rem",
-                        lineHeight: "1",
-                        opacity: observationSuccess ? 0 : 1,
-                        transition: "opacity 0.9s ease",
-                      }}
-                    >
-                      Duration {formatSurveyDuration(survey?.created_at, durationTick)}
-                    </span>
-
-                    <span
-                      className="text-success fw-light"
-                      style={{
-                        gridArea: "1 / 1",
-                        fontSize: "0.72rem",
-                        lineHeight: "1",
-                        opacity: observationSuccess ? 1 : 0,
-                        transition: "opacity 0.9s ease",
-                      }}
-                    >
-                      Observation Added
-                    </span>
+                    Duration {formatSurveyDuration(survey?.created_at, durationTick)}
                   </span>
-                </Modal.Title>
-            
-            
-            
+                  <span
+                    className="text-success fw-light"
+                    style={{
+                      opacity: observationSuccess ? 1 : 0,
+                      transition: "opacity 0.9s ease",
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                    }}
+                  >
+                    Observation Added
+                  </span>
+                </div>
+              </Modal.Title>
             </Modal.Header>
               <Modal.Body className="pt-2 pb-3">
                 <ObservationCreateForm 

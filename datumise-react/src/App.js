@@ -7,6 +7,7 @@ import ObservationEditForm from "./ObservationEditForm";
 import ObservationList from "./ObservationList";
 import SurveyList from "./SurveyList";
 import SurveyDetail from "./SurveyDetail";
+import SurveyCapture from "./SurveyCapture";
 import Register from "./Register";
 import Login from "./Login";
 
@@ -85,6 +86,7 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
         <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
         <Route path="/surveys" element={<SurveyList />} />
         <Route path="/surveys/:id" element={<SurveyDetail />} />
+        <Route path="/surveys/:id/capture" element={<SurveyCapture />} />
       </Routes>
     </Router>
   );

@@ -11,3 +11,48 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+/* ==========================================================
+   Observation modal – desktop only (>= 992px)
+   Applied via dialogClassName="observation-modal"
+   ========================================================== */
+
+.observation-modal {
+  max-width: 540px;
+}
+
+.observation-modal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+
+/* ==========================================================
+   Survey Capture – full-page observation entry (mobile/tablet)
+   ========================================================== */
+
+.survey-capture {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.survey-capture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.survey-capture-body {
+  flex: 1 1 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.75rem 1rem;
+}
