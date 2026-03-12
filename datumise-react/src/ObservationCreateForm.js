@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react";
-import { Form, Button, Container } from "react-bootstrap";
+import React, { useEffect, useRef, useState } from "react";
+import { Form, Button, Container, Modal } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./api/api";
 
@@ -18,6 +18,7 @@ function ObservationCreateForm(props) {
     });
     setImage(null);
     setImagePreview("");
+    localStorage.removeItem("datumise-observation-draft");
   };
   
   
@@ -29,15 +30,36 @@ function ObservationCreateForm(props) {
   const [imagePreview, setImagePreview] = useState("");
   const fileInputRef = useRef(null);
   const titleInputRef = useRef(null);
-
+  const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
   
+  useEffect(() => {
+    const savedDraft = localStorage.getItem("datumise-observation-draft");
 
+    if (savedDraft) {
+      try {
+        const parsedDraft = JSON.parse(savedDraft);
+        setFormData({
+          title: parsedDraft.title || "",
+          description: parsedDraft.description || "",
+        });
+      } catch (err) {
+        console.error("Failed to load observation draft:", err);
+      }
+    }
+  }, []);
 
   const handleChange = (event) => {
-    setFormData({
+    const updatedData = {
       ...formData,
       [event.target.name]: event.target.value,
-    });
+    };
+
+    setFormData(updatedData);
+
+    localStorage.setItem(
+      "datumise-observation-draft",
+      JSON.stringify(updatedData)
+    );
   };
 
   const handleTitleBlur = () => {
@@ -119,21 +141,26 @@ function ObservationCreateForm(props) {
             />
 
             <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                width: "140px",
-                height: "140px",
-                border: "1px dashed #bbb",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                overflow: "hidden",
-                backgroundColor: "#f8f9fa",
-                
-              }}
-            >
+                  onClick={() => {
+                    if (imagePreview) {
+                      setShowImagePreviewModal(true);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  style={{
+                    width: "140px",
+                    height: "140px",
+                    border: "1px dashed #bbb",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    backgroundColor: "#f8f9fa",
+                  }}
+                >
               {imagePreview ? (
                 <img
                   src={imagePreview}
@@ -271,6 +298,66 @@ function ObservationCreateForm(props) {
           </div>
 
 </Form>
+
+
+    <Modal
+      show={showImagePreviewModal}
+      onHide={() => setShowImagePreviewModal(false)}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Image preview</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body className="text-center">
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt="Observation"
+            className="img-fluid"
+            style={{ maxHeight: "70vh", objectFit: "contain" }}
+          />
+        )}
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setShowImagePreviewModal(false);
+            fileInputRef.current?.click();
+          }}
+        >
+          Change image
+        </Button>
+
+        <Button
+          variant="danger"
+          onClick={() => {
+            setImage(null);
+            setImagePreview("");
+            setShowImagePreviewModal(false);
+          }}
+        >
+          Delete image
+        </Button>
+      </Modal.Footer>
+    </Modal>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   </Container>
 );
 }
