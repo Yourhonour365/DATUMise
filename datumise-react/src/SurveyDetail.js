@@ -360,8 +360,11 @@ const formatSurveyDuration = (startTime, _tick) => {
                 <ObservationCreateForm 
                   surveyId={survey?.id}
                   onPauseSurvey={pauseSurvey}
-                  onClose={() => setShowObservationModal(false)}
-                 
+                  
+                  onClose={() => {
+                    setShowObservationModal(false);
+                  }}
+                                  
                  
                  
                  
