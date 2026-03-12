@@ -18,6 +18,8 @@ function SurveyCapture() {
   const [editingField, setEditingField] = useState(null); // "title" | "description" | null
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [pauseCountdown, setPauseCountdown] = useState(null);
+  const pauseTimerRef = useRef(null);
   const [showPreviewImageModal, setShowPreviewImageModal] = useState(false);
   const previewFileInputRef = useRef(null);
 
@@ -41,14 +43,17 @@ function SurveyCapture() {
     fetchSurvey();
   }, [id]);
 
-  // If navigated with a specific observation to view, set the viewing index once data loads
+  // If navigated with a specific observation to view, or resuming from a saved position
   useEffect(() => {
-    const targetId = location.state?.viewObservationId;
+    const targetId = location.state?.viewObservationId || localStorage.getItem(`datumise-capture-pos-${id}`);
     if (targetId && survey?.observations) {
-      const idx = survey.observations.findIndex((obs) => obs.id === targetId);
-      if (idx !== -1) setViewingIndex(idx);
+      const idx = survey.observations.findIndex((obs) => obs.id === Number(targetId) || obs.id === targetId);
+      if (idx !== -1) {
+        setViewingIndex(idx);
+      }
+      localStorage.removeItem(`datumise-capture-pos-${id}`);
     }
-  }, [survey?.observations, location.state?.viewObservationId]);
+  }, [survey?.observations, location.state?.viewObservationId, id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,7 +74,36 @@ function SurveyCapture() {
     return `${hours}h ${minutes}m`;
   };
 
-  const pauseSurvey = async () => {
+  const startPauseCountdown = () => {
+    if (pauseCountdown !== null) return;
+    setPauseCountdown(15);
+    let count = 15;
+    pauseTimerRef.current = setInterval(() => {
+      count -= 1;
+      setPauseCountdown(count);
+      if (count <= 0) {
+        clearInterval(pauseTimerRef.current);
+        pauseTimerRef.current = null;
+        executePause();
+      }
+    }, 1000);
+  };
+
+  const cancelPauseCountdown = () => {
+    if (pauseTimerRef.current) {
+      clearInterval(pauseTimerRef.current);
+      pauseTimerRef.current = null;
+    }
+    setPauseCountdown(null);
+  };
+
+  const executePause = async () => {
+    setPauseCountdown(null);
+    if (viewingIndex !== null && observations[viewingIndex]) {
+      localStorage.setItem(`datumise-capture-pos-${id}`, observations[viewingIndex].id);
+    } else {
+      localStorage.removeItem(`datumise-capture-pos-${id}`);
+    }
     try {
       await api.patch(`/api/surveys/${id}/`, { status: "paused" });
     } catch (err) {
@@ -77,6 +111,13 @@ function SurveyCapture() {
     }
     navigate(`/surveys/${id}`);
   };
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pauseTimerRef.current) clearInterval(pauseTimerRef.current);
+    };
+  }, []);
 
   const resumeSurvey = async () => {
     try {
@@ -96,7 +137,7 @@ function SurveyCapture() {
 
   const closeSurvey = () => {
     if (survey?.status === "live") {
-      pauseSurvey();
+      executePause();
     } else {
       goBack();
     }
@@ -230,6 +271,35 @@ function SurveyCapture() {
 
   return (
     <div className="survey-capture">
+      {pauseCountdown !== null && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(44, 62, 80, 0.92)", zIndex: 9999,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: "1.5rem",
+        }}>
+          <div style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 500 }}>
+            Pausing survey in
+          </div>
+          <div style={{ color: "#fef0e0", fontSize: "3.5rem", fontWeight: 700, lineHeight: 1 }}>
+            {pauseCountdown}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); cancelPauseCountdown(); }}
+            className="capture-action-btn"
+            style={{ background: "#d3212f", border: "none", width: "56px", height: "56px", marginTop: "1rem", position: "relative", zIndex: 1 }}
+          >
+            <img src="/datumise-cancel.svg" alt="Cancel" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+          </button>
+          <div
+            onClick={(e) => { e.stopPropagation(); cancelPauseCountdown(); }}
+            style={{ color: "#faf6ef", fontSize: "0.95rem", marginTop: "0.5rem", cursor: "pointer" }}
+          >
+            Tap to cancel
+          </div>
+        </div>
+      )}
       <div className="survey-capture-header">
         <div>
           <div className="fw-semibold" style={{ fontSize: "0.95rem", lineHeight: 1.2 }}>
@@ -409,6 +479,11 @@ function SurveyCapture() {
         )}
         {isViewOnly && viewingIndex === null && (
           <div className="text-center text-muted mt-4">
+            {survey.status === "paused" && survey.is_surveyor && (
+              <button className="btn btn-success btn-sm mb-3" onClick={resumeSurvey}>
+                Resume Survey
+              </button>
+            )}
             <p>Tap an observation to review.</p>
             {observations.length > 0 && (
               <button className="btn btn-outline-secondary btn-sm" onClick={() => setViewingIndex(0)}>
@@ -421,8 +496,8 @@ function SurveyCapture() {
           <div style={viewingIndex !== null ? { display: "none" } : undefined}>
             <ObservationCreateForm
               surveyId={survey.id}
-              onPauseSurvey={pauseSurvey}
-              onClose={pauseSurvey}
+              onPauseSurvey={startPauseCountdown}
+              onClose={startPauseCountdown}
               onSuccess={handleSuccess}
               captureMode
               actionBarTarget={actionBarEl}
@@ -452,6 +527,19 @@ function SurveyCapture() {
       <div className="survey-capture-actions" ref={setActionBarEl}>
         {isViewOnly && viewedObservation && (
           <div className="d-flex align-items-center justify-content-center gap-4 pt-2">
+            {survey.status === "paused" && survey.is_surveyor ? (
+              <button
+                type="button"
+                onClick={resumeSurvey}
+                className="capture-action-btn capture-action-confirm"
+                aria-label="Resume survey"
+                style={{ borderRadius: "50%", fontSize: "0.6rem", fontWeight: 600, color: "#fff", lineHeight: 1.2, textAlign: "center" }}
+              >
+                Resume<br />Survey
+              </button>
+            ) : (
+              <div className="capture-action-btn" style={{ background: "#2c3e50", border: "none", visibility: "hidden" }} />
+            )}
             <button
               type="button"
               onClick={handleStepBack}
@@ -462,6 +550,7 @@ function SurveyCapture() {
             >
               <img src="/datumise_back.svg" alt="" width="20" height="20" />
             </button>
+            <div className="capture-action-btn" style={{ background: "#2c3e50", border: "none", visibility: "hidden" }} />
             <button
               type="button"
               onClick={handleStepForward}
@@ -477,17 +566,6 @@ function SurveyCapture() {
                 height="20"
               />
             </button>
-            {survey.status === "paused" && survey.is_surveyor && (
-              <button
-                type="button"
-                onClick={resumeSurvey}
-                className="capture-action-btn capture-action-confirm"
-                aria-label="Resume survey"
-                style={{ borderRadius: "50%", fontSize: "0.6rem", fontWeight: 600, color: "#fff", lineHeight: 1.2, textAlign: "center" }}
-              >
-                Resume<br />Survey
-              </button>
-            )}
             <button
               type="button"
               onClick={goBack}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import api from "./api/api";
 import BackToTop from "./BackToTop";
@@ -34,18 +34,31 @@ function ObservationList() {
   }, [surveyId, searchTerm]);
 
   const hasScrolled = useRef(false);
-
-  useEffect(() => {
-    const scrollTo = location.state?.scrollToObservation;
-    if (scrollTo && !loading && observations.length > 0 && !hasScrolled.current) {
-      const el = document.getElementById(`obs-${scrollTo}`);
+  const scrollTarget = location.state?.scrollToObservation;
+  const [scrollReady, setScrollReady] = useState(!scrollTarget);
+  const [highlightedObs, setHighlightedObs] = useState(scrollTarget || null);
+  useLayoutEffect(() => {
+    if (scrollTarget && !loading && observations.length > 0 && !hasScrolled.current) {
+      const el = document.getElementById(`obs-${scrollTarget}`);
       if (el) {
         hasScrolled.current = true;
-        el.scrollIntoView({ block: "center" });
-        window.history.replaceState({}, "");
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+      setHighlightedObs(scrollTarget);
+      setScrollReady(true);
+      window.history.replaceState({}, "");
+      const row = el || document.getElementById(`obs-${scrollTarget}`);
+      if (row) {
+        const rowDiv = row.querySelector(".observation-row") || row;
+        rowDiv.style.background = "#9a8255";
+        rowDiv.style.transition = "none";
+        setTimeout(() => {
+          rowDiv.style.transition = "background 2s ease";
+          rowDiv.style.background = "#f0ece4";
+        }, 1000);
       }
     }
-  }, [loading, observations, location.state?.scrollToObservation]);
+  }, [loading, observations, scrollTarget]);
 
   const handleLoadMore = (url) => {
     api
@@ -94,14 +107,15 @@ function ObservationList() {
         <p className="text-muted">No observations found.</p>
       )}
 
-      <div>
+      <div style={{ opacity: scrollReady ? 1 : 0 }}>
         {!loading &&
           observations.map((obs) => (
             <div
               key={obs.id}
               id={`obs-${obs.id}`}
-              className="observation-row"
+              className={`observation-row${highlightedObs === obs.id ? " observation-row-highlight" : ""}`}
               style={{ cursor: "pointer" }}
+              onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
                 obs.survey
                   ? navigate(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id, returnPath: surveyId ? `/observations/survey/${surveyId}` : "/observations" } })

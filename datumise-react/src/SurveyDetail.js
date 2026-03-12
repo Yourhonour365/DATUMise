@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import api from "./api/api";
@@ -43,18 +43,32 @@ useEffect(() => {
 }, [id]);
 
 const hasScrolledRef = useRef(false);
+const scrollTarget = location.state?.scrollToObservation;
+const [scrollReady, setScrollReady] = useState(!scrollTarget);
+const [highlightedObs, setHighlightedObs] = useState(scrollTarget || null);
 
-useEffect(() => {
-  const scrollTo = location.state?.scrollToObservation;
-  if (scrollTo && survey?.observations && !hasScrolledRef.current) {
-    const el = document.getElementById(`obs-${scrollTo}`);
+useLayoutEffect(() => {
+  if (scrollTarget && survey?.observations && !hasScrolledRef.current) {
+    const el = document.getElementById(`obs-${scrollTarget}`);
     if (el) {
       hasScrolledRef.current = true;
-      el.scrollIntoView({ block: "center" });
-      window.history.replaceState({}, "");
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+    setHighlightedObs(scrollTarget);
+    setScrollReady(true);
+    window.history.replaceState({}, "");
+    // Direct DOM highlight: set fill immediately, fade out after 1s
+    const row = document.querySelector(`#obs-${scrollTarget} .observation-row`);
+    if (row) {
+      row.style.background = "#9a8255";
+      row.style.transition = "none";
+      setTimeout(() => {
+        row.style.transition = "background 2s ease";
+        row.style.background = "#f0ece4";
+      }, 1000);
     }
   }
-}, [survey?.observations, location.state?.scrollToObservation]);
+}, [survey?.observations, scrollTarget]);
 
 
     const startSurvey = async () => {
@@ -318,7 +332,7 @@ const formatSurveyDuration = (startTime, _tick) => {
             </p>
           )}
 
-          <div id="observations-list">
+          <div id="observations-list" style={{ opacity: scrollReady ? 1 : 0 }}>
             {survey?.observations?.map((observation, index) => (
               <Link
                 key={observation.id}
@@ -331,7 +345,10 @@ const formatSurveyDuration = (startTime, _tick) => {
                 }
                 className="text-decoration-none text-dark"
               >
-                <div className="observation-row">
+                <div
+                  className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
+                  onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
+                >
                   {observation.image ? (
                     <img
                       src={observation.image}
