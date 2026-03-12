@@ -374,7 +374,7 @@ function ObservationCreateForm(props) {
           </div>
         )}
         {props.isViewingPrevious && <div style={{ height: "16px", marginBottom: "0.25rem" }} />}
-        <div className="d-flex align-items-center justify-content-center gap-4">
+        <div className={`d-flex align-items-center justify-content-center ${props.isViewingPrevious ? "capture-actions-compact" : "gap-4"}`}>
           <button
             type="button"
             onClick={() => props.onStepBack?.()}
