@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
 
 function SurveyDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showObservationModal, setShowObservationModal] = useState(false);
@@ -66,6 +67,11 @@ useEffect(() => {
       status: "live",
     });
     setSurvey(response.data);
+    if (window.innerWidth < 992) {
+      navigate(`/surveys/${id}/capture`);
+    } else {
+      setShowObservationModal(true);
+    }
   } catch (err) {
     console.log(err);
   }
