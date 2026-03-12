@@ -14,6 +14,114 @@ code {
 
 
 /* ==========================================================
+   App navigation – responsive header
+   ========================================================== */
+
+/* Desktop nav: visible >= 768px */
+.app-nav-desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .app-nav-desktop {
+    display: flex;
+  }
+  .app-nav-mobile {
+    display: none !important;
+  }
+}
+
+/* Mobile header: visible < 768px */
+.app-nav-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.app-nav-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.app-nav-icon-btn:active {
+  background: #e9ecef;
+}
+
+.app-nav-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #212529;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  flex: 1;
+  padding: 0 0.5rem;
+}
+
+/* Menu dropdown */
+.app-nav-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.app-nav-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+  padding: 0.35rem 0;
+  z-index: 1040;
+}
+
+.app-nav-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: #212529;
+  text-decoration: none;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-nav-dropdown-item:active {
+  background: #f8f9fa;
+}
+
+.app-nav-dropdown-danger {
+  color: #dc3545;
+}
+
+.app-nav-dropdown-divider {
+  height: 1px;
+  background: #e9ecef;
+  margin: 0.25rem 0;
+}
+
+
+/* ==========================================================
    Observation modal – desktop only (>= 992px)
    Applied via dialogClassName="observation-modal"
    ========================================================== */
@@ -257,4 +365,84 @@ code {
   font-size: 0.7rem;
   color: #adb5bd;
   margin-top: 0.15rem;
+}
+
+
+/* ==========================================================
+   Survey List – 3-line queue cards
+   ========================================================== */
+
+.survey-queue-card {
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+.survey-queue-card:hover {
+  background: #f8f9fa;
+}
+
+/* Line 1: schedule / urgency – small muted text */
+.survey-queue-line1 {
+  font-size: 0.72rem;
+  color: #6c757d;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survey-queue-flags {
+  margin-left: 0.35rem;
+}
+
+/* Line 2: client / site – primary identifier */
+.survey-queue-line2 {
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.1rem;
+}
+
+/* Line 3: surveyor / obs / action – flex row */
+.survey-queue-line3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  margin-top: 0.15rem;
+}
+
+.survey-queue-surveyor {
+  color: #6c757d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.survey-queue-obs {
+  color: #adb5bd;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.survey-queue-action {
+  flex-shrink: 0;
+  min-width: 56px;
+  text-align: right;
+}
+
+.survey-queue-btn {
+  font-size: 0.72rem !important;
+  padding: 0.15rem 0.5rem !important;
+}
+
+.survey-queue-status-text {
+  font-size: 0.72rem;
+  color: #6c757d;
 }

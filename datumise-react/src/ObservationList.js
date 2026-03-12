@@ -1,211 +1,138 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "./api/api";
-import { useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
 
 function ObservationList() {
   const [observations, setObservations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [nextPage, setNextPage] = useState(null);
   const navigate = useNavigate();
-  const [previousPage, setPreviousPage] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
+  const [nextPage, setNextPage] = useState(null);
   const { surveyId } = useParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get(
-        surveyId
-            ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
-            : `/api/observations/?search=${searchTerm}`
-    )
+    const url = surveyId
+      ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
+      : `/api/observations/?search=${searchTerm}`;
+
+    api
+      .get(url)
       .then((response) => {
         setObservations(response.data.results);
         setNextPage(response.data.next);
-        setPreviousPage(response.data.previous);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error("Error fetching observations:", error);
+      .catch((err) => {
+        console.error("Error fetching observations:", err);
         setError("You must be logged in to view observations.");
         setLoading(false);
       });
   }, [surveyId, searchTerm]);
 
-  const handlePageChange = (url) => {
-    window.scrollTo(0, 0);
-    setLoading(true);
-
-    api.get(url)
+  const handleLoadMore = (url) => {
+    api
+      .get(url)
       .then((response) => {
-        setObservations(response.data.results);
+        setObservations((prev) => [...prev, ...response.data.results]);
         setNextPage(response.data.next);
-        setPreviousPage(response.data.previous);
-        setLoading(false);
       })
-      .catch((error) => {
-        console.error("Error fetching paginated observations:", error);
+      .catch((err) => {
+        console.error("Error fetching observations:", err);
       });
   };
 
   return (
-    <div className="container mt-5">
-
+    <div className="container mt-3">
+      {/* ---- Search toolbar ---- */}
+      <div className="d-flex gap-2 mb-2 align-items-center flex-wrap">
         <input
-            type="text"
-            className="form-control mb-3"
-            placeholder="Search observations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          type="text"
+          className="form-control form-control-sm"
+          placeholder="Search observations..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ maxWidth: "220px" }}
         />
-        <button
-            className="btn btn-outline-secondary btn-sm mb-3"
+        {searchTerm && (
+          <button
+            className="btn btn-outline-secondary btn-sm"
             onClick={() => setSearchTerm("")}
-            >
-            Clear Search
-        </button>
-        
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="mb-3">Observations ({observations.length})</h3>
-        {error && <p className="text-danger">{error}</p>}
-        <Link to="/observations/create" className="btn btn-primary btn-sm">
-          + New Observation
-        </Link>
+          >
+            Clear
+          </button>
+        )}
       </div>
 
-      {loading && <p>Loading observations...</p>}
+      <h6 className="mb-2">
+        Observations
+        <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
+          ({observations.length})
+        </span>
+      </h6>
 
+      {error && <p className="text-danger">{error}</p>}
+      {loading && <p>Loading observations...</p>}
       {!loading && !error && observations.length === 0 && (
-        <p>No observations yet.</p>
+        <p className="text-muted">No observations found.</p>
       )}
 
-      <div style={{ minHeight: "760px" }}>
-      {!loading && observations.map((obs) => (
-        
-        
-        
-        <div
-            key={obs.id}
-            className="card mb-3 shadow-sm"
-            style={{
-                minHeight: "170px",
-                transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                borderColor: hoveredId === obs.id ? "#adb5bd" : "",
-                boxShadow: hoveredId === obs.id ? "0 6px 16px rgba(0,0,0,0.15)" : "",
-            }}
-            onMouseEnter={() => setHoveredId(obs.id)}
-            onMouseLeave={() => setHoveredId(null)}
-        >
-          <div className="card-body d-flex gap-3 align-items-center"
-          style={{ cursor: "pointer" }}
-          onClick={() => navigate(`/observations/${obs.id}`)}
-          >
-            <div style={{ width: "120px", height: "120px", flexShrink: 0 }}>
-                <Link to={`/observations/${obs.id}`}>
-                    <img
-                    src={obs.image || "/datumise-placeholder.svg"}
-                    alt={obs.title}
-                    className="img-fluid rounded"
-                    style={{
-                        width: "120px",
-                        height: "120px",
-                        objectFit: obs.image ? "cover" : "contain",
-                        opacity: obs.image ? 1 : 0.7,
-                    }}
-                    />
-                </Link>
+      <div>
+        {!loading &&
+          observations.map((obs) => (
+            <div
+              key={obs.id}
+              className="observation-row"
+              style={{ cursor: "pointer" }}
+              onClick={() =>
+                obs.survey
+                  ? navigate(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id } })
+                  : navigate(`/observations/${obs.id}`)
+              }
+            >
+              {obs.image ? (
+                <img
+                  src={obs.image}
+                  alt=""
+                  className="observation-row-thumb"
+                />
+              ) : (
+                <div className="observation-row-thumb observation-row-thumb-empty">
+                  <span style={{ fontSize: "0.65rem" }}>No img</span>
                 </div>
-
-            <div style={{ flex: 1 }}>
-              <h5>
-
-                <Link
-                    to={`/observations/${obs.id}`}
-                    style={{
-                        wordBreak: "break-word",
-                        overflowWrap: "anywhere",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",                        
-                    }}
-                    >
-                    {obs.title}
-                </Link>
-              
-              </h5>
-
-              <p
-                style={{
-                    wordBreak: "break-word",
-                    marginBottom: "0.25rem",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 1,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                }}
-                >
-                {obs.description.slice(0, 120).split(" ").slice(0, -1).join(" ")}
-                {obs.description.length > 120 && "..."}
-             </p>
-                {obs.survey_name && (
-                    <small className="text-muted d-block mb-1">
-                        Survey: {obs.survey_name}
-                    </small>
-                    )}
-              <small>
-                <Link
-                    to={`/observations/${obs.id}#comment-form`}
-                    className="text-decoration-underline"
-                    
-                    onClick={(e) => e.stopPropagation()}
-                >
-                  💬 {
-                    obs.comment_count === 0
-                      ? "Add first comment"
-                      : obs.comment_count === 1
-                      ? "1 comment"
-                      : `${obs.comment_count} comments`
-                  }
-                </Link>
-              </small>
-              <br />
-              <small className="text-muted">
-                {obs.owner} •{" "}
-                {new Date(obs.created_at).toLocaleString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </small>
+              )}
+              <div className="observation-row-content">
+                <div className="observation-row-title">{obs.title}</div>
+                {obs.description && (
+                  <div className="observation-row-desc">{obs.description}</div>
+                )}
+                <div className="observation-row-meta">
+                  {obs.survey_name && <span>{obs.survey_name}</span>}
+                  <span>
+                    {new Date(obs.created_at).toLocaleString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span>{obs.owner || "Unassigned"}</span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      ))}
-    </div>
-      <div className="d-flex justify-content-center gap-2 mt-4 mb-4">
-        {previousPage && (
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => handlePageChange(previousPage)}
-          >
-            Prev
-          </button>
-        )}
-
-        {nextPage && (
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => handlePageChange(nextPage)}
-          >
-            Next
-          </button>
-        )}
+          ))}
       </div>
+
+      {nextPage && (
+        <div className="text-center mt-3 mb-3">
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => handleLoadMore(nextPage)}
+          >
+            Load more
+          </button>
+        </div>
+      )}
     </div>
   );
 }
