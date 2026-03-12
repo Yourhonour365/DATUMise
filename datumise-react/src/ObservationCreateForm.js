@@ -234,9 +234,13 @@ function ObservationCreateForm(props) {
               }}
             />
 
-            <small className="text-muted d-block mt-1">
+            <small
+              className={`d-block mt-1 ${title.length >= 100 ? "text-warning" : "text-muted"}`}
+              style={{ fontSize: "0.72rem" }}
+            >
               {title.length} / 120
             </small>
+
           </fieldset>
         </div>
 
@@ -274,9 +278,20 @@ function ObservationCreateForm(props) {
           </div>
 
 
+           <div
+              className="text-danger text-end pe-2"
+              style={{
+                fontSize: "0.75rem",
+                minHeight: "18px",
+                opacity: title.trim() || imagePreview ? 1 : 0,
+                transition: "opacity 0.25s ease",
+              }}
+            >
+              {!imagePreview && title.trim() && "Add image to proceed"}
+              {imagePreview && !title.trim() && "Add Observation"}
+            </div>
 
-
-          <div className="d-flex align-items-center justify-content-between mt-3">
+          <div className="d-flex align-items-center justify-content-between mt-0">
           
             <Button
               variant="warning"
@@ -314,7 +329,7 @@ function ObservationCreateForm(props) {
           <Button
             variant="primary"
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !imagePreview || !title.trim()}
           >
             {isSubmitting ? "Saving..." : "✓ Save & Next"}
           </Button>
@@ -348,6 +363,19 @@ function ObservationCreateForm(props) {
       </Modal.Body>
 
       <Modal.Footer>
+        
+        <Button
+          variant="primary"
+          onClick={() => setShowImagePreviewModal(false)}
+        >
+          Keep image & close
+        </Button>
+        
+        
+        
+        
+        
+        
         <Button
           variant="secondary"
           onClick={() => {
@@ -363,6 +391,7 @@ function ObservationCreateForm(props) {
           onClick={() => {
             setImage(null);
             setImagePreview("");
+            localStorage.removeItem("datumise-observation-image");
             setShowImagePreviewModal(false);
           }}
         >
