@@ -301,26 +301,49 @@ const formatSurveyDuration = (startTime, _tick) => {
           centered
         >
           <Modal.Header closeButton className="px-3">
+              
+              
               <Modal.Title>
                   Add Observation #{observationCount + 1}
 
                   <span
-                    className={
-                      observationSuccess
-                        ? "ms-2 text-success fw-light fst-italic"
-                        : "text-muted ms-2"
-                    }
+                    className="ms-3"
                     style={{
-                      fontSize: observationSuccess ? "0.8rem" : "0.72rem",
-                      transition: "opacity 1.2s ease",
-                      opacity: observationSuccess && observationFading ? 0 : 1,
+                      display: "inline-grid",
+                      minWidth: "150px",
+                      verticalAlign: "baseline",
                     }}
                   >
-                    {observationSuccess
-                      ? "observation added"
-                      : `• Duration ${formatSurveyDuration(survey?.created_at, durationTick)}`}
+                    <span
+                      className="text-muted"
+                      style={{
+                        gridArea: "1 / 1",
+                        fontSize: "0.72rem",
+                        lineHeight: "1",
+                        opacity: observationSuccess ? 0 : 1,
+                        transition: "opacity 0.9s ease",
+                      }}
+                    >
+                      Duration {formatSurveyDuration(survey?.created_at, durationTick)}
+                    </span>
+
+                    <span
+                      className="text-success fw-light"
+                      style={{
+                        gridArea: "1 / 1",
+                        fontSize: "0.72rem",
+                        lineHeight: "1",
+                        opacity: observationSuccess ? 1 : 0,
+                        transition: "opacity 0.9s ease",
+                      }}
+                    >
+                      Observation Added
+                    </span>
                   </span>
                 </Modal.Title>
+            
+            
+            
             </Modal.Header>
               <Modal.Body className="pt-2 pb-3">
                 <ObservationCreateForm 
@@ -341,7 +364,11 @@ const formatSurveyDuration = (startTime, _tick) => {
 
                     fetchSurvey();
 
-                    setObservationSuccess(true);
+                    setObservationSuccess(false);
+
+                    setTimeout(() => {
+                      setObservationSuccess(true);
+                    }, 300);
                     setObservationFading(false);
 
                     setTimeout(() => {
