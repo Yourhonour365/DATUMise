@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Observation, Comment, Survey
+from .models import Observation, Comment, Survey, Client, ClientSite
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from django.contrib.auth.models import User
 
@@ -187,3 +187,19 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class ClientSiteSerializer(serializers.ModelSerializer):
+    client_name = serializers.ReadOnlyField(source="client.name")
+    survey_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ClientSite
+        fields = ["id", "client", "client_name", "name", "address", "survey_count", "created_at"]
+
+
+class ClientSerializer(serializers.ModelSerializer):
+    site_count = serializers.IntegerField(read_only=True)
+    survey_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Client
+        fields = ["id", "name", "site_count", "survey_count", "created_at"]
