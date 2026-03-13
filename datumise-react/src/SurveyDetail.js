@@ -249,7 +249,10 @@ const formatSurveyDuration = (startTime, _tick) => {
                 </>
               )}
               {survey.status === "paused" && survey.is_surveyor && survey.assigned_to && (
-                <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
+                <>
+                  <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
+                  <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
+                </>
               )}
               <Link
                 to={`/surveys/${id}/edit`}

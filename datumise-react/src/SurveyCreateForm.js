@@ -34,9 +34,11 @@ function SurveyCreateForm() {
       .catch((err) => console.error("Failed to load options:", err));
   }, []);
 
+  const activeClients = clients.filter((c) => c.status === "active");
+  const activeSites = sites.filter((s) => s.status === "active");
   const filteredSites = form.client
-    ? sites.filter((s) => s.client === parseInt(form.client))
-    : sites;
+    ? activeSites.filter((s) => s.client === parseInt(form.client))
+    : [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,7 +81,7 @@ function SurveyCreateForm() {
           <legend className="edit-legend">Client</legend>
           <select className="edit-field" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value, site: "" })}>
             <option value="">-- Select --</option>
-            {clients.map((c) => (
+            {activeClients.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -117,12 +119,12 @@ function SurveyCreateForm() {
 
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.scheduled_for ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Scheduled for</legend>
-          <input type="datetime-local" className="edit-field" value={form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} />
+          <input type={form.schedule_type === "pending" ? "date" : "datetime-local"} className="edit-field" value={form.schedule_type === "pending" ? form.scheduled_for.slice(0, 10) : form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} />
         </fieldset>
 
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.due_by ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Due by</legend>
-          <input type="datetime-local" className="edit-field" value={form.due_by} onChange={(e) => setForm({ ...form, due_by: e.target.value })} />
+          <input type={form.schedule_type === "pending" ? "date" : "datetime-local"} className="edit-field" value={form.schedule_type === "pending" ? form.due_by.slice(0, 10) : form.due_by} onChange={(e) => setForm({ ...form, due_by: e.target.value })} />
         </fieldset>
 
         <fieldset className="edit-fieldset mb-3" style={{ backgroundColor: form.notes.trim() ? "#f0ece4" : "#ecf0f1" }}>

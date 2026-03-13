@@ -55,9 +55,18 @@ function SurveyEditForm() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const activeClients = clients.filter((c) => c.status === "active");
+  const activeSites = sites.filter((s) => s.status === "active");
   const filteredSites = form.client
-    ? sites.filter((s) => s.client === parseInt(form.client))
-    : sites;
+    ? activeSites.filter((s) => s.client === parseInt(form.client))
+    : [];
+
+  const clientOptions = form.client && !activeClients.some((c) => c.id === parseInt(form.client))
+    ? [...activeClients, ...clients.filter((c) => c.id === parseInt(form.client))]
+    : activeClients;
+  const siteOptions = form.site && !filteredSites.some((s) => s.id === parseInt(form.site))
+    ? [...filteredSites, ...sites.filter((s) => s.id === parseInt(form.site))]
+    : filteredSites;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,9 +103,9 @@ function SurveyEditForm() {
 
   return (
     <div className="container mt-3 px-3">
-      <div className="mb-3 d-none d-md-block">
-        <Link to={`/surveys/${id}`} className="text-decoration-none">
-          &larr; Back to Survey
+      <div className="mb-3">
+        <Link to="/surveys" className="text-decoration-none">
+          &larr; Back to Surveys
         </Link>
       </div>
       <h5 className="fw-bold mb-3 d-none d-md-block">Edit Survey</h5>
@@ -108,8 +117,8 @@ function SurveyEditForm() {
           <legend className="edit-legend">Client</legend>
           <select className="edit-field" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value, site: "" })}>
             <option value="">-- Select --</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {clientOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}{c.status !== "active" ? " (archived)" : ""}</option>
             ))}
           </select>
         </fieldset>
@@ -118,8 +127,8 @@ function SurveyEditForm() {
           <legend className="edit-legend">Site</legend>
           <select className="edit-field" value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
             <option value="">-- Select --</option>
-            {filteredSites.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+            {siteOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}{s.status !== "active" ? " (archived)" : ""}</option>
             ))}
           </select>
         </fieldset>
@@ -146,12 +155,12 @@ function SurveyEditForm() {
 
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.scheduled_for ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Scheduled for</legend>
-          <input type="datetime-local" className="edit-field" value={form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} />
+          <input type={form.schedule_type === "pending" ? "date" : "datetime-local"} className="edit-field" value={form.schedule_type === "pending" ? form.scheduled_for.slice(0, 10) : form.scheduled_for} onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })} />
         </fieldset>
 
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.due_by ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Due by</legend>
-          <input type="datetime-local" className="edit-field" value={form.due_by} onChange={(e) => setForm({ ...form, due_by: e.target.value })} />
+          <input type={form.schedule_type === "pending" ? "date" : "datetime-local"} className="edit-field" value={form.schedule_type === "pending" ? form.due_by.slice(0, 10) : form.due_by} onChange={(e) => setForm({ ...form, due_by: e.target.value })} />
         </fieldset>
 
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.notes.trim() ? "#f0ece4" : "#ecf0f1" }}>
