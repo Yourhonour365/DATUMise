@@ -21,6 +21,7 @@ function SurveyCapture() {
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const pauseTimerRef = useRef(null);
   const [showPreviewImageModal, setShowPreviewImageModal] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const previewFileInputRef = useRef(null);
 
   const fetchSurvey = async () => {
@@ -75,7 +76,7 @@ function SurveyCapture() {
   };
 
   const startPauseCountdown = () => {
-    if (pauseCountdown !== null) return;
+    if (pauseCountdown !== null || pauseTimerRef.current) return;
     setPauseCountdown(15);
     let count = 15;
     pauseTimerRef.current = setInterval(() => {
@@ -217,10 +218,8 @@ function SurveyCapture() {
     setIsSavingEdit(true);
     try {
       const formData = new FormData();
-      formData.append("title", viewedObservation.title);
-      formData.append("description", viewedObservation.description || "");
       formData.append("image", file);
-      const response = await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
+      const response = await api.patch(`/api/observations/${viewedObservation.id}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSurvey((prev) => ({
@@ -229,6 +228,7 @@ function SurveyCapture() {
           obs.id === viewedObservation.id ? { ...obs, image: response.data.image } : obs
         ),
       }));
+      setPreviewImageUrl(response.data.image);
       setShowPreviewImageModal(true);
     } catch (err) {
       console.error("Failed to replace image:", err);
@@ -241,13 +241,7 @@ function SurveyCapture() {
     if (!viewedObservation) return;
     setIsSavingEdit(true);
     try {
-      const formData = new FormData();
-      formData.append("title", viewedObservation.title);
-      formData.append("description", viewedObservation.description || "");
-      formData.append("image", "");
-      await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.patch(`/api/observations/${viewedObservation.id}/`, { image: null });
       setSurvey((prev) => ({
         ...prev,
         observations: prev.observations.map((obs) =>
@@ -353,33 +347,19 @@ function SurveyCapture() {
       <div className="survey-capture-body">
         {viewedObservation && (
           <div className="observation-preview">
-            <small className="text-muted d-block" style={{ fontSize: "0.7rem", paddingTop: "0.15rem", paddingBottom: "0.15rem" }}>
-              {new Date(viewedObservation.created_at).toLocaleString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              {viewedObservation.owner && ` • ${viewedObservation.owner}`}
-            </small>
-
             {viewedObservation.image ? (
               <img
                 src={viewedObservation.image}
                 alt={viewedObservation.title}
-                className="rounded mb-3"
-                onClick={() => setShowPreviewImageModal(true)}
-                style={{ width: "100%", height: "220px", objectFit: "cover", cursor: "pointer" }}
+                className="observation-preview-image rounded mb-3"
+                onClick={() => { setPreviewImageUrl(viewedObservation.image); setShowPreviewImageModal(true); }}
               />
             ) : isLive ? (
               <div
                 onClick={() => previewFileInputRef.current?.click()}
-                className="mb-3"
+                className="observation-preview-placeholder mb-3"
                 style={{
-                  width: "100%",
-                  height: "220px",
-                  border: "1px dashed #bbb",
+                  border: "2px solid #008000",
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
@@ -394,10 +374,8 @@ function SurveyCapture() {
               </div>
             ) : (
               <div
-                className="mb-3"
+                className="observation-preview-placeholder mb-3"
                 style={{
-                  width: "100%",
-                  height: "220px",
                   border: "1px dashed #bbb",
                   borderRadius: "8px",
                   display: "flex",
@@ -408,6 +386,22 @@ function SurveyCapture() {
               >
                 <span className="text-muted">No image</span>
               </div>
+            )}
+
+            <small className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+              {new Date(viewedObservation.created_at).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              {viewedObservation.owner && ` • ${viewedObservation.owner}`}
+            </small>
+            {(survey.client || survey.site) && (
+              <small className="text-muted d-block" style={{ fontSize: "0.7rem", paddingBottom: "0.25rem" }}>
+                {survey.client}{survey.client && survey.site && " • "}{survey.site}
+              </small>
             )}
 
             {/* Observation field */}
@@ -501,8 +495,8 @@ function SurveyCapture() {
               onSuccess={handleSuccess}
               captureMode
               actionBarTarget={actionBarEl}
-              onStepBack={canStepBack ? handleStepBack : null}
-              onStepForward={viewingIndex !== null ? handleStepForward : null}
+              onStepBack={canStepBack && !(viewingIndex !== null && viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())) ? handleStepBack : null}
+              onStepForward={viewingIndex !== null && !(viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())) ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={(() => {
                 const draft = localStorage.getItem("datumise-observation-draft");
@@ -519,6 +513,9 @@ function SurveyCapture() {
                   }
                 };
               })()}
+              previousObsIncomplete={viewingIndex !== null && viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())}
+              previousObsMissingImage={viewingIndex !== null && viewedObservation && !viewedObservation.image}
+              previousObsMissingTitle={viewingIndex !== null && viewedObservation && !viewedObservation.title?.trim()}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
             />
           </div>
@@ -601,9 +598,9 @@ function SurveyCapture() {
           <small className="text-muted">Image preview</small>
         </Modal.Header>
         <Modal.Body className="text-center p-1" style={{ background: "#2c3e50" }}>
-          {viewedObservation?.image && (
+          {previewImageUrl && (
             <img
-              src={viewedObservation.image}
+              src={previewImageUrl}
               alt="Observation"
               className="img-fluid"
               style={{ maxHeight: "80vh", objectFit: "contain" }}
@@ -611,27 +608,31 @@ function SurveyCapture() {
           )}
         </Modal.Body>
         <Modal.Footer className="justify-content-center gap-4">
-          <button
-            type="button"
-            onClick={handleDeleteImage}
-            disabled={isSavingEdit}
-            className="capture-action-btn capture-action-danger"
-            aria-label="Delete image"
-          >
-            <img src="/datumise_delete.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowPreviewImageModal(false);
-              previewFileInputRef.current?.click();
-            }}
-            className="capture-action-btn"
-            aria-label="Replace image"
-            style={{ background: "#FF7518", border: "none" }}
-          >
-            <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-          </button>
+          {isLive && (
+            <>
+              <button
+                type="button"
+                onClick={handleDeleteImage}
+                disabled={isSavingEdit}
+                className="capture-action-btn capture-action-danger"
+                aria-label="Delete image"
+              >
+                <img src="/datumise_delete.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPreviewImageModal(false);
+                  previewFileInputRef.current?.click();
+                }}
+                className="capture-action-btn"
+                aria-label="Replace image"
+                style={{ background: "#FF7518", border: "none" }}
+              >
+                <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setShowPreviewImageModal(false)}
