@@ -317,6 +317,12 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
                     {"assigned_to": "Cannot unassign a survey unless it is planned or cancelled."}
                 )
 
+        if "assigned_to" in attrs and attrs["assigned_to"] is not None:
+            if attrs["assigned_to"].profile.role != "surveyor":
+                raise serializers.ValidationError(
+                    {"assigned_to": "Only surveyors can be assigned to surveys."}
+                )
+
         # Resolve client and site from payload or existing instance
         if "client" in attrs:
             new_client = attrs["client"]

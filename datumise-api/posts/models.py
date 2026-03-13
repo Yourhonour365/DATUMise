@@ -57,6 +57,7 @@ class Client(models.Model):
     contact_phone = models.CharField(max_length=50, blank=True)
     billing_address = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
+    is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

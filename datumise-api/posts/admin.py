@@ -24,6 +24,22 @@ class ObservationAdmin(admin.ModelAdmin):
     
 admin.site.register(Comment)
 
-admin.site.register(Client)
+@admin.register(Client)
+class ClientAdmin(admin.ModelAdmin):
+    list_display = ("name", "client_type", "status", "is_demo")
+    list_filter = ("status", "is_demo")
+    fields = (
+        "name", "client_type", "account_manager",
+        "contact_name", "contact_email", "contact_phone",
+        "billing_address", "status", "is_demo",
+    )
+    actions = ["delete_demo_data"]
+
+    @admin.action(description="Delete demo clients and all related data")
+    def delete_demo_data(self, request, queryset):
+        demo_clients = Client.objects.filter(is_demo=True)
+        count = demo_clients.count()
+        demo_clients.delete()
+        self.message_user(request, f"Deleted {count} demo client(s) and all related data.")
 admin.site.register(ClientSite)
 admin.site.register(ClientContact)
