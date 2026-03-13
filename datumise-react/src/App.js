@@ -1,22 +1,55 @@
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import api from "./api/api";
-import ObservationCreateForm from "./ObservationCreateForm";
 import ObservationDetail from "./ObservationDetail";
-import ObservationEditForm from "./ObservationEditForm";
 import ObservationList from "./ObservationList";
 import SurveyList from "./SurveyList";
 import SurveyDetail from "./SurveyDetail";
 import SurveyCapture from "./SurveyCapture";
+import SurveyCreateForm from "./SurveyCreateForm";
+import SurveyEditForm from "./SurveyEditForm";
 import Register from "./Register";
 import Login from "./Login";
 import ClientList from "./ClientList";
+import ClientDetail from "./ClientDetail";
+import SiteDetail from "./SiteDetail";
+import TeamList from "./TeamList";
+import TeamDetail from "./TeamDetail";
+import TeamEditForm from "./TeamEditForm";
+import ClientEditForm from "./ClientEditForm";
+import Filters from "./Filters";
+import Settings from "./Settings";
+import { FilterProvider } from "./FilterContext";
 
 function Home() {
   return (
-    <div className="container mt-5">
-      <h1>DATUMise Observations</h1>
-      <p>Structured site observations platform.</p>
+    <div className="container mt-4 px-3">
+      <div className="d-flex flex-wrap gap-3">
+        <Link to="/clients" className="dashboard-tile">
+          <img src="/datumise-clients.svg" alt="" width="28" height="28" />
+          <span>Clients</span>
+        </Link>
+        <Link to="/filters" className="dashboard-tile">
+          <img src="/datumise-filter.svg" alt="" width="28" height="28" />
+          <span>Filters</span>
+        </Link>
+        <Link to="/observations" className="dashboard-tile">
+          <img src="/datumise-observations.svg" alt="" width="28" height="28" />
+          <span>Observations</span>
+        </Link>
+        <Link to="/settings" className="dashboard-tile">
+          <img src="/datumise-settings.svg" alt="" width="28" height="28" />
+          <span>Settings</span>
+        </Link>
+        <Link to="/surveys" className="dashboard-tile">
+          <img src="/datumise-surveys.svg" alt="" width="28" height="28" />
+          <span>Surveys</span>
+        </Link>
+        <Link to="/team" className="dashboard-tile">
+          <img src="/datumise-surveyors.svg" alt="" width="28" height="28" />
+          <span>Team</span>
+        </Link>
+      </div>
     </div>
   );
 }
@@ -29,13 +62,21 @@ function useScreenTitle() {
 
   if (pathname === "/") return "DATUMise";
   if (pathname === "/clients") return "Clients";
+  if (/^\/clients\/\d+$/.test(pathname)) return "Client";
+  if (/^\/sites\/\d+$/.test(pathname)) return "Site";
   if (pathname === "/surveys") return "Surveys";
+  if (pathname === "/surveys/create") return "New Survey";
+  if (/^\/surveys\/\d+\/edit$/.test(pathname)) return "Edit Survey";
   if (/^\/surveys\/\d+$/.test(pathname)) return "Survey";
   if (pathname === "/observations") return "Observations";
   if (/^\/observations\/survey\/\d+$/.test(pathname)) return "Observations";
   if (/^\/observations\/\d+$/.test(pathname)) return "Observation";
-  if (/^\/observations\/\d+\/edit$/.test(pathname)) return "Edit Observation";
-  if (pathname === "/observations/create") return "New Observation";
+  if (pathname === "/team") return "Team";
+  if (/^\/team\/\d+$/.test(pathname)) return "Team Member";
+  if (/^\/team\/\d+\/edit$/.test(pathname)) return "Edit Team Member";
+  if (/^\/clients\/\d+\/edit$/.test(pathname)) return "Edit Client";
+  if (pathname === "/filters") return "Filters";
+  if (pathname === "/settings") return "Settings";
   if (pathname === "/login") return "Login";
   if (pathname === "/register") return "Register";
   return "DATUMise";
@@ -102,11 +143,20 @@ function AppLayout() {
         <Link className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>
           Clients
         </Link>
-        <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
-          Surveys
+        <Link className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>
+          Filters
         </Link>
         <Link className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>
           Observations
+        </Link>
+        <Link className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>
+          Settings
+        </Link>
+        <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
+          Surveys
+        </Link>
+        <Link className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>
+          Team
         </Link>
         <div className="ms-auto">
           {isLoggedIn ? (
@@ -154,11 +204,20 @@ function AppLayout() {
               <Link to="/clients" className="app-nav-dropdown-item">
                 Clients
               </Link>
-              <Link to="/surveys" className="app-nav-dropdown-item">
-                Surveys
+              <Link to="/filters" className="app-nav-dropdown-item">
+                Filters
               </Link>
               <Link to="/observations" className="app-nav-dropdown-item">
                 Observations
+              </Link>
+              <Link to="/settings" className="app-nav-dropdown-item">
+                Settings
+              </Link>
+              <Link to="/surveys" className="app-nav-dropdown-item">
+                Surveys
+              </Link>
+              <Link to="/team" className="app-nav-dropdown-item">
+                Team
               </Link>
               <div className="app-nav-dropdown-divider" />
               {isLoggedIn ? (
@@ -190,12 +249,20 @@ function AppLayout() {
         <Route path="/register" element={<Register />} />
         <Route path="/observations" element={<ObservationList />} />
         <Route path="/observations/survey/:surveyId" element={<ObservationList />} />
-        <Route path="/observations/create" element={<ObservationCreateForm />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
-        <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
         <Route path="/clients" element={<ClientList />} />
+        <Route path="/clients/:id" element={<ClientDetail />} />
+        <Route path="/clients/:id/edit" element={<ClientEditForm />} />
+        <Route path="/sites/:id" element={<SiteDetail />} />
         <Route path="/surveys" element={<SurveyList />} />
+        <Route path="/surveys/create" element={<SurveyCreateForm />} />
+        <Route path="/surveys/:id/edit" element={<SurveyEditForm />} />
         <Route path="/surveys/:id" element={<SurveyDetail />} />
+        <Route path="/team" element={<TeamList />} />
+        <Route path="/team/:id" element={<TeamDetail />} />
+        <Route path="/team/:id/edit" element={<TeamEditForm />} />
+        <Route path="/filters" element={<Filters />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </>
   );
@@ -204,7 +271,9 @@ function AppLayout() {
 function App() {
   return (
     <Router>
-      <AppLayout />
+      <FilterProvider>
+        <AppLayout />
+      </FilterProvider>
     </Router>
   );
 }

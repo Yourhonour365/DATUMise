@@ -192,7 +192,7 @@ const handleCommentLike = async (commentId) => {
 
   return (
     <Container className="mt-4">
-      <div className="mb-3">
+      <div className="mb-3 d-none d-md-block">
         {location.state?.fromSurvey ? (
           <Link
             to={`/surveys/${location.state.surveyId}`}
@@ -268,10 +268,6 @@ const handleCommentLike = async (commentId) => {
             {observation.is_owner && (
               <>
                 <div className="d-flex gap-2">
-                  <Button as={Link} to={`/observations/${id}/edit`} variant="primary">
-                    Edit Observation
-                  </Button>
-
                   <Button
                     variant="secondary"
                     onClick={() => fileInputRef.current?.click()}

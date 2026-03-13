@@ -166,6 +166,11 @@ const formatSurveyDuration = (startTime, _tick) => {
 
   return (
     <div className="container mt-3">
+      <div className="mb-3 d-none d-md-block">
+        <Link to="/surveys" className="text-decoration-none">
+          &larr; Back to Surveys
+        </Link>
+      </div>
 
       {!localStorage.getItem("token") && (
         <p className="text-muted">Please log in to view survey details.</p>
@@ -181,21 +186,27 @@ const formatSurveyDuration = (startTime, _tick) => {
               <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2 }}>
                 {(() => {
                   const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
-                  if (!scheduled) return "Unscheduled";
+                  const schedType = survey.schedule_type || "pending";
+                  if (schedType === "pending") return "Pending";
+                  if (schedType === "self_scheduling") return "Self-scheduled";
+                  if (!scheduled) return survey.schedule_type_display || "Pending";
                   const dateStr = scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                  if (schedType === "provisional") return `${dateStr} \u00B7 Provisional`;
                   const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
-                  if (!hasTime) return `${dateStr} \u00B7 Provisional`;
-                  const timeStr = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-                  return `${dateStr} \u00B7 ${timeStr}`;
+                  const timeStr = hasTime
+                    ? scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                    : "";
+                  return timeStr ? `${dateStr} \u00B7 ${timeStr}` : dateStr;
                 })()}
               </span>
               {survey.status !== "paused" && (
                 <span
                   className={`badge ${
-                    survey.status === "created" ? "bg-secondary" :
+                    survey.status === "planned" ? "bg-secondary" :
                     survey.status === "live" ? "bg-success" :
-                    survey.status === "completed" ? "bg-primary" :
-                    survey.status === "submitted" ? "bg-dark" : ""
+                    survey.status === "submitted" ? "bg-dark" :
+                    survey.status === "missed" ? "bg-warning" :
+                    survey.status === "cancelled" ? "bg-danger" : ""
                   }`}
                   style={{ fontSize: "0.7rem" }}
                 >
@@ -210,10 +221,10 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
             </div>
             <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
-              {!survey.assigned_to && (survey.status === "created" || survey.status === "paused") && (
+              {!survey.assigned_to && (survey.status === "planned" || survey.status === "paused") && (
                 <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign</button>
               )}
-              {survey.status === "created" && survey.is_surveyor && (
+              {survey.status === "planned" && survey.is_surveyor && (
                 <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
               )}
               {survey.status === "live" && survey.is_surveyor && (
@@ -266,7 +277,7 @@ const formatSurveyDuration = (startTime, _tick) => {
             )}
             <span>{survey.assigned_to || "Unassigned"}</span>
             <span>{"\u00B7"}</span>
-            <span>{survey.client_present ? "Client present" : "Client not present"}</span>
+            <span>{survey.client_present ? "Client attending" : "Client not attending"}</span>
             {survey.urgent && (
               <>
                 <span>{"\u00B7"}</span>
@@ -280,10 +291,6 @@ const formatSurveyDuration = (startTime, _tick) => {
             {showDetails && (
               <>
                 <div className="survey-details-grid mt-2">
-                  <div className="survey-detail-item">
-                    <span className="survey-detail-label">Survey name</span>
-                    <span>{survey.name || "Unnamed"}</span>
-                  </div>
                   <div className="survey-detail-item">
                     <span className="survey-detail-label">Client</span>
                     <span>{survey.client || "Not set"}</span>
@@ -309,9 +316,33 @@ const formatSurveyDuration = (startTime, _tick) => {
                     <span>{survey.site_id || "Not set"}</span>
                   </div>
                   <div className="survey-detail-item">
-                    <span className="survey-detail-label">Client present</span>
+                    <span className="survey-detail-label">Client attending</span>
                     <span>{survey.client_present ? "Yes" : "No"}</span>
                   </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Site contact</span>
+                    <span>{survey.site_contact_name || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Site contact phone</span>
+                    <span>{survey.site_contact_phone || "Not set"}</span>
+                  </div>
+                  <div className="survey-detail-item">
+                    <span className="survey-detail-label">Site contact email</span>
+                    <span>{survey.site_contact_email || "Not set"}</span>
+                  </div>
+                  {survey.notes && (
+                    <div className="survey-detail-item" style={{ gridColumn: "1 / -1" }}>
+                      <span className="survey-detail-label">Notes</span>
+                      <span>{survey.notes}</span>
+                    </div>
+                  )}
+                  {survey.access_notes && (
+                    <div className="survey-detail-item" style={{ gridColumn: "1 / -1" }}>
+                      <span className="survey-detail-label">Access notes</span>
+                      <span style={{ whiteSpace: "pre-line" }}>{survey.access_notes}</span>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -496,7 +527,7 @@ const formatSurveyDuration = (startTime, _tick) => {
 
             </Modal>
 
-      <ReturnButton to="/surveys" />
+      <ReturnButton to={-1} />
       <BackToTop />
     </div>
   );

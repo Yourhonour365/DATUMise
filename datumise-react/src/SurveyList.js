@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from "react";
 import api from "./api/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
+import { useFilters } from "./FilterContext";
+import FilterAppliedCard from "./FilterAppliedCard";
+import AddButton from "./AddButton";
 
 /* ------------------------------------------------------------------ */
 /*  Helper: build LINE 1 (schedule / due / urgency / client presence) */
 /* ------------------------------------------------------------------ */
 function formatScheduleLine(survey) {
   const now = new Date();
-  const parts = [];
-  const flags = [];
 
   const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
   const due = survey.due_by ? new Date(survey.due_by) : null;
+  const schedType = survey.schedule_type || "pending";
 
-  const isFinished = ["submitted", "completed"].includes(survey.status);
+  const isFinished = ["submitted"].includes(survey.status);
   const isOverdue = due && due < now && !isFinished;
 
   const today = now.toDateString();
@@ -24,48 +26,49 @@ function formatScheduleLine(survey) {
   const isDueToday = due && due.toDateString() === today;
   const isDueTomorrow = due && due.toDateString() === tomorrow.toDateString();
 
-  if (isOverdue) {
-    parts.push("Overdue");
-  } else if (scheduled) {
-    const dateStr = scheduled.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-    parts.push(`Scheduled ${dateStr}`);
+  let date = "\u2014";
+  let time = "";
+  let scheduleLabel = "";
 
-    // Show time if not midnight (midnight = date-only convention)
+  if (isOverdue) {
+    date = "Overdue";
+  } else if (schedType === "scheduled" && scheduled) {
+    const d = scheduled.getDate();
+    const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
+    const y = String(scheduled.getFullYear()).slice(2);
+    date = `${d} ${m} '${y}`;
     const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
     if (hasTime) {
-      parts.push(
-        scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-      );
+      time = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     }
-
-    // For scheduled surveys, only flag due-date urgency (don't repeat full date)
-    if (isDueToday) parts.push("Due today");
-    else if (isDueTomorrow) parts.push("Due tomorrow");
+  } else if (schedType === "provisional" && scheduled) {
+    const d = scheduled.getDate();
+    const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
+    const y = String(scheduled.getFullYear()).slice(2);
+    date = `${d} ${m} '${y}`;
+    const hasTime2 = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
+    if (hasTime2) {
+      time = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    }
+    scheduleLabel = "Provisional";
+  } else if (schedType === "self_scheduling") {
+    scheduleLabel = "Self-scheduled";
   } else {
-    parts.push("Unscheduled");
-    if (isDueToday) {
-      parts.push("Due today");
-    } else if (isDueTomorrow) {
-      parts.push("Due tomorrow");
-    } else if (due && !isOverdue) {
-      parts.push(
-        `Due ${due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
-      );
+    scheduleLabel = "Pending";
+  }
+
+  let dueText = "";
+  if (!isOverdue) {
+    if (isDueToday) dueText = "Due today";
+    else if (isDueTomorrow) dueText = "Due tomorrow";
+    else if (due) {
+      dueText = `Due ${due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
     }
   }
 
-  if (survey.client_present) {
-    parts.push("Client present");
-  }
+  const clientAttending = !!survey.client_present;
 
-  if (survey.urgent) flags.push("\u26A0");
-  if (isOverdue) flags.push("\u23F0");
-
-  return { text: parts.join(" \u00B7 "), flags: flags.join(" ") };
+  return { date, time, scheduleLabel, urgent: !!survey.urgent, overdue: isOverdue, clientAttending, dueText };
 }
 
 /* ------------------------------------------------------------------ */
@@ -75,18 +78,30 @@ function SurveyList() {
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const clientFilter = searchParams.get("client") || "";
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [error, setError] = useState("");
+  const { filters, setFilters, clearFilters } = useFilters();
 
   useEffect(() => {
     const fetchSurveys = async () => {
       try {
-        const response = await api.get(
-          `/api/surveys/?search=${searchTerm}&status=${statusFilter}`
-        );
+        let url = `/api/surveys/?search=${searchTerm}`;
+        if (filters.statuses.length) {
+          url += `&status=${filters.statuses.map((s) => s.id).join(",")}`;
+        }
+        if (clientFilter) {
+          url += `&client=${clientFilter}`;
+        } else if (filters.clients.length) {
+          url += `&client=${filters.clients.map((c) => c.id).join(",")}`;
+        }
+        if (filters.sites.length) url += `&site=${filters.sites.map((s) => s.id).join(",")}`;
+        if (filters.surveyors.length) url += `&assigned_to=${filters.surveyors.map((s) => s.id).join(",")}`;
+        if (filters.schedule_types.length) url += `&schedule_type=${filters.schedule_types.map((s) => s.id).join(",")}`;
+        const response = await api.get(url);
         setSurveys(response.data.results);
         setNextPage(response.data.next);
         setPreviousPage(response.data.previous);
@@ -99,10 +114,19 @@ function SurveyList() {
     };
 
     fetchSurveys();
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, clientFilter, filters]);
 
   return (
     <div className="container mt-3">
+      <div className="mb-3 d-none d-md-block">
+        <Link to={clientFilter ? `/clients/${clientFilter}` : "/"} className="text-decoration-none">
+          &larr; Back to {clientFilter ? "Client" : "Home"}
+        </Link>
+      </div>
+      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
+        <h5 className="mb-0 fw-bold">Surveys</h5>
+        <AddButton to="/surveys/create" />
+      </div>
       {/* ---- Search & filter toolbar ---- */}
       <div className="d-flex gap-2 mb-2 align-items-center flex-wrap">
         <input
@@ -113,29 +137,66 @@ function SurveyList() {
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ maxWidth: "220px" }}
         />
-        <select
-          className="form-select form-select-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ maxWidth: "150px" }}
-        >
-          <option value="">All statuses</option>
-          <option value="created">Created</option>
-          <option value="live">Live</option>
-          <option value="paused">Paused</option>
-          <option value="submitted">Submitted</option>
-        </select>
-        {(searchTerm || statusFilter) && (
+        {searchTerm && (
           <button
             className="btn btn-outline-secondary btn-sm"
-            onClick={() => { setSearchTerm(""); setStatusFilter(""); }}
+            onClick={() => setSearchTerm("")}
           >
             Clear
           </button>
         )}
+        <Link
+          to="/filters"
+          style={{ fontSize: "0.85rem", color: "#0d6efd", textDecoration: "underline" }}
+        >
+          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.statuses.length || filters.schedule_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.statuses.length + filters.schedule_types.length})` : ""}
+        </Link>
+        <AddButton to="/surveys/create" />
       </div>
 
-      <h6 className="mb-2">
+      {/* ---- Active filter chips ---- */}
+      {(() => {
+        const totalChips = filters.statuses.length + filters.schedule_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
+        if (totalChips === 0) return null;
+        return (
+          <FilterAppliedCard totalChips={totalChips} onClear={clearFilters}>
+            <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
+              {filters.statuses.map((st) => (
+                <span key={`st-${st.id}`} className={`filter-chip ${st.id === "cancelled" || st.id === "missed" ? "filter-chip-status-cancelled" : "filter-chip-status"}`}>
+                  {st.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ statuses: filters.statuses.filter((x) => x.id !== st.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.schedule_types.map((sc) => (
+                <span key={`sc-${sc.id}`} className="filter-chip filter-chip-schedule">
+                  {sc.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.clients.map((c) => (
+                <span key={`c-${c.id}`} className="filter-chip filter-chip-client">
+                  {c.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ clients: filters.clients.filter((x) => x.id !== c.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.sites.map((s) => (
+                <span key={`s-${s.id}`} className="filter-chip filter-chip-site">
+                  {s.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ sites: filters.sites.filter((x) => x.id !== s.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.surveyors.map((sv) => (
+                <span key={`sv-${sv.id}`} className="filter-chip filter-chip-surveyor">
+                  {sv.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
+                </span>
+              ))}
+            </div>
+          </FilterAppliedCard>
+        );
+      })()}
+
+      <h6 className="mb-2 d-none d-md-block">
         Surveys
         <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
           ({surveys.length})
@@ -161,34 +222,37 @@ function SurveyList() {
                   className="survey-queue-card"
                   onClick={() => navigate(`/surveys/${survey.id}`)}
                 >
-                  {/* LINE 1: schedule / due / urgency / client presence */}
-                  <div className="survey-queue-line1">
-                    <span>{schedule.text}</span>
-                    {schedule.flags && (
-                      <span className="survey-queue-flags">{schedule.flags}</span>
-                    )}
-                  </div>
-
-                  {/* LINE 2: client / site */}
-                  <div className="survey-queue-line2">
-                    {survey.client && survey.site
-                      ? `${survey.client} \u2013 ${survey.site}`
-                      : survey.client || survey.site || "No client / site"}
-                  </div>
-
-                  {/* LINE 3: surveyor / obs count / action */}
-                  <div className="survey-queue-line3">
-                    <span className="survey-queue-surveyor">
-                      {survey.assigned_to || "Unassigned"}
+                  <div className="survey-queue-grid">
+                    {/* Row 1: date + time | schedule label + surveyor | flags */}
+                    <span>{schedule.date}{schedule.time ? ` ${schedule.time}` : ""}</span>
+                    <span>{[schedule.scheduleLabel, survey.assigned_to || "Unassigned"].filter(Boolean).join(" \u00B7 ")}</span>
+                    <span className="survey-queue-flags">
+                      <strong style={{ fontSize: "0.88rem" }}>{survey.observation_count > 0 ? `(${survey.observation_count})` : ""}</strong>
+                      {schedule.urgent ? <img src="/datumise_urgent.svg" alt="Urgent" width="16" height="16" style={{ filter: "invert(56%) sepia(81%) saturate(552%) hue-rotate(347deg) brightness(97%) contrast(87%)" }} /> : <span style={{ display: "inline-block", width: "16px" }} />}
+                      {schedule.overdue && "\u23F0"}
                     </span>
-                    <span className="survey-queue-obs">
-                      {survey.observation_count ?? 0} obs
-                    </span>
-                    <span className="survey-queue-action">
-                      {survey.status === "created" && (
-                        <button
-                          className="btn btn-success btn-sm survey-queue-btn"
+
+                    {/* Row 2: due date | client attending | edit */}
+                    <span>{schedule.dueText}</span>
+                    <span>{schedule.clientAttending ? "Client attending" : ""}</span>
+                    <Link
+                      to={`/surveys/${survey.id}/edit`}
+                      className="text-decoration-none"
+                      style={{ justifySelf: "end" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <img src="/datumise-edit.svg" alt="Edit" width="16" height="16" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+                    </Link>
+
+                    {/* Row 3: client, site | _ | resume/status */}
+                    <span className="survey-queue-clientsite">{survey.site || survey.client || "No client / site"}</span>
+                    <span style={{ justifySelf: "end" }}>
+                      {(survey.status === "planned" || survey.status === "paused") && (
+                        <a
+                          href="#"
+                          style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
                           onClick={async (e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             try {
                               await api.patch(`/api/surveys/${survey.id}/`, { status: "live" });
@@ -198,36 +262,18 @@ function SurveyList() {
                             }
                           }}
                         >
-                          Start
-                        </button>
-                      )}
-                      {survey.status === "paused" && (
-                        <button
-                          className="btn btn-success btn-sm survey-queue-btn"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              await api.patch(`/api/surveys/${survey.id}/`, { status: "live" });
-                              navigate(`/surveys/${survey.id}/capture`);
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                        >
-                          Resume
-                        </button>
+                          {survey.status === "paused" ? "Resume" : "Start"}
+                        </a>
                       )}
                       {survey.status === "live" && (
-                        <span className="badge bg-success" style={{ fontSize: "0.62rem" }}>Live</span>
+                        <span style={{ color: "#198754", fontWeight: 600 }}>Live</span>
                       )}
-                      {survey.status === "submitted" && (
-                        <span className="survey-queue-status-text">Submitted</span>
-                      )}
-                      {survey.status === "completed" && (
-                        <span className="survey-queue-status-text">Completed</span>
-                      )}
+                      {survey.status === "submitted" && <span style={{ color: "#1a5bc4" }}>Submitted</span>}
+                      {survey.status === "missed" && <span style={{ color: "#d3212f" }}>Missed</span>}
+                      {survey.status === "cancelled" && "Cancelled"}
                     </span>
                   </div>
+
                 </div>
               );
             })}
@@ -286,7 +332,7 @@ function SurveyList() {
           </button>
         </div>
       )}
-      <ReturnButton to="/" />
+      <ReturnButton to={clientFilter ? `/clients/${clientFilter}` : "/"} />
       <BackToTop />
     </div>
   );

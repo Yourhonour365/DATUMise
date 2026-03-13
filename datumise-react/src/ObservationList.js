@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import api from "./api/api";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
+import { useFilters } from "./FilterContext";
+import FilterAppliedCard from "./FilterAppliedCard";
 
 function ObservationList() {
   const navigate = useNavigate();
@@ -24,14 +26,19 @@ function ObservationList() {
   const [nextPage, setNextPage] = useState(initialCache?.nextPage || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
+  const { filters, setFilters, clearFilters } = useFilters();
 
   useEffect(() => {
     // Idempotent: skip initial fetch when cache provided (safe in Strict Mode)
     if (initialCache && searchTerm === "") return;
 
-    const url = surveyId
+    let url = surveyId
       ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
       : `/api/observations/?search=${searchTerm}`;
+
+    if (filters.clients.length) url += `&survey__client=${filters.clients.map((c) => c.id).join(",")}`;
+    if (filters.sites.length) url += `&survey__site=${filters.sites.map((s) => s.id).join(",")}`;
+    if (filters.surveyors.length) url += `&owner=${filters.surveyors.map((s) => s.id).join(",")}`;
 
     setLoading(true);
     api
@@ -46,7 +53,7 @@ function ObservationList() {
         setError("You must be logged in to view observations.");
         setLoading(false);
       });
-  }, [surveyId, searchTerm, initialCache]);
+  }, [surveyId, searchTerm, initialCache, filters]);
 
   // Restore scroll + highlight from cache (idempotent — safe for Strict Mode double-mount)
   useEffect(() => {
@@ -124,6 +131,11 @@ function ObservationList() {
 
   return (
     <div className="container mt-3">
+      <div className="mb-3 d-none d-md-block">
+        <Link to="/" className="text-decoration-none">
+          &larr; Back to Home
+        </Link>
+      </div>
       <div className="d-flex gap-2 mb-2 align-items-center flex-wrap">
         <input
           type="text"
@@ -141,9 +153,45 @@ function ObservationList() {
             Clear
           </button>
         )}
+        <Link
+          to="/filters"
+          style={{ fontSize: "0.85rem", color: "#0d6efd", textDecoration: "underline" }}
+        >
+          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length})` : ""}
+        </Link>
       </div>
 
-      <h6 className="mb-2">
+      {/* ---- Active filter chips ---- */}
+      {(() => {
+        const totalChips = filters.clients.length + filters.sites.length + filters.surveyors.length;
+        if (totalChips === 0) return null;
+        return (
+          <FilterAppliedCard totalChips={totalChips} onClear={clearFilters}>
+            <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
+              {filters.clients.map((c) => (
+                <span key={`c-${c.id}`} className="filter-chip filter-chip-client">
+                  {c.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ clients: filters.clients.filter((x) => x.id !== c.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.sites.map((s) => (
+                <span key={`s-${s.id}`} className="filter-chip filter-chip-site">
+                  {s.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ sites: filters.sites.filter((x) => x.id !== s.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.surveyors.map((sv) => (
+                <span key={`sv-${sv.id}`} className="filter-chip filter-chip-surveyor">
+                  {sv.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
+                </span>
+              ))}
+            </div>
+          </FilterAppliedCard>
+        );
+      })()}
+
+      <h6 className="mb-2 d-none d-md-block">
         Observations
         <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
           ({observations.length})

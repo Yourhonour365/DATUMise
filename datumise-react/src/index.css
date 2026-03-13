@@ -55,8 +55,60 @@ fieldset {
   padding: 0.65rem 0.75rem !important;
 }
 
-.form-control {
+.form-control,
+.form-select {
   background-color: #faf6ef;
+  border-color: #9a8255;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #9a8255;
+  box-shadow: 0 0 0 0.2rem rgba(154, 130, 85, 0.25);
+}
+
+/* Edit form fieldset/legend pattern (matches observation form) */
+.edit-fieldset {
+  border: none;
+  border-radius: 8px;
+  padding: 0 0.5rem 0.35rem;
+}
+
+.edit-legend {
+  float: none;
+  width: auto;
+  padding: 0 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0;
+}
+
+.edit-field {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  color: #2c3e50;
+  outline: none;
+}
+
+.edit-field:focus {
+  outline: none;
+}
+
+select.edit-field {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M0 7.33l2.829-2.83 9.175 9.339 9.167-9.339 2.829 2.83-11.996 12.17z'/%3E%3C/svg%3E") no-repeat right 0.5rem center / 10px;
+  padding-right: 1.5rem;
+}
+
+textarea.edit-field {
+  resize: none;
 }
 
 
@@ -503,7 +555,7 @@ fieldset {
    ========================================================== */
 
 .survey-queue-card {
-  border-bottom: none;
+  border: 1px solid transparent;
   padding: 0.5rem;
   cursor: pointer;
   background: #f0ece4;
@@ -513,71 +565,33 @@ fieldset {
 
 .survey-queue-card:hover {
   background: #e8e4dc;
+  border-color: #9a8255;
 }
 
-/* Line 1: schedule / urgency – small muted text */
-.survey-queue-line1 {
-  font-size: 0.72rem;
+/* Survey card grid: 3 columns */
+.survey-queue-grid {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.1rem 0.5rem;
+  font-size: 0.78rem;
   color: #2c3e50;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  align-items: baseline;
 }
 
 .survey-queue-flags {
-  margin-left: 0.35rem;
-}
-
-/* Line 2: client / site – primary identifier */
-.survey-queue-line2 {
-  font-size: 0.88rem;
-  font-weight: 500;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 0.1rem;
-}
-
-/* Line 3: surveyor / obs / action – flex row */
-.survey-queue-line3 {
+  justify-self: end;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  margin-top: 0.15rem;
+  align-items: baseline;
+  gap: 0.4rem;
 }
 
-.survey-queue-surveyor {
-  color: #2c3e50;
+.survey-queue-clientsite {
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
-}
-
-.survey-queue-obs {
-  color: #2c3e50;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.survey-queue-action {
-  flex-shrink: 0;
-  min-width: 56px;
-  text-align: right;
-}
-
-.survey-queue-btn {
-  font-size: 0.72rem !important;
-  padding: 0.15rem 0.5rem !important;
-}
-
-.survey-queue-status-text {
-  font-size: 0.72rem;
-  color: #2c3e50;
+  grid-column: 1 / 3;
 }
 
 
@@ -597,4 +611,177 @@ fieldset {
   border-bottom-right-radius: 0;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
+}
+
+/* ---- Dashboard tiles ---- */
+.dashboard-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100px;
+  height: 90px;
+  background: #f0ece4;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #2c3e50;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: background 0.15s ease;
+}
+
+.dashboard-tile:hover {
+  background: #e6e0d4;
+  text-decoration: none;
+  color: #2c3e50;
+}
+
+/* ---- Filter chips ---- */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: #f0ece4;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2c3e50;
+  white-space: nowrap;
+}
+
+.filter-chip-status { background: #ddf0e3; }
+.filter-chip-status-cancelled { background: #f6e8e8; }
+.filter-chip-schedule { background: #dce7fa; }
+.filter-chip-client { background: #ecf0f1; }
+.filter-chip-site { background: #f0efed; }
+.filter-chip-surveyor { background: #faf6ef; }
+
+.filter-chip-x {
+  background: none;
+  border: none;
+  padding: 0 0 0 0.1rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: #2c3e50;
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.filter-chip-x:hover {
+  opacity: 1;
+}
+
+.filter-chip-clear {
+  background: transparent;
+  color: #888;
+  border: 1px dashed #bbb;
+  cursor: pointer;
+}
+.filter-chip-clear:hover {
+  color: #333;
+  border-color: #888;
+}
+.filter-chip-action {
+  background: transparent;
+  color: #0d6efd;
+  border: 1px dashed #0d6efd;
+  cursor: pointer;
+}
+.filter-chip-action:hover {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.filter-accordion summary {
+  list-style: none;
+  user-select: none;
+}
+.filter-accordion summary::-webkit-details-marker {
+  display: none;
+}
+.filter-accordion summary::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M0 7.33l2.829-2.83 9.175 9.339 9.167-9.339 2.829 2.83-11.996 12.17z'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: 0.4;
+  transition: transform 0.2s ease;
+}
+.filter-accordion[open] summary::after {
+  transform: rotate(180deg);
+}
+.filter-accordion[open] > .d-flex {
+  margin-top: 0.35rem;
+}
+
+/* ---- Add button ---- */
+.add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #3d6b4f;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  text-decoration: none;
+  z-index: 90;
+  transition: background 0.2s ease;
+}
+.add-button:hover {
+  background: #2e5440;
+}
+
+/* Mobile: floating bottom-right */
+@media (max-width: 767.98px) {
+  .add-button {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+  }
+}
+
+/* Desktop: inline (placed in header by component) */
+@media (min-width: 768px) {
+  .add-button {
+    box-shadow: none;
+  }
+}
+
+/* ---- Edit button ---- */
+.edit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1a5bc4;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  text-decoration: none;
+  z-index: 90;
+  transition: background 0.2s ease;
+}
+.edit-button:hover {
+  background: #144a9e;
+}
+
+@media (max-width: 767.98px) {
+  .edit-button {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+  }
+}
+
+@media (min-width: 768px) {
+  .edit-button {
+    box-shadow: none;
+  }
 }
