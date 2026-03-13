@@ -1,11 +1,62 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-# Create your models here.
+
+class Profile(models.Model):
+    ROLE_CHOICES = [
+        ("admin", "Admin"),
+        ("office", "Office"),
+        ("surveyor", "Surveyor"),
+    ]
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("archived", "Archived"),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="surveyor")
+    phone = models.CharField(max_length=50, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
+
+    def __str__(self):
+        return f"{self.user.username} ({self.get_role_display()})"
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_or_update_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+    else:
+        instance.profile.save()
 
 
 class Client(models.Model):
+    CLIENT_TYPE_CHOICES = [
+        ("commercial", "Commercial"),
+        ("local_authority", "Local authority"),
+        ("education", "Education"),
+        ("retail", "Retail"),
+        ("residential", "Residential portfolio"),
+    ]
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("archived", "Archived"),
+    ]
+
     name = models.CharField(max_length=255)
+    client_type = models.CharField(max_length=30, choices=CLIENT_TYPE_CHOICES, blank=True)
+    account_manager = models.CharField(max_length=255, blank=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    billing_address = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -15,20 +66,39 @@ class Client(models.Model):
         return self.name
 
 class ClientSite(models.Model):
+    SITE_TYPE_CHOICES = [
+        ("car_park", "Car park"),
+        ("retail_park", "Retail park"),
+        ("industrial_estate", "Industrial estate"),
+        ("school", "School"),
+        ("office_campus", "Office campus"),
+    ]
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("archived", "Archived"),
+    ]
+
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE,
         related_name="sites",
     )
     name = models.CharField(max_length=255)
+    site_type = models.CharField(max_length=30, choices=SITE_TYPE_CHOICES, blank=True)
     address = models.CharField(max_length=500, blank=True, null=True)
+    postcode = models.CharField(max_length=20, blank=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    contact_email = models.EmailField(blank=True)
+    access_notes = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.client.name} - {self.name}"
+        return f"{self.client.name}, {self.name}"
 
 class ClientContact(models.Model):
     client = models.ForeignKey(
@@ -51,17 +121,22 @@ class ClientContact(models.Model):
 
 class Survey(models.Model):
     STATUS_CHOICES = [
-        ("created", "Created"),
+        ("planned", "Planned"),
         ("live", "Live"),
         ("paused", "Paused"),
-        ("completed", "Completed"),
         ("submitted", "Submitted"),
         ("missed", "Missed"),
-        ("overdue", "Overdue"),
         ("cancelled", "Cancelled"),
     ]
 
-    name = models.CharField(max_length=255)
+    SCHEDULE_TYPE_CHOICES = [
+        ("scheduled", "Scheduled"),
+        ("provisional", "Provisional"),
+        ("self_scheduling", "Self-scheduling"),
+        ("pending", "Pending"),
+    ]
+
+    notes = models.CharField(max_length=160, blank=True, default="")
     client = models.ForeignKey(
         Client,
         on_delete=models.CASCADE,
@@ -92,12 +167,21 @@ class Survey(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="created",
+        default="planned",
+    )
+    schedule_type = models.CharField(
+        max_length=20,
+        choices=SCHEDULE_TYPE_CHOICES,
+        default="pending",
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     due_by = models.DateTimeField(null=True, blank=True)
     client_present = models.BooleanField(default=False)
     urgent = models.BooleanField(default=False)
+    access_notes = models.TextField(blank=True)
+    site_contact_name = models.CharField(max_length=255, blank=True)
+    site_contact_phone = models.CharField(max_length=50, blank=True)
+    site_contact_email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -105,9 +189,16 @@ class Survey(models.Model):
 
     def is_incomplete(self):
         return self.client is None or self.site is None
-    
+
     def __str__(self):
-        return self.name
+        parts = []
+        if self.client:
+            parts.append(str(self.client))
+        if self.site:
+            parts.append(self.site.name)
+        if not parts:
+            parts.append(f"Survey #{self.pk}")
+        return " \u2013 ".join(parts)
 
 
 

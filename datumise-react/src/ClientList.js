@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "./api/api";
+import ReturnButton from "./ReturnButton";
+import AddButton from "./AddButton";
 
 function ClientList() {
   const [clients, setClients] = useState([]);
@@ -30,11 +32,14 @@ function ClientList() {
 
   return (
     <div className="container mt-3 px-3">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5 className="mb-0 fw-bold">Clients</h5>
-        <Link to="/clients/create" className="btn btn-sm" style={{ background: "#FF7518", color: "#faf6ef" }}>
-          + Create Client
+      <div className="mb-3 d-none d-md-block">
+        <Link to="/" className="text-decoration-none">
+          &larr; Back to Home
         </Link>
+      </div>
+      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
+        <h5 className="mb-0 fw-bold">Clients</h5>
+        <AddButton to="/clients/create" />
       </div>
 
       {clients.length === 0 ? (
@@ -60,6 +65,11 @@ function ClientList() {
           </Link>
         ))
       )}
+
+      <div className="d-md-none">
+        <AddButton to="/clients/create" />
+      </div>
+      <ReturnButton to="/" />
     </div>
   );
 }

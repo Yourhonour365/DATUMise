@@ -333,7 +333,7 @@ function ObservationCreateForm(props) {
                     props.onPauseSurvey?.();
                     props.onClose?.();
                   }}
-                  className="w-100"
+                  className="w-100 rounded-pill"
                 >
                   Pause Survey
                 </Button>
@@ -375,7 +375,7 @@ function ObservationCreateForm(props) {
                   variant="primary"
                   type="submit"
                   disabled={isSubmitting || !imagePreview || !title.trim()}
-                  className="w-100"
+                  className="w-100 rounded-pill"
                 >
                   {isSubmitting ? "Saving..." : "✓ Save & Next"}
                 </Button>
@@ -388,19 +388,31 @@ function ObservationCreateForm(props) {
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
         <div className="d-flex align-items-center justify-content-center gap-4">
-          <button
-            type="button"
-            onClick={props.anyIncomplete ? undefined : () => {
-              props.onPauseSurvey?.();
-              props.onClose?.();
-            }}
-            disabled={props.anyIncomplete}
-            className={`capture-action-btn ${props.anyIncomplete ? "capture-action-warning" : ""}`}
-            aria-label="Pause Survey"
-            style={{ background: props.anyIncomplete ? undefined : "#95a5a6", border: "none" }}
-          >
-            <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: props.anyIncomplete ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-          </button>
+          {props.isViewingPrevious ? (
+            <button
+              type="button"
+              onClick={() => props.onReturn?.()}
+              className="capture-action-btn"
+              aria-label="Return"
+              style={{ background: "#dce7fa", border: "none" }}
+            >
+              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={props.anyIncomplete ? undefined : () => {
+                props.onPauseSurvey?.();
+                props.onClose?.();
+              }}
+              disabled={props.anyIncomplete}
+              className={`capture-action-btn ${props.anyIncomplete ? "capture-action-warning" : ""}`}
+              aria-label="Pause Survey"
+              style={{ background: props.anyIncomplete ? undefined : "#95a5a6", border: "none" }}
+            >
+              <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: props.anyIncomplete ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => props.onStepBack?.()}
@@ -411,21 +423,17 @@ function ObservationCreateForm(props) {
           >
             <img src="/datumise_back.svg" alt="" width="20" height="20" />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (props.isViewingPrevious) {
-                props.onCaptureForPrevious?.();
-              } else {
-                fileInputRef.current?.click();
-              }
-            }}
-            className="capture-action-btn"
-            aria-label="Take Photo"
-            style={{ background: "#FF7518", border: "none" }}
-          >
-            <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-          </button>
+          {!props.isViewingPrevious && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="capture-action-btn"
+              aria-label="Take Photo"
+              style={{ background: "#FF7518", border: "none" }}
+            >
+              <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
+          )}
           {props.isViewingPrevious ? (
             <div style={{ position: "relative" }}>
               {props.previousObsIncomplete && (
