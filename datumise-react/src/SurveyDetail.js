@@ -72,6 +72,7 @@ useLayoutEffect(() => {
 
 
     const startSurvey = async () => {
+        if (!survey.assigned_to || !survey.is_surveyor) return;
         try {
             await api.patch(`/api/surveys/${id}/`, {
             status: "live",
@@ -94,6 +95,7 @@ useLayoutEffect(() => {
     };
 
     const resumeSurvey = async () => {
+  if (!survey.assigned_to || !survey.is_surveyor) return;
   try {
     const response = await api.patch(`/api/surveys/${id}/`, {
       status: "live",
@@ -106,6 +108,7 @@ useLayoutEffect(() => {
 };
 
     const assignSurvey = async () => {
+        if (survey.status !== "planned" || survey.assigned_to) return;
         try {
             await api.post(`/api/surveys/${id}/assign/`);
             fetchSurvey();
@@ -221,10 +224,10 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
             </div>
             <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
-              {!survey.assigned_to && (survey.status === "planned" || survey.status === "paused") && (
-                <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign</button>
+              {!survey.assigned_to && survey.status === "planned" && (
+                <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign to me</button>
               )}
-              {survey.status === "planned" && survey.is_surveyor && (
+              {survey.status === "planned" && survey.is_surveyor && survey.assigned_to && (
                 <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
               )}
               {survey.status === "live" && survey.is_surveyor && (
@@ -245,7 +248,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                   </Link>
                 </>
               )}
-              {survey.status === "paused" && survey.is_surveyor && (
+              {survey.status === "paused" && survey.is_surveyor && survey.assigned_to && (
                 <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
               )}
               <Link

@@ -10,6 +10,7 @@ const defaultFilters = {
   surveyors: [],
   statuses: [],
   schedule_types: [],
+  site_types: [],
 };
 
 function loadFilters() {
@@ -43,7 +44,8 @@ export function FilterProvider({ children }) {
     filters.sites.length ||
     filters.surveyors.length ||
     filters.statuses.length ||
-    filters.schedule_types.length
+    filters.schedule_types.length ||
+    filters.site_types.length
   );
 
   return (

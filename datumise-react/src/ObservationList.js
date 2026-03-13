@@ -40,6 +40,7 @@ function ObservationList() {
     if (filters.clients.length) url += `&survey__client=${filters.clients.map((c) => c.id).join(",")}`;
     if (filters.sites.length) url += `&survey__site=${filters.sites.map((s) => s.id).join(",")}`;
     if (filters.surveyors.length) url += `&owner=${filters.surveyors.map((s) => s.id).join(",")}`;
+    if (filters.site_types.length) url += `&site_type=${filters.site_types.map((s) => s.id).join(",")}`;
     if (filters.timePeriod) url += `&time_period=${filters.timePeriod}`;
 
     setLoading(true);
@@ -159,7 +160,7 @@ function ObservationList() {
           to="/filters"
           style={{ fontSize: "0.85rem", color: "#0d6efd", textDecoration: "underline" }}
         >
-          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length})` : ""}
+          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.site_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.site_types.length})` : ""}
         </Link>
         <select
           value={sortOrder}
@@ -176,7 +177,7 @@ function ObservationList() {
 
       {/* ---- Active filter chips ---- */}
       {(() => {
-        const totalChips = filters.clients.length + filters.sites.length + filters.surveyors.length;
+        const totalChips = filters.clients.length + filters.sites.length + filters.surveyors.length + filters.site_types.length;
         if (totalChips === 0) return null;
         return (
           <FilterAppliedCard totalChips={totalChips} onClear={clearFilters}>
@@ -197,6 +198,12 @@ function ObservationList() {
                 <span key={`sv-${sv.id}`} className="filter-chip filter-chip-surveyor">
                   {sv.name}
                   <button type="button" className="filter-chip-x" onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.site_types.map((st) => (
+                <span key={`st-${st.id}`} className="filter-chip filter-chip-site">
+                  {st.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
                 </span>
               ))}
             </div>

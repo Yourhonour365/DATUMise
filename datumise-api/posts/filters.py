@@ -14,10 +14,13 @@ class SurveyFilter(django_filters.FilterSet):
     schedule_type = django_filters.BaseInFilter(
         field_name="schedule_type", lookup_expr="in"
     )
+    site_type = django_filters.BaseInFilter(
+        field_name="site__site_type", lookup_expr="in"
+    )
 
     class Meta:
         model = Survey
-        fields = ["client", "site", "assigned_to", "status", "schedule_type"]
+        fields = ["client", "site", "assigned_to", "status", "schedule_type", "site_type"]
 
 
 class ObservationFilter(django_filters.FilterSet):
@@ -28,11 +31,14 @@ class ObservationFilter(django_filters.FilterSet):
     survey__site = django_filters.BaseInFilter(
         field_name="survey__site", lookup_expr="in"
     )
+    site_type = django_filters.BaseInFilter(
+        field_name="survey__site__site_type", lookup_expr="in"
+    )
     time_period = django_filters.CharFilter(method="filter_time_period")
 
     class Meta:
         model = Observation
-        fields = ["owner", "survey__client", "survey__site", "time_period"]
+        fields = ["owner", "survey__client", "survey__site", "site_type", "time_period"]
 
     def filter_time_period(self, queryset, name, value):
         now = timezone.now()

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 
 function Login() {
@@ -35,6 +35,11 @@ function Login() {
 
   return (
     <div className="container mt-4">
+      <div className="mb-3">
+        <Link to="/" className="text-decoration-none">
+          &larr; Back to Home
+        </Link>
+      </div>
       <h3>Login</h3>
 
       {errors.detail && (

@@ -102,6 +102,7 @@ function SurveyList() {
         if (filters.sites.length) url += `&site=${filters.sites.map((s) => s.id).join(",")}`;
         if (filters.surveyors.length) url += `&assigned_to=${filters.surveyors.map((s) => s.id).join(",")}`;
         if (filters.schedule_types.length) url += `&schedule_type=${filters.schedule_types.map((s) => s.id).join(",")}`;
+        if (filters.site_types.length) url += `&site_type=${filters.site_types.map((s) => s.id).join(",")}`;
         const response = await api.get(url);
         setSurveys(response.data.results);
         setNextPage(response.data.next);
@@ -150,7 +151,7 @@ function SurveyList() {
           to="/filters"
           style={{ fontSize: "0.85rem", color: "#0d6efd", textDecoration: "underline" }}
         >
-          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.statuses.length || filters.schedule_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.statuses.length + filters.schedule_types.length})` : ""}
+          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.statuses.length || filters.schedule_types.length || filters.site_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.statuses.length + filters.schedule_types.length + filters.site_types.length})` : ""}
         </Link>
         <AddButton to="/surveys/create" />
         <select
@@ -168,7 +169,7 @@ function SurveyList() {
 
       {/* ---- Active filter chips ---- */}
       {(() => {
-        const totalChips = filters.statuses.length + filters.schedule_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
+        const totalChips = filters.statuses.length + filters.schedule_types.length + filters.site_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
         if (totalChips === 0) return null;
         return (
           <FilterAppliedCard totalChips={totalChips} onClear={clearFilters}>
@@ -183,6 +184,12 @@ function SurveyList() {
                 <span key={`sc-${sc.id}`} className="filter-chip filter-chip-schedule">
                   {sc.name}
                   <button type="button" className="filter-chip-x" onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
+                </span>
+              ))}
+              {filters.site_types.map((st) => (
+                <span key={`st-${st.id}`} className="filter-chip filter-chip-site">
+                  {st.name}
+                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
                 </span>
               ))}
               {filters.clients.map((c) => (
@@ -272,13 +279,14 @@ function SurveyList() {
                     {/* Row 3: client, site | _ | resume/status */}
                     <span className="survey-queue-clientsite">{survey.site || survey.client || "No client / site"}</span>
                     <span style={{ justifySelf: "end" }}>
-                      {(survey.status === "planned" || survey.status === "paused") && survey.is_surveyor && (
+                      {(survey.status === "planned" || survey.status === "paused") && survey.is_surveyor && survey.assigned_to && (
                         <a
                           href="#"
                           style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
                           onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            if (!survey.assigned_to || !survey.is_surveyor) return;
                             try {
                               await api.patch(`/api/surveys/${survey.id}/`, { status: "live" });
                               navigate(`/surveys/${survey.id}/capture`);
@@ -290,13 +298,14 @@ function SurveyList() {
                           {survey.status === "paused" ? "Resume" : "Start"}
                         </a>
                       )}
-                      {(survey.status === "planned" || survey.status === "paused") && !survey.assigned_to && !survey.is_surveyor && (
+                      {survey.status === "planned" && !survey.assigned_to && (
                         <a
                           href="#"
                           style={{ fontWeight: 600, color: "#0d6efd", textDecoration: "none", fontSize: "0.75rem" }}
                           onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            if (survey.status !== "planned" || survey.assigned_to) return;
                             try {
                               const res = await api.post(`/api/surveys/${survey.id}/assign/`);
                               setSurveys((prev) => prev.map((s) => s.id === survey.id ? res.data : s));

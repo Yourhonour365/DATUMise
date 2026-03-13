@@ -124,12 +124,21 @@ function ClientDetail() {
         </div>
       )}
 
-      <h6 className="mb-2">
-        Sites
-        <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
-          ({sites.length})
-        </span>
-      </h6>
+      <div className="d-flex align-items-center justify-content-between mb-2">
+        <h6 className="mb-0">
+          Sites
+          <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
+            ({sites.length})
+          </span>
+        </h6>
+        <Link
+          to={`/sites/create?client=${id}`}
+          className="text-decoration-none"
+          style={{ fontSize: "0.82rem", padding: "0.3rem 0.65rem", background: "#1a5bc4", borderRadius: "6px", color: "#faf6ef" }}
+        >
+          + Add Site
+        </Link>
+      </div>
 
       {sites.length === 0 ? (
         <p className="text-muted" style={{ fontSize: "0.85rem" }}>

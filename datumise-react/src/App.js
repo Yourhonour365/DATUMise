@@ -26,7 +26,31 @@ import SiteCreateForm from "./SiteCreateForm";
 import TeamCreateForm from "./TeamCreateForm";
 import { FilterProvider } from "./FilterContext";
 
-function Home() {
+function Home({ isLoggedIn }) {
+  if (!isLoggedIn) {
+    return (
+      <div className="container px-3 d-flex flex-column align-items-center" style={{ paddingTop: "15vh" }}>
+        <img src="/datumise-icon.svg" alt="DATUMise" width="72" height="72" className="mb-3" />
+        <h4 className="fw-bold mb-1">DATUMise</h4>
+        <p className="fw-semibold text-muted mb-3" style={{ fontSize: "0.95rem" }}>
+          Smarter Field Data. Faster.
+        </p>
+        <p className="text-center text-muted mb-4" style={{ fontSize: "0.85rem", maxWidth: "360px", lineHeight: 1.5 }}>
+          Capture observations in the field and organise them into structured surveys.
+          Images, notes, and comments stay linked to the site and survey, creating a clear
+          record that teams can review, discuss, and act on.
+        </p>
+        <p className="text-muted mb-4" style={{ fontSize: "0.78rem", fontStyle: "italic" }}>
+          Built for mobile-first fieldwork.
+        </p>
+        <div className="d-flex gap-3">
+          <Link to="/login" className="btn btn-primary px-4">Login</Link>
+          <Link to="/register" className="btn btn-outline-secondary px-4">Register</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mt-4 px-3">
       <div className="d-flex flex-wrap gap-3">
@@ -154,24 +178,28 @@ function AppLayout() {
         <Link className="navbar-brand fw-bold" to="/" style={{ color: "#faf6ef" }}>
           DATUMise
         </Link>
-        <Link className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>
-          Clients
-        </Link>
-        <Link className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>
-          Filters
-        </Link>
-        <Link className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>
-          Observations
-        </Link>
-        <Link className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>
-          Settings
-        </Link>
-        <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
-          Surveys
-        </Link>
-        <Link className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>
-          Team
-        </Link>
+        {isLoggedIn && (
+          <>
+            <Link className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>
+              Clients
+            </Link>
+            <Link className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>
+              Filters
+            </Link>
+            <Link className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>
+              Observations
+            </Link>
+            <Link className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>
+              Settings
+            </Link>
+            <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
+              Surveys
+            </Link>
+            <Link className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>
+              Team
+            </Link>
+          </>
+        )}
         <div className="ms-auto">
           {isLoggedIn ? (
             <button className="nav-link btn btn-link" onClick={handleLogout} style={{ color: "#faf6ef" }}>
@@ -192,26 +220,31 @@ function AppLayout() {
 
       {/* ---- Mobile header (hidden on desktop) ---- */}
       <header className="app-nav-mobile">
-        <button
-          type="button"
-          className="app-nav-icon-btn"
-          onClick={() => navigate("/")}
-          aria-label="Home"
-        >
-          <img src="/datumise_home.svg" alt="" width="22" height="22" />
-        </button>
-
-        <span className="app-nav-title">{screenTitle}</span>
-
-        <div className="app-nav-menu-wrap" ref={menuRef}>
+        {isLoggedIn ? (
           <button
             type="button"
             className="app-nav-icon-btn"
-            onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label="Menu"
+            onClick={() => navigate("/")}
+            aria-label="Home"
           >
-            <img src="/datumise_menu.svg" alt="" width="22" height="22" />
+            <img src="/datumise_home.svg" alt="" width="22" height="22" />
           </button>
+        ) : (
+          <div style={{ width: "22px" }} />
+        )}
+
+        <span className="app-nav-title">{screenTitle}</span>
+
+        {isLoggedIn ? (
+          <div className="app-nav-menu-wrap" ref={menuRef}>
+            <button
+              type="button"
+              className="app-nav-icon-btn"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="Menu"
+            >
+              <img src="/datumise_menu.svg" alt="" width="22" height="22" />
+            </button>
 
           {menuOpen && (
             <div className="app-nav-dropdown">
@@ -255,10 +288,13 @@ function AppLayout() {
             </div>
           )}
         </div>
+        ) : (
+          <div style={{ width: "22px" }} />
+        )}
       </header>
 
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Home isLoggedIn={isLoggedIn} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/observations" element={<ObservationList />} />
