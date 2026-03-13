@@ -395,9 +395,9 @@ function ObservationCreateForm(props) {
             type="button"
             onClick={() => props.onStepBack?.()}
             disabled={!props.onStepBack}
-            className="capture-action-btn"
+            className={`capture-action-btn ${props.previousObsIncomplete && props.isViewingPrevious ? "capture-action-warning" : ""}`}
             aria-label="Previous observation"
-            style={{ background: "#ddf0e3", border: "none" }}
+            style={{ background: props.previousObsIncomplete && props.isViewingPrevious ? undefined : "#ddf0e3", border: "none" }}
           >
             <img src="/datumise_back.svg" alt="" width="20" height="20" />
           </button>
@@ -417,20 +417,42 @@ function ObservationCreateForm(props) {
             <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
           {props.isViewingPrevious ? (
-            <button
-              type="button"
-              onClick={() => props.onStepForward?.()}
-              className="capture-action-btn"
-              aria-label="Next"
-              style={{ background: "#ddf0e3", border: "none" }}
-            >
-              <img
-                src="/datumise_next_.svg"
-                alt=""
-                width="22"
-                height="22"
-              />
-            </button>
+            <div style={{ position: "relative" }}>
+              {props.previousObsIncomplete && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    fontSize: "0.68rem",
+                    color: "#fef0e0",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {props.previousObsMissingImage && props.previousObsMissingTitle
+                    ? "Add image and observation"
+                    : props.previousObsMissingImage
+                    ? "Add image to proceed"
+                    : "Add observation to proceed"}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => props.onStepForward?.()}
+                disabled={props.previousObsIncomplete}
+                className={`capture-action-btn ${props.previousObsIncomplete ? "capture-action-warning" : ""}`}
+                aria-label="Next"
+                style={{ background: props.previousObsIncomplete ? undefined : "#ddf0e3", border: "none" }}
+              >
+                <img
+                  src="/datumise_next_.svg"
+                  alt=""
+                  width="22"
+                  height="22"
+                />
+              </button>
+            </div>
           ) : (
             <div style={{ position: "relative" }}>
               <div
@@ -469,15 +491,15 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             onClick={() => props.onReturnToCurrent?.()}
-            disabled={!(props.isViewingPrevious && props.onReturnToCurrent)}
+            disabled={!(props.isViewingPrevious && props.onReturnToCurrent) || props.previousObsIncomplete}
             className="capture-action-btn"
             aria-label="Return to current observation"
             style={{
               background: props.isViewingPrevious && props.onReturnToCurrent ? "#ddf0e3" : "#2c3e50",
               border: "none",
-              opacity: props.isViewingPrevious && props.onReturnToCurrent ? 1 : 0,
+              opacity: props.isViewingPrevious && props.onReturnToCurrent && !props.previousObsIncomplete ? 1 : 0,
               transition: "opacity 1.2s ease, background 1.2s ease",
-              pointerEvents: props.isViewingPrevious && props.onReturnToCurrent ? "auto" : "none",
+              pointerEvents: props.isViewingPrevious && props.onReturnToCurrent && !props.previousObsIncomplete ? "auto" : "none",
             }}
           >
             <img
