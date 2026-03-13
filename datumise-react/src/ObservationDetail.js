@@ -319,32 +319,38 @@ function ObservationDetail() {
 
       {/* ---- Add comment form ---- */}
       {localStorage.getItem("token") && (
-        <Form id="comment-form" onSubmit={handleCommentSubmit} className="mb-3">
-          <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
-            <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-              Add Comment
-            </legend>
-            <Form.Control
-              className="border-0 p-1"
-              id="comment-input"
-              as="textarea"
-              rows={3}
+        <fieldset className="border rounded pt-0 pb-1 px-2 mb-3">
+          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
+            Comments
+          </legend>
+          {commentError && <Alert variant="danger" className="py-1 px-2 mb-1" style={{ fontSize: "0.8rem" }}>{commentError}</Alert>}
+          <div className="d-flex gap-1 mt-1 mb-1">
+            <input
+              type="text"
+              className="form-control form-control-sm"
+              style={{ fontSize: "0.78rem" }}
+              placeholder="Write a comment..."
               value={commentContent}
               onChange={(e) => setCommentContent(e.target.value)}
-              placeholder="Write your comment here..."
-              required
-              style={{ resize: "none", fontSize: "0.85rem", backgroundColor: "transparent" }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCommentSubmit(e); } }}
             />
-          </fieldset>
-          {commentError && <Alert variant="danger" className="py-1 px-2" style={{ fontSize: "0.8rem" }}>{commentError}</Alert>}
-          <button type="submit" className="btn btn-success btn-sm">Post Comment</button>
-        </Form>
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{ background: "#f0ece4", fontSize: "0.75rem", whiteSpace: "nowrap" }}
+              onClick={handleCommentSubmit}
+              disabled={!commentContent.trim()}
+            >
+              Send
+            </button>
+          </div>
+        </fieldset>
       )}
 
       {/* ---- Image preview modal ---- */}
       <Modal show={showImageModal} onHide={() => setShowImageModal(false)} centered size="lg">
         <Modal.Header closeButton className="pb-2">
-          <Modal.Title>{observation.title}</Modal.Title>
+          <Modal.Title>Image preview</Modal.Title>
         </Modal.Header>
         <Modal.Body className="text-center pt-2 pb-4" style={{ background: "#2c3e50" }}>
           {observation.image ? (
