@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from django.db.models import Count
-from .models import Observation, Comment, Survey
-from .serializers import ObservationSerializer, CommentSerializer, SurveySerializer, SurveyDetailSerializer
+from .models import Observation, Comment, Survey, Client, ClientSite
+from .serializers import ObservationSerializer, CommentSerializer, SurveySerializer, SurveyDetailSerializer, ClientSerializer, ClientSiteSerializer
 from .permissions import IsOwnerOrReadOnly
 from django.utils import timezone
 from rest_framework import filters
@@ -140,3 +140,25 @@ class CommentLikeToggle(APIView):
         comment.likes.add(request.user)
         return Response({"liked": True, "likes_count": comment.likes.count()})
 
+
+class ClientList(generics.ListCreateAPIView):
+    queryset = Client.objects.annotate(
+        site_count=Count("sites"),
+        survey_count=Count("surveys"),
+    ).order_by("name")
+    serializer_class = ClientSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ClientSiteList(generics.ListCreateAPIView):
+    serializer_class = ClientSiteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = ClientSite.objects.annotate(
+            survey_count=Count("surveys"),
+        ).order_by("name")
+        client_id = self.request.query_params.get("client")
+        if client_id:
+            queryset = queryset.filter(client_id=client_id)
+        return queryset

@@ -64,6 +64,15 @@ function ObservationCreateForm(props) {
     }
   }, []);
 
+  // Report draft incompleteness to parent
+  const onDraftIncomplete = props.onDraftIncomplete;
+  useEffect(() => {
+    const hasImage = !!imagePreview;
+    const hasTitle = !!title.trim();
+    const incomplete = (hasImage || hasTitle) && !(hasImage && hasTitle);
+    onDraftIncomplete?.(incomplete);
+  }, [imagePreview, title, onDraftIncomplete]);
+
   const handleChange = (event) => {
     const updatedData = {
       ...formData,
@@ -135,7 +144,7 @@ function ObservationCreateForm(props) {
   return (
   <div className="pt-2 px-0 d-flex flex-column h-100">
     <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3 d-flex flex-column flex-grow-1">
-      <div className="d-flex flex-column gap-2 flex-grow-1">
+      <div className="d-flex flex-column gap-2 flex-grow-1" style={{ minHeight: "calc(100% + 3.5rem)" }}>
         <div className="flex-grow-1">
           <div className="mb-2">
             <Form.Control
@@ -381,23 +390,24 @@ function ObservationCreateForm(props) {
         <div className="d-flex align-items-center justify-content-center gap-4">
           <button
             type="button"
-            onClick={() => {
+            onClick={props.anyIncomplete ? undefined : () => {
               props.onPauseSurvey?.();
               props.onClose?.();
             }}
-            className="capture-action-btn"
+            disabled={props.anyIncomplete}
+            className={`capture-action-btn ${props.anyIncomplete ? "capture-action-warning" : ""}`}
             aria-label="Pause Survey"
-            style={{ background: "#95a5a6", border: "none" }}
+            style={{ background: props.anyIncomplete ? undefined : "#95a5a6", border: "none" }}
           >
-            <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: props.anyIncomplete ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
           <button
             type="button"
             onClick={() => props.onStepBack?.()}
             disabled={!props.onStepBack}
-            className={`capture-action-btn ${props.previousObsIncomplete && props.isViewingPrevious ? "capture-action-warning" : ""}`}
+            className={`capture-action-btn ${!props.onStepBack && props.previousObsIncomplete ? "capture-action-warning" : ""}`}
             aria-label="Previous observation"
-            style={{ background: props.previousObsIncomplete && props.isViewingPrevious ? undefined : "#ddf0e3", border: "none" }}
+            style={{ background: !props.onStepBack && props.previousObsIncomplete ? undefined : "#ddf0e3", border: "none" }}
           >
             <img src="/datumise_back.svg" alt="" width="20" height="20" />
           </button>
@@ -586,7 +596,7 @@ function ObservationCreateForm(props) {
     <Modal
       show={showNotesModal}
       onHide={() => setShowNotesModal(false)}
-      centered
+      dialogClassName="modal-bottom"
     >
       <Modal.Header closeButton>
         <Modal.Title>Notes</Modal.Title>

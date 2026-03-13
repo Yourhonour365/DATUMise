@@ -136,7 +136,7 @@ fieldset {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: #fff;
+  background: #f0ece4;
   border: 1px solid #dee2e6;
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -244,6 +244,9 @@ fieldset {
 
 .observation-preview {
   padding: 0.15rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100% + 3.5rem);
 }
 
 .observation-preview-image {
@@ -575,4 +578,23 @@ fieldset {
 .survey-queue-status-text {
   font-size: 0.72rem;
   color: #2c3e50;
+}
+
+
+/* ==========================================================
+   Bottom-sheet modals – thumb-friendly positioning
+   ========================================================== */
+
+.modal-bottom {
+  display: flex !important;
+  align-items: flex-end !important;
+  margin: 0 !important;
+  min-height: 100% !important;
+}
+
+.modal-bottom .modal-content {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }

@@ -10,6 +10,7 @@ import SurveyDetail from "./SurveyDetail";
 import SurveyCapture from "./SurveyCapture";
 import Register from "./Register";
 import Login from "./Login";
+import ClientList from "./ClientList";
 
 function Home() {
   return (
@@ -27,6 +28,7 @@ function useScreenTitle() {
   const { pathname } = useLocation();
 
   if (pathname === "/") return "DATUMise";
+  if (pathname === "/clients") return "Clients";
   if (pathname === "/surveys") return "Surveys";
   if (/^\/surveys\/\d+$/.test(pathname)) return "Survey";
   if (pathname === "/observations") return "Observations";
@@ -93,23 +95,32 @@ function AppLayout() {
   return (
     <>
       {/* ---- Desktop nav (hidden on mobile) ---- */}
-      <nav className="app-nav-desktop navbar px-3" style={{ background: "#FF7518", borderBottom: "none" }}>
-        <Link className="navbar-brand" to="/">DATUMise</Link>
-        <Link className="btn btn-outline-dark btn-sm me-2" to="/observations">
-          Observations
+      <nav className="app-nav-desktop navbar px-4" style={{ background: "#FF7518", borderBottom: "none" }}>
+        <Link className="navbar-brand fw-bold" to="/" style={{ color: "#faf6ef" }}>
+          DATUMise
         </Link>
-        <Link className="btn btn-outline-dark btn-sm me-2" to="/surveys">
+        <Link className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>
+          Clients
+        </Link>
+        <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
           Surveys
         </Link>
-        <div>
+        <Link className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>
+          Observations
+        </Link>
+        <div className="ms-auto">
           {isLoggedIn ? (
-            <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
+            <button className="nav-link btn btn-link" onClick={handleLogout} style={{ color: "#faf6ef" }}>
               Logout
             </button>
           ) : (
             <>
-              <Link className="btn btn-outline-primary btn-sm me-2" to="/login">Login</Link>
-              <Link className="btn btn-outline-secondary btn-sm" to="/register">Register</Link>
+              <Link className="nav-link d-inline" to="/login" style={{ color: "#faf6ef" }}>
+                Login
+              </Link>
+              <Link className="nav-link d-inline ms-3" to="/register" style={{ color: "#faf6ef" }}>
+                Register
+              </Link>
             </>
           )}
         </div>
@@ -140,6 +151,9 @@ function AppLayout() {
 
           {menuOpen && (
             <div className="app-nav-dropdown">
+              <Link to="/clients" className="app-nav-dropdown-item">
+                Clients
+              </Link>
               <Link to="/surveys" className="app-nav-dropdown-item">
                 Surveys
               </Link>
@@ -179,6 +193,7 @@ function AppLayout() {
         <Route path="/observations/create" element={<ObservationCreateForm />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
         <Route path="/observations/:id/edit" element={<ObservationEditForm />} />
+        <Route path="/clients" element={<ClientList />} />
         <Route path="/surveys" element={<SurveyList />} />
         <Route path="/surveys/:id" element={<SurveyDetail />} />
       </Routes>

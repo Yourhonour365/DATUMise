@@ -19,10 +19,12 @@ function SurveyCapture() {
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [pauseCountdown, setPauseCountdown] = useState(null);
+  const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
   const [showPreviewImageModal, setShowPreviewImageModal] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const previewFileInputRef = useRef(null);
+  const modalClosedAtRef = useRef(0);
 
   const fetchSurvey = async () => {
     try {
@@ -150,6 +152,7 @@ function SurveyCapture() {
       ...prev,
       observations: [newObservation, ...(prev.observations || [])],
     }));
+    setDraftIncomplete(false);
     setViewingIndex(null);
     setSuccessMessage(false);
     setTimeout(() => setSuccessMessage(true), 100);
@@ -159,6 +162,9 @@ function SurveyCapture() {
   const observations = survey?.observations || [];
   const viewedObservation = viewingIndex !== null ? observations[viewingIndex] : null;
 
+  const viewedObsIncomplete = viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim());
+  const anyIncomplete = viewingIndex !== null ? viewedObsIncomplete : draftIncomplete;
+
   // observations array is newest-first (API ordering = -created_at)
   // Back = toward older (higher index), Forward = toward newer (lower index)
   const canStepBack = viewingIndex === null
@@ -166,11 +172,13 @@ function SurveyCapture() {
     : viewingIndex < observations.length - 1;
 
   const resetEditState = () => {
+    if (editingField !== null) modalClosedAtRef.current = Date.now();
     setEditingField(null);
     setEditValue("");
   };
 
   const handleStepBack = () => {
+    if (Date.now() - modalClosedAtRef.current < 400) return;
     resetEditState();
     if (viewingIndex === null) {
       if (observations.length > 0) setViewingIndex(0);
@@ -180,6 +188,7 @@ function SurveyCapture() {
   };
 
   const handleStepForward = () => {
+    if (Date.now() - modalClosedAtRef.current < 400) return;
     resetEditState();
     if (viewingIndex !== null) {
       if (viewingIndex > 0) {
@@ -339,8 +348,9 @@ function SurveyCapture() {
           type="button"
           className="btn-close"
           aria-label="Close"
-          onClick={closeSurvey}
-          style={{ transform: "scale(0.85)", marginLeft: "auto" }}
+          onClick={anyIncomplete ? undefined : closeSurvey}
+          disabled={anyIncomplete}
+          style={{ transform: "scale(0.85)", marginLeft: "auto", opacity: anyIncomplete ? 0.3 : 1 }}
         />
       </div>
 
@@ -403,6 +413,8 @@ function SurveyCapture() {
                 {survey.client}{survey.client && survey.site && " • "}{survey.site}
               </small>
             )}
+
+            <div style={{ flex: 1 }} />
 
             {/* Observation field */}
             <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
@@ -487,18 +499,21 @@ function SurveyCapture() {
           </div>
         )}
         {isLive && (
-          <div style={viewingIndex !== null ? { display: "none" } : undefined}>
+          <div style={viewingIndex !== null ? { display: "none" } : { height: "100%" }}>
             <ObservationCreateForm
               surveyId={survey.id}
-              onPauseSurvey={startPauseCountdown}
-              onClose={startPauseCountdown}
+              onPauseSurvey={anyIncomplete ? null : startPauseCountdown}
+              onClose={anyIncomplete ? null : startPauseCountdown}
               onSuccess={handleSuccess}
               captureMode
               actionBarTarget={actionBarEl}
-              onStepBack={canStepBack && !(viewingIndex !== null && viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())) ? handleStepBack : null}
-              onStepForward={viewingIndex !== null && !(viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())) ? handleStepForward : null}
+              anyIncomplete={anyIncomplete}
+              onDraftIncomplete={setDraftIncomplete}
+              onStepBack={canStepBack && !(viewingIndex !== null ? viewedObsIncomplete : draftIncomplete) ? handleStepBack : null}
+              onStepForward={viewingIndex !== null && !viewedObsIncomplete ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={(() => {
+                if (viewedObsIncomplete) return null;
                 const draft = localStorage.getItem("datumise-observation-draft");
                 const draftImage = localStorage.getItem("datumise-observation-image");
                 const hasDraft = draftImage || (draft && JSON.parse(draft).title?.trim());
@@ -513,9 +528,9 @@ function SurveyCapture() {
                   }
                 };
               })()}
-              previousObsIncomplete={viewingIndex !== null && viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim())}
-              previousObsMissingImage={viewingIndex !== null && viewedObservation && !viewedObservation.image}
-              previousObsMissingTitle={viewingIndex !== null && viewedObservation && !viewedObservation.title?.trim()}
+              previousObsIncomplete={viewingIndex !== null ? viewedObsIncomplete : draftIncomplete}
+              previousObsMissingImage={viewingIndex !== null ? (viewedObservation && !viewedObservation.image) : (draftIncomplete && !localStorage.getItem("datumise-observation-image"))}
+              previousObsMissingTitle={viewingIndex !== null ? (viewedObservation && !viewedObservation.title?.trim()) : (draftIncomplete && !!localStorage.getItem("datumise-observation-image"))}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
             />
           </div>
@@ -658,7 +673,7 @@ function SurveyCapture() {
       <Modal
         show={editingField !== null}
         onHide={() => resetEditState()}
-        centered
+        dialogClassName="modal-bottom"
       >
         <Modal.Header closeButton>
           <Modal.Title>{editingField === "title" ? "Edit Observation" : "Edit Notes"}</Modal.Title>
