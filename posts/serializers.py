@@ -106,7 +106,7 @@ class ObservationSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or request.user != obj.owner:
             return False
-        if obj.survey and obj.survey.status == "submitted":
+        if obj.survey and obj.survey.status != "live":
             return False
         return True
 
