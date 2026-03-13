@@ -3,9 +3,9 @@ from .models import Survey, Observation, Comment, Client, ClientSite, ClientCont
 
 @admin.register(Survey)
 class SurveyAdmin(admin.ModelAdmin):
-    list_display = ("name", "client", "site", "status", "assigned_to", "is_incomplete")
+    list_display = ("__str__", "client", "site", "status", "assigned_to", "notes", "is_incomplete")
     fields = (
-        "name",
+        "notes",
         "client",
         "site",
         "created_by",
