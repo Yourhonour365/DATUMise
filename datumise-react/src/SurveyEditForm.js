@@ -63,6 +63,11 @@ function SurveyEditForm() {
     e.preventDefault();
     setSaving(true);
     setError("");
+    if ((form.schedule_type === "scheduled" || form.schedule_type === "provisional") && !form.scheduled_for) {
+      setError("A planned date is required when scheduling status is scheduled or provisional.");
+      setSaving(false);
+      return;
+    }
     try {
       const payload = { ...form };
       if (!payload.client) payload.client = null;

@@ -52,6 +52,43 @@ class TeamMemberWriteSerializer(serializers.Serializer):
         profile.save()
         return instance
 
+class TeamMemberCreateSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.ChoiceField(
+        choices=Profile.ROLE_CHOICES, required=False
+    )
+    status = serializers.ChoiceField(
+        choices=Profile.STATUS_CHOICES, required=False, default="active"
+    )
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+            email=validated_data.get("email", ""),
+            password=User.objects.make_random_password(),
+        )
+        profile = user.profile
+        if "phone" in validated_data:
+            profile.phone = validated_data["phone"]
+        if "role" in validated_data:
+            profile.role = validated_data["role"]
+        if "status" in validated_data:
+            profile.status = validated_data["status"]
+        profile.save()
+        return user
+
+
 class CustomRegisterSerializer(RegisterSerializer):
     def validate_email(self, email):
         
@@ -204,7 +241,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
     def get_is_surveyor(self, obj):
         request = self.context.get("request")
-        return bool(request and (request.user == obj.assigned_to or request.user == obj.created_by))
+        return bool(request and request.user == obj.assigned_to)
 
     class Meta:
         model = Survey
@@ -257,6 +294,68 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
             "urgent",
         ]
 
+    def validate(self, attrs):
+        instance = self.instance
+        new_status = attrs.get("status", instance.status if instance else "planned")
+        # For assigned_to, distinguish between "not in payload" and "set to null"
+        if "assigned_to" in attrs:
+            new_assigned = attrs["assigned_to"]
+        else:
+            new_assigned = instance.assigned_to if instance else None
+
+        requires_assignment = {"live", "paused", "submitted", "missed"}
+        if new_status in requires_assignment and new_assigned is None:
+            raise serializers.ValidationError(
+                {"status": f"Survey must be assigned before it can be {new_status}."}
+            )
+
+        if "assigned_to" in attrs and attrs["assigned_to"] is None:
+            if new_status not in ("planned", "cancelled"):
+                raise serializers.ValidationError(
+                    {"assigned_to": "Cannot unassign a survey unless it is planned or cancelled."}
+                )
+
+        # Resolve client and site from payload or existing instance
+        if "client" in attrs:
+            new_client = attrs["client"]
+        else:
+            new_client = instance.client if instance else None
+
+        if "site" in attrs:
+            new_site = attrs["site"]
+        else:
+            new_site = instance.site if instance else None
+
+        if new_client is None:
+            raise serializers.ValidationError(
+                {"client": "A survey must have a client."}
+            )
+
+        if new_site is None:
+            raise serializers.ValidationError(
+                {"site": "A survey must have a site."}
+            )
+
+        if new_site.client_id != new_client.id:
+            raise serializers.ValidationError(
+                {"site": "The selected site does not belong to the selected client."}
+            )
+
+        new_schedule_type = attrs.get(
+            "schedule_type", instance.schedule_type if instance else "pending"
+        )
+        if "scheduled_for" in attrs:
+            new_scheduled_for = attrs["scheduled_for"]
+        else:
+            new_scheduled_for = instance.scheduled_for if instance else None
+
+        if new_schedule_type in ("scheduled", "provisional") and not new_scheduled_for:
+            raise serializers.ValidationError(
+                {"scheduled_for": "A planned date is required when scheduling status is scheduled or provisional."}
+            )
+
+        return attrs
+
 
 class SurveyDetailSerializer(serializers.ModelSerializer):
     observations = ObservationSerializer(many=True, read_only=True)
@@ -284,7 +383,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
 
     def get_is_surveyor(self, obj):
         request = self.context.get("request")
-        return bool(request and (request.user == obj.assigned_to or request.user == obj.created_by))
+        return bool(request and request.user == obj.assigned_to)
 
     class Meta:
         model = Survey

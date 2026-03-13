@@ -119,6 +119,37 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
             return SurveyWriteSerializer
         return SurveyDetailSerializer
 
+class SurveyAssign(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            survey = Survey.objects.get(pk=pk)
+        except Survey.DoesNotExist:
+            return Response(
+                {"detail": "Survey not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if survey.assigned_to is not None:
+            return Response(
+                {"detail": "Survey is already assigned."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if survey.status != "planned":
+            return Response(
+                {"detail": "Only planned surveys can be assigned."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        survey.assigned_to = request.user
+        survey.save()
+
+        serializer = SurveyDetailSerializer(survey, context={"request": request})
+        return Response(serializer.data)
+
+
 class ObservationLikeToggle(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -212,12 +243,24 @@ class ClientSiteDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
 
-class TeamList(generics.ListAPIView):
+class TeamList(generics.ListCreateAPIView):
     queryset = User.objects.select_related("profile").order_by(
         "first_name", "last_name", "username"
     )
-    serializer_class = TeamMemberSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            from .serializers import TeamMemberCreateSerializer
+            return TeamMemberCreateSerializer
+        return TeamMemberSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        read_serializer = TeamMemberSerializer(user, context={"request": request})
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TeamDetail(generics.RetrieveUpdateAPIView):

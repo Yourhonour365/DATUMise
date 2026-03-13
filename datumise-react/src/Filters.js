@@ -135,7 +135,7 @@ function Filters() {
 
       {/* ---- Selected filter chips ---- */}
       {(() => {
-        const totalChips = (filters.timePeriod ? 1 : 0) + filters.statuses.length + filters.schedule_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
+        const totalChips = (filters.timePeriod ? 1 : 0) + filters.statuses.length + filters.schedule_types.length + filters.site_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
         if (totalChips === 0) return null;
         const chipsList = (
           <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
@@ -155,6 +155,12 @@ function Filters() {
               <span key={`sc-${sc.id}`} className="filter-chip filter-chip-schedule">
                 {sc.name}
                 <button type="button" className="filter-chip-x" onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
+              </span>
+            ))}
+            {filters.site_types.map((st) => (
+              <span key={`st2-${st.id}`} className="filter-chip filter-chip-site">
+                {st.name}
+                <button type="button" className="filter-chip-x" onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
               </span>
             ))}
             {filters.clients.map((c) => (
@@ -307,6 +313,23 @@ function Filters() {
           />
         </>
       )}
+
+      {/* ---- Site Type (multi-select) ---- */}
+      <MultiSelect
+        label="Site Type"
+        options={[
+          { id: "car_park", name: "Car park" },
+          { id: "retail_park", name: "Retail park" },
+          { id: "industrial_estate", name: "Industrial estate" },
+          { id: "school", name: "School" },
+          { id: "office_campus", name: "Office campus" },
+        ]}
+        selected={filters.site_types}
+        onChange={(val) => setFilters({ site_types: val })}
+        columns={2}
+        isOpen={openSection === "site_types"}
+        onToggle={() => toggleSection("site_types")}
+      />
 
       {/* ---- Clients (multi-select) ---- */}
       <MultiSelect

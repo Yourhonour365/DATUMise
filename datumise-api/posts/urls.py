@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     ObservationList, ObservationDetail,
     CommentList, CommentDetail,
-    SurveyList, SurveyDetail,
+    SurveyList, SurveyDetail, SurveyAssign,
     ObservationLikeToggle, CommentLikeToggle,
     ClientList, ClientDetail,
     ClientSiteList, ClientSiteDetail,
@@ -38,6 +38,11 @@ urlpatterns = [
     path(
         "surveys/<int:pk>/",
         SurveyDetail.as_view(),
+    ),
+    path(
+        "surveys/<int:pk>/assign/",
+        SurveyAssign.as_view(),
+        name="survey-assign",
     ),
     path(
         "observations/<int:pk>/like/",
