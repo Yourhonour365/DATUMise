@@ -184,6 +184,13 @@ class Survey(models.Model):
     site_contact_email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.schedule_type in ("scheduled", "provisional") and not self.scheduled_for:
+            raise ValidationError(
+                {"scheduled_for": "A planned date is required when schedule type is scheduled or provisional."}
+            )
+
     class Meta:
         ordering = ["-created_at"]
 

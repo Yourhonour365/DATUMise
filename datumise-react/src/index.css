@@ -572,17 +572,17 @@ textarea.edit-field {
 .survey-queue-grid {
   display: grid;
   grid-template-columns: auto auto 1fr;
-  gap: 0.1rem 0.5rem;
+  gap: 0.15rem 0.5rem;
   font-size: 0.78rem;
   color: #2c3e50;
   line-height: 1.4;
-  align-items: baseline;
+  align-items: center;
 }
 
 .survey-queue-flags {
   justify-self: end;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.4rem;
 }
 

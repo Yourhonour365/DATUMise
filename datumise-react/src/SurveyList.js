@@ -53,6 +53,12 @@ function formatScheduleLine(survey) {
     scheduleLabel = "Provisional";
   } else if (schedType === "self_scheduling") {
     scheduleLabel = "Self-scheduled";
+  } else if (scheduled) {
+    const d = scheduled.getDate();
+    const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
+    const y = String(scheduled.getFullYear()).slice(2);
+    date = `${d} ${m} '${y}`;
+    scheduleLabel = "Pending";
   } else {
     scheduleLabel = "Pending";
   }
@@ -251,7 +257,7 @@ function SurveyList() {
                   <div className="survey-queue-grid">
                     {/* Row 1: date + time | schedule label + surveyor | flags */}
                     <span>{schedule.date}{schedule.time ? ` ${schedule.time}` : ""}</span>
-                    <span>{[schedule.scheduleLabel, survey.assigned_to || "Unassigned"].filter(Boolean).join(" \u00B7 ")}</span>
+                    <span>{[schedule.scheduleLabel, survey.assigned_to || "Unassigned", schedule.clientAttending ? "Client attending" : ""].filter(Boolean).join(" \u00B7 ")}</span>
                     <span className="survey-queue-flags">
                       {survey.total_likes_count > 0 && (
                         <span className="d-inline-flex align-items-center gap-1" style={{ fontSize: "0.75rem", color: "#6c757d" }}>
@@ -266,7 +272,7 @@ function SurveyList() {
 
                     {/* Row 2: due date | client attending | edit */}
                     <span>{schedule.dueText}</span>
-                    <span>{schedule.clientAttending ? "Client attending" : ""}</span>
+                    <span></span>
                     <Link
                       to={`/surveys/${survey.id}/edit`}
                       className="text-decoration-none edit-icon-circle"
@@ -277,7 +283,7 @@ function SurveyList() {
                     </Link>
 
                     {/* Row 3: client, site | _ | resume/status */}
-                    <span className="survey-queue-clientsite">{survey.site || survey.client || "No client / site"}</span>
+                    <span className="survey-queue-clientsite">{survey.site_address && survey.site_address.length > 30 ? survey.site_address.slice(0, 30) + "..." : (survey.site_address || "No site")}</span>
                     <span style={{ justifySelf: "end" }}>
                       {(survey.status === "planned" || survey.status === "paused") && survey.is_surveyor && survey.assigned_to && (
                         <a
