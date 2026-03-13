@@ -143,6 +143,12 @@ class SurveyAssign(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if request.user.profile.role != "surveyor":
+            return Response(
+                {"detail": "Only surveyors can be assigned to surveys."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         survey.assigned_to = request.user
         survey.save()
 

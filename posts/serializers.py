@@ -223,6 +223,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
     client = serializers.StringRelatedField()
     site = serializers.StringRelatedField()
+    site_address = serializers.CharField(source="site.address", read_only=True, default="")
 
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     site_id = serializers.IntegerField(source="site.id", read_only=True)
@@ -253,6 +254,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "client_id",
             "site",
             "site_id",
+            "site_address",
             "created_by",
             "assigned_to",
             "assigned_to_id",
@@ -334,6 +336,16 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
         if new_site is None:
             raise serializers.ValidationError(
                 {"site": "A survey must have a site."}
+            )
+
+        if new_client.status != "active":
+            raise serializers.ValidationError(
+                {"client": "Surveys cannot be created for inactive clients."}
+            )
+
+        if new_site.status != "active":
+            raise serializers.ValidationError(
+                {"site": "Surveys cannot be created for inactive sites."}
             )
 
         if new_site.client_id != new_client.id:
