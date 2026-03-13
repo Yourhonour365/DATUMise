@@ -8,7 +8,7 @@ from .serializers import (
     ClientSerializer, ClientSiteSerializer,
     TeamMemberSerializer,
 )
-from .permissions import IsOwnerOrReadOnly
+from .permissions import IsOwnerOrReadOnly, IsCommentOwnerOrObservationOwner
 from django.utils import timezone
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -76,12 +76,14 @@ class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CommentSerializer
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
-        IsOwnerOrReadOnly,
+        IsCommentOwnerOrObservationOwner,
     ]
 
 class SurveyList(generics.ListCreateAPIView):
     queryset = Survey.objects.annotate(
-        observation_count=Count("observations")
+        observation_count=Count("observations", distinct=True),
+        total_likes_count=Count("observations__likes", distinct=True),
+        total_comments_count=Count("observations__comments", distinct=True),
     ).order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -161,7 +163,6 @@ class CommentLikeToggle(APIView):
                 {"detail": "You cannot like your own comment."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-
 
         if comment.likes.filter(id=request.user.id).exists():
             comment.likes.remove(request.user)

@@ -84,6 +84,7 @@ function SurveyList() {
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [error, setError] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
   const { filters, setFilters, clearFilters } = useFilters();
 
   useEffect(() => {
@@ -152,6 +153,17 @@ function SurveyList() {
           Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.statuses.length || filters.schedule_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.statuses.length + filters.schedule_types.length})` : ""}
         </Link>
         <AddButton to="/surveys/create" />
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="form-select form-select-sm"
+          style={{ maxWidth: "130px", fontSize: "0.78rem" }}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="most_liked">Most liked</option>
+          <option value="most_commented">Most commented</option>
+        </select>
       </div>
 
       {/* ---- Active filter chips ---- */}
@@ -212,7 +224,14 @@ function SurveyList() {
       <div>
         {!loading &&
           [...surveys]
-            .sort((a, b) => b.urgent - a.urgent)
+            .sort((a, b) => {
+              if (sortOrder === "most_liked") return (b.total_likes_count || 0) - (a.total_likes_count || 0);
+              if (sortOrder === "most_commented") return (b.total_comments_count || 0) - (a.total_comments_count || 0);
+              if (b.urgent !== a.urgent) return b.urgent - a.urgent;
+              const dateA = new Date(a.scheduled_for || a.created_at);
+              const dateB = new Date(b.scheduled_for || b.created_at);
+              return sortOrder === "oldest" ? dateA - dateB : dateB - dateA;
+            })
             .map((survey) => {
               const schedule = formatScheduleLine(survey);
 
@@ -227,6 +246,12 @@ function SurveyList() {
                     <span>{schedule.date}{schedule.time ? ` ${schedule.time}` : ""}</span>
                     <span>{[schedule.scheduleLabel, survey.assigned_to || "Unassigned"].filter(Boolean).join(" \u00B7 ")}</span>
                     <span className="survey-queue-flags">
+                      {survey.total_likes_count > 0 && (
+                        <span className="d-inline-flex align-items-center gap-1" style={{ fontSize: "0.75rem", color: "#6c757d" }}>
+                          <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
+                          {survey.total_likes_count}
+                        </span>
+                      )}
                       <strong style={{ fontSize: "0.88rem" }}>{survey.observation_count > 0 ? `(${survey.observation_count})` : ""}</strong>
                       {schedule.urgent ? <img src="/datumise_urgent.svg" alt="Urgent" width="16" height="16" style={{ filter: "invert(56%) sepia(81%) saturate(552%) hue-rotate(347deg) brightness(97%) contrast(87%)" }} /> : <span style={{ display: "inline-block", width: "16px" }} />}
                       {schedule.overdue && "\u23F0"}
@@ -237,17 +262,17 @@ function SurveyList() {
                     <span>{schedule.clientAttending ? "Client attending" : ""}</span>
                     <Link
                       to={`/surveys/${survey.id}/edit`}
-                      className="text-decoration-none"
+                      className="text-decoration-none edit-icon-circle"
                       style={{ justifySelf: "end" }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <img src="/datumise-edit.svg" alt="Edit" width="16" height="16" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+                      <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
                     </Link>
 
                     {/* Row 3: client, site | _ | resume/status */}
                     <span className="survey-queue-clientsite">{survey.site || survey.client || "No client / site"}</span>
                     <span style={{ justifySelf: "end" }}>
-                      {(survey.status === "planned" || survey.status === "paused") && (
+                      {(survey.status === "planned" || survey.status === "paused") && survey.is_surveyor && (
                         <a
                           href="#"
                           style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
@@ -263,6 +288,24 @@ function SurveyList() {
                           }}
                         >
                           {survey.status === "paused" ? "Resume" : "Start"}
+                        </a>
+                      )}
+                      {(survey.status === "planned" || survey.status === "paused") && !survey.assigned_to && !survey.is_surveyor && (
+                        <a
+                          href="#"
+                          style={{ fontWeight: 600, color: "#0d6efd", textDecoration: "none", fontSize: "0.75rem" }}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              const res = await api.post(`/api/surveys/${survey.id}/assign/`);
+                              setSurveys((prev) => prev.map((s) => s.id === survey.id ? res.data : s));
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                        >
+                          Assign to me
                         </a>
                       )}
                       {survey.status === "live" && (

@@ -25,6 +25,8 @@ function SurveyCapture() {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const previewFileInputRef = useRef(null);
   const modalClosedAtRef = useRef(0);
+  const [captureComments, setCaptureComments] = useState([]);
+  const [captureCommentText, setCaptureCommentText] = useState("");
 
   const fetchSurvey = async () => {
     try {
@@ -152,6 +154,32 @@ function SurveyCapture() {
 
   const observations = survey?.observations || [];
   const viewedObservation = viewingIndex !== null ? observations[viewingIndex] : null;
+
+  // Fetch comments for the currently viewed observation
+  useEffect(() => {
+    if (!viewedObservation?.id) { setCaptureComments([]); return; }
+    api.get(`/api/comments/?observation=${viewedObservation.id}`)
+      .then((res) => setCaptureComments(res.data.results || res.data))
+      .catch(() => setCaptureComments([]));
+  }, [viewedObservation?.id]);
+
+  const handleAddCaptureComment = async () => {
+    if (!captureCommentText.trim() || !viewedObservation?.id) return;
+    try {
+      await api.post("/api/comments/", { observation: viewedObservation.id, content: captureCommentText.trim() });
+      setCaptureCommentText("");
+      const res = await api.get(`/api/comments/?observation=${viewedObservation.id}`);
+      setCaptureComments(res.data.results || res.data);
+      setSurvey((prev) => ({
+        ...prev,
+        observations: prev.observations.map((obs) =>
+          obs.id === viewedObservation.id ? { ...obs, comment_count: (obs.comment_count || 0) + 1 } : obs
+        ),
+      }));
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    }
+  };
 
   const viewedObsIncomplete = viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim());
   const anyIncomplete = viewingIndex !== null ? viewedObsIncomplete : draftIncomplete;
@@ -343,14 +371,16 @@ function SurveyCapture() {
               </small>
             )}
 
-            <div style={{ flex: 1 }} />
-
             {/* Observation field */}
             <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
               <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
                 Observation
               </legend>
-              <div className="d-flex justify-content-between align-items-start p-1">
+              <div
+                className="d-flex justify-content-between align-items-start p-1"
+                style={{ cursor: "pointer" }}
+                onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
+              >
                 <span style={{
                   lineHeight: "1.2",
                   minWidth: 0,
@@ -364,26 +394,60 @@ function SurveyCapture() {
               </div>
             </fieldset>
 
-            {/* Notes field */}
-            <fieldset className="border rounded pt-0 pb-1 px-2">
-              <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-                Notes
+            {/* Likes & Comments count */}
+            <div className="d-flex align-items-center gap-3 text-muted px-2 py-1" style={{ fontSize: "0.85rem" }}>
+              <div className="d-flex align-items-center gap-1">
+                <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: 0.5 }} />
+                {viewedObservation.likes_count || 0}
+              </div>
+              <div className="d-flex align-items-center gap-1">
+                <img src="/datumise-comment.svg" alt="" width="14" height="14" style={{ opacity: 0.5 }} />
+                {viewedObservation.comment_count || 0}
+              </div>
+            </div>
+
+            {/* Comments field — inline list + add */}
+            <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
+              <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
+                Comments
               </legend>
-              <div className="d-flex justify-content-between align-items-start p-1">
-                <span className="text-muted" style={{
-                  lineHeight: "1.2",
-                  minWidth: 0,
-                  overflowWrap: "anywhere",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 4,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  height: "calc(1.2em * 4)",
-                }}>
-                  {viewedObservation.description || <em className="text-muted">No notes</em>}
-                </span>
+              <div style={{ maxHeight: "120px", overflowY: "auto", padding: "0.25rem 0" }}>
+                {captureComments.length === 0 ? (
+                  <em className="text-muted" style={{ fontSize: "0.78rem", padding: "0.25rem" }}>No comments yet</em>
+                ) : (
+                  captureComments.map((c) => (
+                    <div key={c.id} style={{ fontSize: "0.78rem", padding: "0.2rem 0", borderBottom: "1px solid #eee" }}>
+                      <span className="text-muted" style={{ fontSize: "0.68rem" }}>
+                        {c.owner} &bull; {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <div style={{ overflowWrap: "anywhere" }}>{c.content}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="d-flex gap-1 mt-1 mb-1">
+                <input
+                  type="text"
+                  className="form-control form-control-sm"
+                  style={{ fontSize: "0.78rem" }}
+                  placeholder="Write a comment..."
+                  value={captureCommentText}
+                  onChange={(e) => setCaptureCommentText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCaptureComment(); } }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ background: "#f0ece4", fontSize: "0.75rem", whiteSpace: "nowrap" }}
+                  onClick={handleAddCaptureComment}
+                  disabled={!captureCommentText.trim()}
+                >
+                  Send
+                </button>
               </div>
             </fieldset>
+
+            <div style={{ flex: 1 }} />
           </div>
         )}
         <div style={viewingIndex !== null ? { display: "none" } : { height: "100%" }}>
@@ -411,7 +475,7 @@ function SurveyCapture() {
                   if (hasDraft) {
                     setViewingIndex(null);
                   } else {
-                    setViewingIndex(0);
+                    setViewingIndex(null);
                   }
                 };
               })()}
@@ -425,6 +489,31 @@ function SurveyCapture() {
       </div>
       <div className="survey-capture-actions" ref={setActionBarEl}>
       </div>
+
+      {/* Hidden file input for changing previous observation image */}
+      <input
+        ref={previewFileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={async (event) => {
+          const selectedFile = event.target.files[0];
+          if (!selectedFile || !viewedObservation) return;
+          const formData = new FormData();
+          formData.append("title", viewedObservation.title);
+          formData.append("description", viewedObservation.description || "");
+          formData.append("image", selectedFile);
+          try {
+            await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            fetchSurvey();
+          } catch (err) {
+            console.error("Error replacing image:", err);
+          }
+          event.target.value = null;
+        }}
+      />
 
       {/* Image preview modal for previous observations */}
       <Modal
@@ -445,7 +534,16 @@ function SurveyCapture() {
             />
           )}
         </Modal.Body>
-        <Modal.Footer className="justify-content-center">
+        <Modal.Footer className="justify-content-center gap-3">
+          <button
+            type="button"
+            onClick={() => { setShowPreviewImageModal(false); previewFileInputRef.current?.click(); }}
+            className="capture-action-btn"
+            aria-label="Change Image"
+            style={{ background: "#FF7518", border: "none" }}
+          >
+            <img src="/camera.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+          </button>
           <button
             type="button"
             onClick={() => setShowPreviewImageModal(false)}

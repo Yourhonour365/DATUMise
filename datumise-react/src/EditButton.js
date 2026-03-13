@@ -8,7 +8,7 @@ function EditButton({ to }) {
         alt=""
         width="20"
         height="20"
-        style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0) brightness(1.06)" }}
+        style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }}
       />
     </Link>
   );

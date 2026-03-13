@@ -140,20 +140,16 @@ function ClientDetail() {
           <Link
             key={site.id}
             to={`/sites/${site.id}`}
-            className="text-decoration-none"
+            className="text-decoration-none text-dark"
           >
             <div className="survey-queue-card">
-              <div className="survey-queue-line1">
-                {site.site_type_display || "No type"}
-                {site.postcode && ` \u00B7 ${site.postcode}`}
-              </div>
-              <div className="survey-queue-line2">{site.name}</div>
-              <div className="survey-queue-line3">
-                {site.address && (
-                  <span className="survey-queue-surveyor">{site.address}</span>
-                )}
-                <span className="survey-queue-obs">
+              <div className="survey-queue-grid" style={{ gridTemplateColumns: "1fr auto" }}>
+                <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>{site.name}</span>
+                <span className="text-muted" style={{ fontSize: "0.78rem", justifySelf: "end" }}>
                   {site.survey_count} {site.survey_count === 1 ? "survey" : "surveys"}
+                </span>
+                <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+                  {[site.site_type_display, site.address, site.postcode].filter(Boolean).join(" \u00B7 ")}
                 </span>
               </div>
             </div>

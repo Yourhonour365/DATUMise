@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
-import ReturnButton from "./ReturnButton";
 
 function SurveyCreateForm() {
   const navigate = useNavigate();
@@ -138,7 +137,7 @@ function SurveyCreateForm() {
           </button>
           <button
             type="button"
-            onClick={() => navigate("/surveys")}
+            onClick={() => navigate(-1)}
             className="capture-action-btn"
             aria-label="Cancel"
             style={{ background: "#dce7fa", border: "none" }}
@@ -148,7 +147,6 @@ function SurveyCreateForm() {
         </div>
       </form>
 
-      <ReturnButton to="/surveys" />
     </div>
   );
 }

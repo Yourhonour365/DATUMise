@@ -182,7 +182,7 @@ function SurveyEditForm() {
           </button>
           <button
             type="button"
-            onClick={() => navigate("/surveys")}
+            onClick={() => navigate(`/surveys/${id}`)}
             className="capture-action-btn"
             aria-label="Cancel"
             style={{ background: "#dce7fa", border: "none" }}

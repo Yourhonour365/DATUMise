@@ -276,51 +276,18 @@ function ObservationCreateForm(props) {
               )}
             </div>
 
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm mt-1"
+              style={{ fontSize: "0.72rem", padding: "0.15rem 0.5rem", alignSelf: "flex-start" }}
+              onClick={() => setShowNotesModal(true)}
+            >
+              + Internal Note
+            </button>
+
           </fieldset>
         </div>
 
-        <div>
-          <fieldset
-            className="rounded pt-0 pb-2 px-2 mb-3"
-            style={{ backgroundColor: description.trim() ? "#f0ece4" : "#ecf0f1", border: "none", cursor: "pointer" }}
-            onClick={() => setShowNotesModal(true)}
-          >
-            <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0">
-              Notes
-            </legend>
-            <div className="p-1" style={{
-              height: "calc(1.2em * 4)",
-              lineHeight: "1.2",
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-            }}>
-              {description ? (
-                <span style={{ overflowWrap: "anywhere" }}>{description}</span>
-              ) : (
-                <span style={{ color: "#6c757d" }}>Enter notes</span>
-              )}
-            </div>
-            {description.length > 0 && (
-              <div className="d-flex justify-content-between align-items-center mt-1">
-                <small style={{ fontSize: "0.72rem", color: description.length >= 280 ? "#2c3e50" : description.length >= 240 ? "#e67e22" : "#2c3e50" }}>{description.length} / 280</small>
-                <button
-                  type="button"
-                  className="field-clear-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const updatedData = { ...formData, description: "" };
-                    setFormData(updatedData);
-                    localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-          </fieldset>
-        </div>
       </div>
 
           {!props.captureMode && (
@@ -388,31 +355,19 @@ function ObservationCreateForm(props) {
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
         <div className="d-flex align-items-center justify-content-center gap-4">
-          {props.isViewingPrevious ? (
-            <button
-              type="button"
-              onClick={() => props.onReturn?.()}
-              className="capture-action-btn"
-              aria-label="Return"
-              style={{ background: "#dce7fa", border: "none" }}
-            >
-              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={props.anyIncomplete ? undefined : () => {
-                props.onPauseSurvey?.();
-                props.onClose?.();
-              }}
-              disabled={props.anyIncomplete}
-              className={`capture-action-btn ${props.anyIncomplete ? "capture-action-warning" : ""}`}
-              aria-label="Pause Survey"
-              style={{ background: props.anyIncomplete ? undefined : "#95a5a6", border: "none" }}
-            >
-              <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: props.anyIncomplete ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={props.anyIncomplete ? undefined : () => {
+              props.onPauseSurvey?.();
+              props.onClose?.();
+            }}
+            disabled={props.anyIncomplete}
+            className={`capture-action-btn ${props.anyIncomplete ? "capture-action-warning" : ""}`}
+            aria-label="Pause Survey"
+            style={{ background: props.anyIncomplete ? undefined : "#95a5a6", border: "none" }}
+          >
+            <img src="/datumise_pause.svg" alt="" width="24" height="24" style={{ filter: props.anyIncomplete ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+          </button>
           <button
             type="button"
             onClick={() => props.onStepBack?.()}
@@ -423,17 +378,15 @@ function ObservationCreateForm(props) {
           >
             <img src="/datumise_back.svg" alt="" width="20" height="20" />
           </button>
-          {!props.isViewingPrevious && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="capture-action-btn"
-              aria-label="Take Photo"
-              style={{ background: "#FF7518", border: "none" }}
-            >
-              <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => props.isViewingPrevious ? props.onCaptureForPrevious?.() : fileInputRef.current?.click()}
+            className="capture-action-btn"
+            aria-label="Take Photo"
+            style={{ background: "#FF7518", border: "none" }}
+          >
+            <img src="/camera.svg" alt="" width="26" height="26" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+          </button>
           {props.isViewingPrevious ? (
             <div style={{ position: "relative" }}>
               {props.previousObsIncomplete && (

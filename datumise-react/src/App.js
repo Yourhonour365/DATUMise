@@ -13,18 +13,27 @@ import Login from "./Login";
 import ClientList from "./ClientList";
 import ClientDetail from "./ClientDetail";
 import SiteDetail from "./SiteDetail";
+import SiteEditForm from "./SiteEditForm";
 import TeamList from "./TeamList";
 import TeamDetail from "./TeamDetail";
 import TeamEditForm from "./TeamEditForm";
 import ClientEditForm from "./ClientEditForm";
 import Filters from "./Filters";
 import Settings from "./Settings";
+import QuickAdd from "./QuickAdd";
+import ClientCreateForm from "./ClientCreateForm";
+import SiteCreateForm from "./SiteCreateForm";
+import TeamCreateForm from "./TeamCreateForm";
 import { FilterProvider } from "./FilterContext";
 
 function Home() {
   return (
     <div className="container mt-4 px-3">
       <div className="d-flex flex-wrap gap-3">
+        <Link to="/quick-add" className="dashboard-tile">
+          <img src="/datumise-add.svg" alt="" width="28" height="28" />
+          <span>Quick Add</span>
+        </Link>
         <Link to="/clients" className="dashboard-tile">
           <img src="/datumise-clients.svg" alt="" width="28" height="28" />
           <span>Clients</span>
@@ -63,6 +72,7 @@ function useScreenTitle() {
   if (pathname === "/") return "DATUMise";
   if (pathname === "/clients") return "Clients";
   if (/^\/clients\/\d+$/.test(pathname)) return "Client";
+  if (/^\/sites\/\d+\/edit$/.test(pathname)) return "Edit Site";
   if (/^\/sites\/\d+$/.test(pathname)) return "Site";
   if (pathname === "/surveys") return "Surveys";
   if (pathname === "/surveys/create") return "New Survey";
@@ -75,6 +85,10 @@ function useScreenTitle() {
   if (/^\/team\/\d+$/.test(pathname)) return "Team Member";
   if (/^\/team\/\d+\/edit$/.test(pathname)) return "Edit Team Member";
   if (/^\/clients\/\d+\/edit$/.test(pathname)) return "Edit Client";
+  if (pathname === "/quick-add") return "Quick Add";
+  if (pathname === "/clients/create") return "New Client";
+  if (pathname === "/sites/create") return "New Site";
+  if (pathname === "/team/create") return "New Team Member";
   if (pathname === "/filters") return "Filters";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/login") return "Login";
@@ -250,15 +264,20 @@ function AppLayout() {
         <Route path="/observations" element={<ObservationList />} />
         <Route path="/observations/survey/:surveyId" element={<ObservationList />} />
         <Route path="/observations/:id" element={<ObservationDetail />} />
+        <Route path="/quick-add" element={<QuickAdd />} />
         <Route path="/clients" element={<ClientList />} />
+        <Route path="/clients/create" element={<ClientCreateForm />} />
         <Route path="/clients/:id" element={<ClientDetail />} />
         <Route path="/clients/:id/edit" element={<ClientEditForm />} />
+        <Route path="/sites/create" element={<SiteCreateForm />} />
         <Route path="/sites/:id" element={<SiteDetail />} />
+        <Route path="/sites/:id/edit" element={<SiteEditForm />} />
         <Route path="/surveys" element={<SurveyList />} />
         <Route path="/surveys/create" element={<SurveyCreateForm />} />
         <Route path="/surveys/:id/edit" element={<SurveyEditForm />} />
         <Route path="/surveys/:id" element={<SurveyDetail />} />
         <Route path="/team" element={<TeamList />} />
+        <Route path="/team/create" element={<TeamCreateForm />} />
         <Route path="/team/:id" element={<TeamDetail />} />
         <Route path="/team/:id/edit" element={<TeamEditForm />} />
         <Route path="/filters" element={<Filters />} />
