@@ -5,20 +5,35 @@ import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
 
 function ObservationList() {
-  const [observations, setObservations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const [nextPage, setNextPage] = useState(null);
   const { surveyId } = useParams();
+
+  // useState initializer runs exactly once, even in Strict Mode
+  const [initialCache] = useState(() => {
+    const c = window.__obsListCache;
+    if (c && c.surveyId === (surveyId || null)) {
+      window.__obsListCache = null;
+      return c;
+    }
+    return null;
+  });
+
+  const [observations, setObservations] = useState(initialCache?.observations || []);
+  const [loading, setLoading] = useState(!initialCache);
+  const [nextPage, setNextPage] = useState(initialCache?.nextPage || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Idempotent: skip initial fetch when cache provided (safe in Strict Mode)
+    if (initialCache && searchTerm === "") return;
+
     const url = surveyId
       ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
       : `/api/observations/?search=${searchTerm}`;
 
+    setLoading(true);
     api
       .get(url)
       .then((response) => {
@@ -31,12 +46,36 @@ function ObservationList() {
         setError("You must be logged in to view observations.");
         setLoading(false);
       });
-  }, [surveyId, searchTerm]);
+  }, [surveyId, searchTerm, initialCache]);
 
-  const hasScrolled = useRef(false);
+  // Restore scroll + highlight from cache (idempotent — safe for Strict Mode double-mount)
+  useEffect(() => {
+    if (!initialCache || loading) return;
+
+    requestAnimationFrame(() => {
+      if (initialCache.scrollY) {
+        window.scrollTo(0, initialCache.scrollY);
+      }
+      if (initialCache.highlightId) {
+        const el = document.getElementById(`obs-${initialCache.highlightId}`);
+        if (el) {
+          el.style.background = "#9a8255";
+          el.style.transition = "none";
+          setTimeout(() => {
+            el.style.transition = "background 2s ease";
+            el.style.background = "";
+          }, 600);
+        }
+      }
+    });
+  }, [initialCache, loading]);
+
+  // Scroll-to-observation from capture mode return
   const scrollTarget = location.state?.scrollToObservation;
   const [scrollReady, setScrollReady] = useState(!scrollTarget);
   const [highlightedObs, setHighlightedObs] = useState(scrollTarget || null);
+  const hasScrolled = useRef(false);
+
   useLayoutEffect(() => {
     if (scrollTarget && !loading && observations.length > 0 && !hasScrolled.current) {
       const el = document.getElementById(`obs-${scrollTarget}`);
@@ -72,9 +111,19 @@ function ObservationList() {
       });
   };
 
+  const navigateWithCache = (to, options, obsId) => {
+    window.__obsListCache = {
+      surveyId: surveyId || null,
+      observations,
+      nextPage,
+      scrollY: window.scrollY,
+      highlightId: obsId,
+    };
+    navigate(to, options);
+  };
+
   return (
     <div className="container mt-3">
-      {/* ---- Search toolbar ---- */}
       <div className="d-flex gap-2 mb-2 align-items-center flex-wrap">
         <input
           type="text"
@@ -118,8 +167,8 @@ function ObservationList() {
               onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
                 obs.survey
-                  ? navigate(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id, returnPath: surveyId ? `/observations/survey/${surveyId}` : "/observations" } })
-                  : navigate(`/observations/${obs.id}`)
+                  ? navigateWithCache(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id, returnPath: surveyId ? `/observations/survey/${surveyId}` : "/observations" } }, obs.id)
+                  : navigateWithCache(`/observations/${obs.id}`, {}, obs.id)
               }
             >
               {obs.image ? (
