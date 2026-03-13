@@ -137,7 +137,7 @@ function SurveyEditForm() {
           <legend className="edit-legend">Assigned to</legend>
           <select className="edit-field" value={form.assigned_to} onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}>
             <option value="">-- Select --</option>
-            {team.map((m) => (
+            {team.filter((m) => m.role === "surveyor").map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
