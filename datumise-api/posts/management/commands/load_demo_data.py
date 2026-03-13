@@ -1,8 +1,8 @@
-import shutil
 from pathlib import Path
 
-from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 
 from posts.models import (
@@ -244,9 +244,8 @@ class Command(BaseCommand):
             )
             return
 
-        # Ensure media/images directory exists
-        images_dest = Path(settings.MEDIA_ROOT) / "images"
-        images_dest.mkdir(parents=True, exist_ok=True)
+        # Demo images directory (bundled with the command)
+        demo_images_dir = DEMO_IMAGES_DIR
 
         # --- Clients ---
         client_map = {}
@@ -304,21 +303,25 @@ class Command(BaseCommand):
             owner = get_user(data["owner"])
             image_name = data.get("image", "")
 
-            # Copy demo image to media folder
+            # Upload demo image via Django storage (Cloudinary in production, local in dev)
+            image_field_value = ""
             if image_name:
-                src = DEMO_IMAGES_DIR / image_name
-                dst = images_dest / image_name
+                src = demo_images_dir / image_name
                 if src.exists():
-                    shutil.copy2(src, dst)
+                    with open(src, "rb") as f:
+                        saved_path = default_storage.save(
+                            f"images/{image_name}",
+                            ContentFile(f.read()),
+                        )
+                    image_field_value = saved_path
                 else:
                     self.stderr.write(self.style.WARNING(f"  Image not found: {src}"))
-                    image_name = ""
 
             obs = Observation.objects.create(
                 survey=survey,
                 owner=owner,
                 title=data["title"],
-                image=f"images/{image_name}" if image_name else "",
+                image=image_field_value,
             )
             obs_list.append(obs)
         self.stdout.write(f"  Created {len(obs_list)} observations")
