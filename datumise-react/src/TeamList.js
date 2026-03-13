@@ -67,11 +67,11 @@ function TeamList() {
             </Link>
             <Link
               to={`/team/${member.id}/edit`}
-              className="text-decoration-none"
+              className="text-decoration-none edit-icon-circle"
               style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)" }}
               onClick={(e) => e.stopPropagation()}
             >
-              <img src="/datumise-edit.svg" alt="Edit" width="16" height="16" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+              <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
             </Link>
           </div>
         ))

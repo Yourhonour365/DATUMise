@@ -49,16 +49,21 @@ function ClientList() {
           <Link
             key={client.id}
             to={`/clients/${client.id}`}
-            className="text-decoration-none"
+            className="text-decoration-none text-dark"
           >
             <div className="survey-queue-card">
-              <div className="survey-queue-line2">{client.name}</div>
-              <div className="survey-queue-line3">
-                <span className="survey-queue-surveyor">
-                  {client.site_count} {client.site_count === 1 ? "site" : "sites"}
-                </span>
-                <span className="survey-queue-obs">
-                  {client.survey_count} {client.survey_count === 1 ? "survey" : "surveys"}
+              <div className="survey-queue-grid" style={{ gridTemplateColumns: "1fr auto" }}>
+                <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>{client.name}</span>
+                <Link
+                  to={`/clients/${client.id}/edit`}
+                  className="text-decoration-none edit-icon-circle"
+                  style={{ justifySelf: "end" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+                </Link>
+                <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+                  {client.site_count} {client.site_count === 1 ? "site" : "sites"} &middot; {client.survey_count} {client.survey_count === 1 ? "survey" : "surveys"}
                 </span>
               </div>
             </div>

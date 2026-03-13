@@ -73,10 +73,10 @@ useLayoutEffect(() => {
 
     const startSurvey = async () => {
         try {
-            const response = await api.patch(`/api/surveys/${id}/`, {
+            await api.patch(`/api/surveys/${id}/`, {
             status: "live",
             });
-            setSurvey(response.data);
+            fetchSurvey();
         } catch (err) {
             console.log(err);
         }
@@ -84,10 +84,10 @@ useLayoutEffect(() => {
 
     const pauseSurvey = async () => {
         try {
-            const response = await api.patch(`/api/surveys/${id}/`, {
+            await api.patch(`/api/surveys/${id}/`, {
             status: "paused",
             });
-            setSurvey(response.data);
+            fetchSurvey();
         } catch (err) {
             console.log(err);
         }
@@ -107,8 +107,8 @@ useLayoutEffect(() => {
 
     const assignSurvey = async () => {
         try {
-            const response = await api.post(`/api/surveys/${id}/assign/`);
-            setSurvey(response.data);
+            await api.post(`/api/surveys/${id}/assign/`);
+            fetchSurvey();
         } catch (err) {
             console.log(err);
         }
@@ -248,6 +248,13 @@ const formatSurveyDuration = (startTime, _tick) => {
               {survey.status === "paused" && survey.is_surveyor && (
                 <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
               )}
+              <Link
+                to={`/surveys/${id}/edit`}
+                className="btn p-0 border-0 bg-transparent edit-icon-circle"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+              </Link>
               <button
                 type="button"
                 className="btn p-0 border-0 bg-transparent"
@@ -368,12 +375,8 @@ const formatSurveyDuration = (startTime, _tick) => {
               <Link
                 key={observation.id}
                 id={`obs-${observation.id}`}
-                to={
-                  `/surveys/${id}/capture`
-                }
-                state={
-                  { viewObservationId: observation.id, returnPath: `/surveys/${id}` }
-                }
+                to={`/observations/${observation.id}`}
+                state={{ fromSurvey: true, surveyId: id }}
                 className="text-decoration-none text-dark"
               >
                 <div
@@ -393,8 +396,21 @@ const formatSurveyDuration = (startTime, _tick) => {
                   )}
                   <div className="observation-row-content">
                     <div className="observation-row-title">{observation.title}</div>
-                    {observation.description && (
-                      <div className="observation-row-desc">{observation.description}</div>
+                    {(observation.likes_count > 0 || observation.comment_count > 0) && (
+                      <div className="observation-row-desc d-flex align-items-center gap-2">
+                        {observation.likes_count > 0 && (
+                          <span className="d-flex align-items-center gap-1">
+                            <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
+                            {observation.likes_count}
+                          </span>
+                        )}
+                        {observation.comment_count > 0 && (
+                          <span className="d-flex align-items-center gap-1">
+                            <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
+                            {observation.comment_count}
+                          </span>
+                        )}
+                      </div>
                     )}
                     <div className="observation-row-meta">
                       <span>#{survey.observations.length - index} of {survey.observations.length}</span>

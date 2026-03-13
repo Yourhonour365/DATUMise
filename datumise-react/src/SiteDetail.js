@@ -52,7 +52,12 @@ function SiteDetail() {
         </Link>
       </div>
 
-      <h5 className="fw-bold mb-1">{site.name}</h5>
+      <div className="d-flex align-items-center justify-content-between mb-1">
+        <h5 className="fw-bold mb-0">{site.name}</h5>
+        <Link to={`/sites/${id}/edit`} className="text-decoration-none edit-icon-circle" aria-label="Edit site">
+          <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+        </Link>
+      </div>
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap" style={{ fontSize: "0.82rem" }}>
         {site.site_type_display && <span>{site.site_type_display}</span>}
         {site.status === "archived" && (
@@ -113,23 +118,30 @@ function SiteDetail() {
           <Link
             key={survey.id}
             to={`/surveys/${survey.id}`}
-            className="text-decoration-none"
+            className="text-decoration-none text-dark"
           >
             <div className="survey-queue-card">
-              <div className="survey-queue-line3" style={{ marginTop: 0 }}>
-                <span className="survey-queue-surveyor">
+              <div className="survey-queue-grid" style={{ gridTemplateColumns: "1fr auto" }}>
+                <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>
                   {new Date(survey.created_at).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
                   })}
-                  {" \u00B7 "}
-                  {survey.assigned_to || "Unassigned"}
                 </span>
-                <span className="survey-queue-obs">
-                  {survey.status_display}
-                  {(survey.observation_count ?? 0) > 0 &&
-                    ` \u00B7 ${survey.observation_count} obs`}
+                <span style={{ fontSize: "0.78rem", justifySelf: "end" }}>
+                  <span className={
+                    survey.status === "live" ? "text-success fw-semibold" :
+                    survey.status === "submitted" ? "text-primary" :
+                    survey.status === "missed" ? "text-danger" :
+                    "text-muted"
+                  }>
+                    {survey.status_display}
+                  </span>
+                </span>
+                <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+                  {survey.assigned_to || "Unassigned"}
+                  {(survey.observation_count ?? 0) > 0 && ` \u00B7 ${survey.observation_count} obs`}
                 </span>
               </div>
             </div>

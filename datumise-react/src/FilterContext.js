@@ -4,6 +4,7 @@ const STORAGE_KEY = "datumise-filters";
 
 const defaultFilters = {
   scope: "surveys",
+  timePeriod: "",
   clients: [],
   sites: [],
   surveyors: [],
@@ -37,6 +38,7 @@ export function FilterProvider({ children }) {
   }, []);
 
   const hasActiveFilters = !!(
+    filters.timePeriod ||
     filters.clients.length ||
     filters.sites.length ||
     filters.surveyors.length ||

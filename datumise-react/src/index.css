@@ -595,6 +595,61 @@ textarea.edit-field {
 }
 
 
+/* Time filter chips */
+.filter-chip-time {
+  background: #f0ece4;
+  color: #2c3e50;
+  border: 1px solid #d5cfc5;
+  cursor: pointer;
+}
+
+.filter-chip-time-active {
+  background: #FF7518;
+  color: #faf6ef;
+  border: 1px solid #FF7518;
+  cursor: pointer;
+}
+
+/* Quick Add items */
+.quick-add-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: #f0ece4;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.quick-add-item:hover {
+  background: #e8e2d6;
+}
+
+/* Settings role cards */
+.settings-role-card {
+  background: #f0ece4;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.settings-role-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+  color: #2c3e50;
+}
+
+.settings-role-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
 /* ==========================================================
    Bottom-sheet modals – thumb-friendly positioning
    ========================================================== */
@@ -762,14 +817,14 @@ textarea.edit-field {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #1a5bc4;
+  background: #faf6ef;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   text-decoration: none;
   z-index: 90;
   transition: background 0.2s ease;
 }
 .edit-button:hover {
-  background: #144a9e;
+  background: #f0ece4;
 }
 
 @media (max-width: 767.98px) {
@@ -784,4 +839,14 @@ textarea.edit-field {
   .edit-button {
     box-shadow: none;
   }
+}
+
+.edit-icon-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #faf6ef;
 }

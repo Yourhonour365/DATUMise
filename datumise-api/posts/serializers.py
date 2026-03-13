@@ -68,12 +68,15 @@ class ObservationSerializer(serializers.ModelSerializer):
     is_owner = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(read_only=True)
     survey_name = serializers.SerializerMethodField()
+    internal_note = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    comment_likes_count = serializers.SerializerMethodField()
 
     def get_survey_name(self, obj):
         return str(obj.survey) if obj.survey else None
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Observation
         fields = [
@@ -90,11 +93,36 @@ class ObservationSerializer(serializers.ModelSerializer):
             "is_owner",
             "likes_count",
             "is_liked",
+            "internal_note",
+            "can_edit",
+            "comment_likes_count",
         ]
 
     def get_is_owner(self, obj):
         request = self.context.get("request")
         return request and request.user == obj.owner
+
+    def get_can_edit(self, obj):
+        request = self.context.get("request")
+        if not request or request.user != obj.owner:
+            return False
+        if obj.survey and obj.survey.status == "submitted":
+            return False
+        return True
+
+    def get_comment_likes_count(self, obj):
+        total = 0
+        for comment in obj.comments.all():
+            total += comment.likes.count()
+        return total
+
+    def get_internal_note(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return ""
+        if request.user == obj.owner or request.user.is_staff:
+            return obj.description
+        return ""
 
     def get_likes_count(self, obj):
         return obj.likes.count()
@@ -150,6 +178,8 @@ class CommentSerializer(serializers.ModelSerializer):
 class SurveySerializer(serializers.ModelSerializer):
 
     observation_count = serializers.IntegerField(read_only=True)
+    total_likes_count = serializers.IntegerField(read_only=True)
+    total_comments_count = serializers.IntegerField(read_only=True)
     name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     schedule_type_display = serializers.CharField(source="get_schedule_type_display", read_only=True)
@@ -203,6 +233,8 @@ class SurveySerializer(serializers.ModelSerializer):
             "site_contact_email",
             "created_at",
             "observation_count",
+            "total_likes_count",
+            "total_comments_count",
             "is_owner",
             "is_surveyor",
         ]
@@ -212,10 +244,12 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Survey
         fields = [
+            "id",
             "notes",
             "client",
             "site",
             "assigned_to",
+            "status",
             "schedule_type",
             "scheduled_for",
             "due_by",

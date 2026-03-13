@@ -135,10 +135,16 @@ function Filters() {
 
       {/* ---- Selected filter chips ---- */}
       {(() => {
-        const totalChips = filters.statuses.length + filters.schedule_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
+        const totalChips = (filters.timePeriod ? 1 : 0) + filters.statuses.length + filters.schedule_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
         if (totalChips === 0) return null;
         const chipsList = (
           <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
+            {filters.timePeriod && (
+              <span className="filter-chip filter-chip-time-active">
+                {({ today: "Today", this_week: "This week", last_week: "Last week", next_week: "Next week", this_month: "This month", last_month: "Last month", next_month: "Next month" })[filters.timePeriod]}
+                <button type="button" className="filter-chip-x" onClick={() => setFilters({ timePeriod: "" })}>&times;</button>
+              </span>
+            )}
             {filters.statuses.map((st) => (
               <span key={`st-${st.id}`} className={`filter-chip ${st.id === "cancelled" || st.id === "missed" ? "filter-chip-status-cancelled" : "filter-chip-status"}`}>
                 {st.name}
@@ -203,6 +209,66 @@ function Filters() {
             </label>
           ))}
         </div>
+      </div>
+
+      {/* ---- Time period ---- */}
+      <div className="survey-queue-card" style={{ cursor: "default" }}>
+        <div
+          className="d-flex align-items-center justify-content-between"
+          style={{ cursor: "pointer" }}
+          onClick={() => toggleSection("time")}
+        >
+          <div className="d-flex align-items-center gap-1">
+            <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>
+              Time{filters.timePeriod ? " (1)" : ""}
+            </span>
+            <img src="/datumise-down-chev.svg" alt="" width="14" height="14" style={{ opacity: 0.4, transform: openSection === "time" ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+          </div>
+          <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="filter-chip filter-chip-action"
+              onClick={() => setFilters({ timePeriod: "today" })}
+            >
+              Select all
+            </button>
+            {filters.timePeriod && (
+              <button
+                type="button"
+                className="filter-chip filter-chip-clear"
+                onClick={() => setFilters({ timePeriod: "" })}
+              >
+                Clear &times;
+              </button>
+            )}
+          </div>
+        </div>
+        {openSection === "time" && (
+          <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
+            {[
+              { id: "today", name: "Today" },
+              { id: "this_week", name: "This week" },
+              { id: "last_week", name: "Last week" },
+              { id: "next_week", name: "Next week" },
+              { id: "this_month", name: "This month" },
+              { id: "last_month", name: "Last month" },
+              { id: "next_month", name: "Next month" },
+            ].map((opt) => (
+              <label
+                key={opt.id}
+                className="d-flex align-items-center gap-2"
+                style={{ fontSize: "0.82rem", cursor: "pointer", padding: "3px 0" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.timePeriod === opt.id}
+                  onChange={() => setFilters({ timePeriod: filters.timePeriod === opt.id ? "" : opt.id })}
+                />
+                {opt.name}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ---- Survey-specific filters ---- */}

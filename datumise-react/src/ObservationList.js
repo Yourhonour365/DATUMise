@@ -26,6 +26,7 @@ function ObservationList() {
   const [nextPage, setNextPage] = useState(initialCache?.nextPage || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
   const { filters, setFilters, clearFilters } = useFilters();
 
   useEffect(() => {
@@ -39,6 +40,7 @@ function ObservationList() {
     if (filters.clients.length) url += `&survey__client=${filters.clients.map((c) => c.id).join(",")}`;
     if (filters.sites.length) url += `&survey__site=${filters.sites.map((s) => s.id).join(",")}`;
     if (filters.surveyors.length) url += `&owner=${filters.surveyors.map((s) => s.id).join(",")}`;
+    if (filters.timePeriod) url += `&time_period=${filters.timePeriod}`;
 
     setLoading(true);
     api
@@ -159,6 +161,17 @@ function ObservationList() {
         >
           Filters{filters.clients.length || filters.sites.length || filters.surveyors.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length})` : ""}
         </Link>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="form-select form-select-sm"
+          style={{ maxWidth: "130px", fontSize: "0.78rem" }}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="most_liked">Most liked</option>
+          <option value="most_commented">Most commented</option>
+        </select>
       </div>
 
       {/* ---- Active filter chips ---- */}
@@ -206,7 +219,15 @@ function ObservationList() {
 
       <div style={{ opacity: scrollReady ? 1 : 0 }}>
         {!loading &&
-          observations.map((obs) => (
+          [...observations]
+            .sort((a, b) => {
+              if (sortOrder === "most_liked") return (b.likes_count || 0) - (a.likes_count || 0);
+              if (sortOrder === "most_commented") return (b.comment_count || 0) - (a.comment_count || 0);
+              const dateA = new Date(a.created_at);
+              const dateB = new Date(b.created_at);
+              return sortOrder === "oldest" ? dateA - dateB : dateB - dateA;
+            })
+            .map((obs) => (
             <div
               key={obs.id}
               id={`obs-${obs.id}`}
@@ -214,9 +235,7 @@ function ObservationList() {
               style={{ cursor: "pointer" }}
               onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
-                obs.survey
-                  ? navigateWithCache(`/surveys/${obs.survey}/capture`, { state: { viewObservationId: obs.id, returnPath: surveyId ? `/observations/survey/${surveyId}` : "/observations" } }, obs.id)
-                  : navigateWithCache(`/observations/${obs.id}`, {}, obs.id)
+                navigateWithCache(`/observations/${obs.id}`, {}, obs.id)
               }
             >
               {obs.image ? (
@@ -232,8 +251,28 @@ function ObservationList() {
               )}
               <div className="observation-row-content">
                 <div className="observation-row-title">{obs.title}</div>
-                {obs.description && (
-                  <div className="observation-row-desc">{obs.description}</div>
+                {(obs.likes_count > 0 || obs.comment_count > 0 || obs.comment_likes_count > 0) && (
+                  <div className="observation-row-desc d-flex align-items-center gap-2">
+                    {obs.likes_count > 0 && (
+                      <span className="d-flex align-items-center gap-1">
+                        <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
+                        {obs.likes_count}
+                      </span>
+                    )}
+                    {obs.comment_count > 0 && (
+                      <span className="d-flex align-items-center gap-1">
+                        <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
+                        {obs.comment_count}
+                      </span>
+                    )}
+                    {obs.comment_likes_count > 0 && (
+                      <span className="d-flex align-items-center gap-1">
+                        <img src="/datumise-comment.svg" alt="" width="10" height="10" style={{ opacity: 0.4 }} />
+                        <img src="/datumise-like.svg" alt="" width="10" height="10" style={{ opacity: 0.4, marginLeft: "-4px" }} />
+                        {obs.comment_likes_count}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <div className="observation-row-meta">
                   <span>

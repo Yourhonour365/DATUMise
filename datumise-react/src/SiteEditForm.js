@@ -3,37 +3,40 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 import ReturnButton from "./ReturnButton";
 
-function ClientEditForm() {
+function SiteEditForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
+  const [clientId, setClientId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchClient = async () => {
+    const fetchSite = async () => {
       try {
-        const response = await api.get(`/api/clients/${id}/`);
-        const c = response.data;
+        const response = await api.get(`/api/sites/${id}/`);
+        const s = response.data;
+        setClientId(s.client);
         setForm({
-          name: c.name || "",
-          client_type: c.client_type || "",
-          account_manager: c.account_manager || "",
-          contact_name: c.contact_name || "",
-          contact_email: c.contact_email || "",
-          contact_phone: c.contact_phone || "",
-          billing_address: c.billing_address || "",
-          status: c.status || "active",
+          name: s.name || "",
+          site_type: s.site_type || "",
+          address: s.address || "",
+          postcode: s.postcode || "",
+          contact_name: s.contact_name || "",
+          contact_phone: s.contact_phone || "",
+          contact_email: s.contact_email || "",
+          access_notes: s.access_notes || "",
+          status: s.status || "active",
         });
       } catch (err) {
-        console.error("Failed to fetch client:", err);
-        setError("Failed to load client.");
+        console.error("Failed to fetch site:", err);
+        setError("Failed to load site.");
       } finally {
         setLoading(false);
       }
     };
-    fetchClient();
+    fetchSite();
   }, [id]);
 
   const handleSubmit = async (e) => {
@@ -41,10 +44,10 @@ function ClientEditForm() {
     setSaving(true);
     setError("");
     try {
-      await api.put(`/api/clients/${id}/`, form);
-      navigate(`/clients/${id}`);
+      await api.patch(`/api/sites/${id}/`, form);
+      navigate(`/sites/${id}`);
     } catch (err) {
-      console.error("Failed to update client:", err);
+      console.error("Failed to update site:", err);
       setError("Failed to save changes.");
       setSaving(false);
     }
@@ -61,7 +64,7 @@ function ClientEditForm() {
   if (!form) {
     return (
       <div className="container mt-4">
-        <p className="text-danger">{error || "Client not found."}</p>
+        <p className="text-danger">{error || "Site not found."}</p>
         <ReturnButton to="/clients" />
       </div>
     );
@@ -70,11 +73,11 @@ function ClientEditForm() {
   return (
     <div className="container mt-3 px-3">
       <div className="mb-3 d-none d-md-block">
-        <Link to="/clients" className="text-decoration-none">
-          &larr; Back to Clients
+        <Link to={`/sites/${id}`} className="text-decoration-none">
+          &larr; Back to Site
         </Link>
       </div>
-      <h5 className="fw-bold mb-3 d-none d-md-block">Edit Client</h5>
+      <h5 className="fw-bold mb-3 d-none d-md-block">Edit Site</h5>
 
       {error && <p className="text-danger" style={{ fontSize: "0.85rem" }}>{error}</p>}
 
@@ -83,36 +86,40 @@ function ClientEditForm() {
           <legend className="edit-legend">Name</legend>
           <input type="text" className="edit-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.client_type ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Client type</legend>
-          <select className="edit-field" value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })}>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.site_type ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Site type</legend>
+          <select className="edit-field" value={form.site_type} onChange={(e) => setForm({ ...form, site_type: e.target.value })}>
             <option value="">-- Select --</option>
-            <option value="commercial">Commercial</option>
-            <option value="local_authority">Local authority</option>
-            <option value="education">Education</option>
-            <option value="retail">Retail</option>
-            <option value="residential">Residential portfolio</option>
+            <option value="car_park">Car park</option>
+            <option value="retail_park">Retail park</option>
+            <option value="industrial_estate">Industrial estate</option>
+            <option value="school">School</option>
+            <option value="office_campus">Office campus</option>
           </select>
         </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.account_manager.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Account manager</legend>
-          <input type="text" className="edit-field" value={form.account_manager} onChange={(e) => setForm({ ...form, account_manager: e.target.value })} />
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.address.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Address</legend>
+          <textarea className="edit-field" rows="2" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </fieldset>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.postcode.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Postcode</legend>
+          <input type="text" className="edit-field" value={form.postcode} onChange={(e) => setForm({ ...form, postcode: e.target.value })} />
         </fieldset>
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_name.trim() ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Contact name</legend>
           <input type="text" className="edit-field" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
         </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_email.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Contact email</legend>
-          <input type="email" className="edit-field" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
-        </fieldset>
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_phone.trim() ? "#f0ece4" : "#ecf0f1" }}>
           <legend className="edit-legend">Contact phone</legend>
           <input type="text" className="edit-field" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
         </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.billing_address.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Billing address</legend>
-          <textarea className="edit-field" rows="3" value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} />
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_email.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Contact email</legend>
+          <input type="email" className="edit-field" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
+        </fieldset>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.access_notes.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Access notes</legend>
+          <textarea className="edit-field" rows="3" value={form.access_notes} onChange={(e) => setForm({ ...form, access_notes: e.target.value })} />
         </fieldset>
         <fieldset className="edit-fieldset mb-3" style={{ backgroundColor: "#f0ece4" }}>
           <legend className="edit-legend">Status</legend>
@@ -134,7 +141,7 @@ function ClientEditForm() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/clients/${id}`)}
+            onClick={() => navigate(`/sites/${id}`)}
             className="capture-action-btn"
             aria-label="Cancel"
             style={{ background: "#dce7fa", border: "none" }}
@@ -144,8 +151,9 @@ function ClientEditForm() {
         </div>
       </form>
 
+      <ReturnButton to={`/sites/${id}`} />
     </div>
   );
 }
 
-export default ClientEditForm;
+export default SiteEditForm;
