@@ -336,9 +336,8 @@ function SurveyCapture() {
           type="button"
           className="btn-close"
           aria-label="Close"
-          onClick={anyIncomplete ? undefined : closeSurvey}
-          disabled={anyIncomplete}
-          style={{ transform: "scale(0.85)", marginLeft: "auto", opacity: anyIncomplete ? 0.3 : 1 }}
+          onClick={closeSurvey}
+          style={{ transform: "scale(0.85)", marginLeft: "auto" }}
         />
       </div>
 
@@ -451,8 +450,8 @@ function SurveyCapture() {
         <div style={viewingIndex !== null ? { display: "none" } : {}}>
             <ObservationCreateForm
               surveyId={survey.id}
-              onPauseSurvey={anyIncomplete ? null : startPauseCountdown}
-              onClose={anyIncomplete ? null : startPauseCountdown}
+              onPauseSurvey={startPauseCountdown}
+              onClose={startPauseCountdown}
               onSuccess={handleSuccess}
               captureMode
               actionBarTarget={actionBarEl}

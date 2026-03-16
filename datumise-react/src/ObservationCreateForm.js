@@ -400,8 +400,8 @@ function ObservationCreateForm(props) {
             type="button"
             className="capture-footer-btn"
             aria-label="Pause Survey"
-            disabled={props.copiedToDraft || props.anyIncomplete}
-            onClick={props.anyIncomplete ? undefined : () => {
+            disabled={props.copiedToDraft}
+            onClick={() => {
               props.onPauseSurvey?.();
               props.onClose?.();
             }}

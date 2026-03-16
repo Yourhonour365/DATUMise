@@ -329,8 +329,7 @@ function ObservationDetail() {
               ) : (
                 <>
                   <div style={{ fontSize: isReply ? "0.8rem" : "0.85rem", overflowWrap: "anywhere" }}>{comment.content}</div>
-                  <div className="d-flex align-items-center justify-content-between mt-1" style={{ fontSize: "0.72rem" }}>
-                    <div className="d-flex align-items-center gap-2">
+                  <div className="d-flex align-items-center justify-content-end gap-2 mt-1" style={{ fontSize: "0.72rem" }}>
                       {!comment.is_owner && !comment.is_observation_owner && (
                         <button
                           className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
@@ -361,6 +360,8 @@ function ObservationDetail() {
                         </button>
                       )}
                     </div>
+                  </div>
+                  <div className="d-flex justify-content-end mt-1">
                     <span style={{ fontSize: "0.6rem", color: "#95a5a6", fontStyle: "italic" }}>
                       {comment.owner} &bull;{" "}
                       {new Date(comment.created_at).toLocaleString("en-GB", {
