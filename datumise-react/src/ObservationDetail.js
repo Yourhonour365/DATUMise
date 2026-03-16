@@ -167,25 +167,46 @@ function ObservationDetail() {
       </div>
 
       {/* ---- Image ---- */}
-      {observation.image ? (
-        <img
-          src={observation.image}
-          alt={observation.title}
-          className="img-fluid rounded-top mb-0"
-          style={{ width: "100%", maxHeight: "300px", objectFit: "cover", cursor: "pointer" }}
-          onClick={() => setShowImageModal(true)}
-        />
-      ) : (
-        <div
-          className="d-flex align-items-center justify-content-center rounded-top mb-0"
-          style={{ width: "100%", height: "140px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
-          onClick={() => observation.can_edit && fileInputRef.current?.click()}
-        >
-          <span className="text-muted text-center">
-            {observation.can_edit ? <>Add image<br /><strong>+</strong></> : "No image"}
-          </span>
-        </div>
-      )}
+      <div style={{ position: "relative" }}>
+        {observation.image ? (
+          <img
+            src={observation.image}
+            alt={observation.title}
+            className="img-fluid rounded-top mb-0"
+            style={{ width: "100%", maxHeight: "300px", objectFit: "cover", cursor: "pointer" }}
+            onClick={() => setShowImageModal(true)}
+          />
+        ) : (
+          <div
+            className="d-flex align-items-center justify-content-center rounded-top mb-0"
+            style={{ width: "100%", height: "140px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
+            onClick={() => observation.can_edit && fileInputRef.current?.click()}
+          >
+            <span className="text-muted text-center">
+              {observation.can_edit ? <>Add image<br /><strong>+</strong></> : "No image"}
+            </span>
+          </div>
+        )}
+        {location.state?.fromSurvey && observation.survey_status === "paused" && observation.is_owner && (
+          <button
+            type="button"
+            className="w-100"
+            style={{ position: "absolute", bottom: 0, left: 0, background: "rgba(219, 68, 10, 0.9)", color: "#faf6ef", border: "none", padding: "0.6rem", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+            onClick={async () => {
+              try {
+                await api.patch(`/api/surveys/${location.state.surveyId}/`, { status: "live" });
+                navigate(`/surveys/${location.state.surveyId}/capture`, {
+                  state: { viewObservationId: observation.id },
+                });
+              } catch (err) {
+                console.error("Failed to resume survey:", err);
+              }
+            }}
+          >
+            Resume Survey
+          </button>
+        )}
+      </div>
 
       {/* ---- Observation fieldset ---- */}
       <div className="px-2 py-2 mb-0" style={{ background: "#f0ece4" }}>
