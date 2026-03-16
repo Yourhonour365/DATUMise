@@ -252,10 +252,14 @@ textarea.edit-field {
   height: calc(100dvh + env(safe-area-inset-bottom));
   min-height: 0;
   overflow: hidden;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  z-index: 100;
 }
 
 .survey-capture-header {
