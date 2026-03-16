@@ -366,7 +366,7 @@ function ObservationDetail() {
                 <button
                   type="button"
                   className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: "44px", height: "44px", background: "#FF7518", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+                  style={{ width: "44px", height: "44px", background: "#db440a", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
                   onClick={() => fileInputRef.current?.click()}
                   aria-label={observation.image ? "Change Image" : "Add Image"}
                 >

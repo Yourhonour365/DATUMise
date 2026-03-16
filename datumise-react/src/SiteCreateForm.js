@@ -14,7 +14,10 @@ function SiteCreateForm() {
     name: "",
     client: preselectedClient,
     site_type: "",
-    address: "",
+    address_line_1: "",
+    address_line_2: "",
+    city: "",
+    county: "",
     postcode: "",
     contact_name: "",
     contact_phone: "",
@@ -41,7 +44,10 @@ function SiteCreateForm() {
         return;
       }
       if (!payload.site_type) delete payload.site_type;
-      if (!payload.address) delete payload.address;
+      if (!payload.address_line_1) delete payload.address_line_1;
+      if (!payload.address_line_2) delete payload.address_line_2;
+      if (!payload.city) delete payload.city;
+      if (!payload.county) delete payload.county;
       if (!payload.postcode) delete payload.postcode;
       if (!payload.contact_name) delete payload.contact_name;
       if (!payload.contact_phone) delete payload.contact_phone;
@@ -92,12 +98,24 @@ function SiteCreateForm() {
             <option value="office_campus">Office campus</option>
           </select>
         </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.address.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Address</legend>
-          <textarea className="edit-field" rows="2" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.address_line_1.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Address line 1</legend>
+          <input type="text" className="edit-field" value={form.address_line_1} onChange={(e) => setForm({ ...form, address_line_1: e.target.value })} />
+        </fieldset>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.address_line_2.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">Address line 2</legend>
+          <input type="text" className="edit-field" value={form.address_line_2} onChange={(e) => setForm({ ...form, address_line_2: e.target.value })} />
+        </fieldset>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.city.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">City / Town</legend>
+          <input type="text" className="edit-field" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </fieldset>
+        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.county.trim() ? "#f0ece4" : "#ecf0f1" }}>
+          <legend className="edit-legend">County</legend>
+          <input type="text" className="edit-field" value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} />
         </fieldset>
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.postcode.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Postcode</legend>
+          <legend className="edit-legend">Post code</legend>
           <input type="text" className="edit-field" value={form.postcode} onChange={(e) => setForm({ ...form, postcode: e.target.value })} />
         </fieldset>
         <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_name.trim() ? "#f0ece4" : "#ecf0f1" }}>

@@ -27,6 +27,10 @@ function SurveyCapture() {
   const modalClosedAtRef = useRef(0);
   const [captureComments, setCaptureComments] = useState([]);
   const [captureCommentText, setCaptureCommentText] = useState("");
+  const [showObsListModal, setShowObsListModal] = useState(false);
+  const [copiedToDraft, setCopiedToDraft] = useState(false);
+  const [draftHasTitle, setDraftHasTitle] = useState(false);
+  const [draftHasImage, setDraftHasImage] = useState(false);
 
   const fetchSurvey = async () => {
     try {
@@ -150,6 +154,8 @@ function SurveyCapture() {
     setSuccessMessage(false);
     setTimeout(() => setSuccessMessage(true), 100);
     setTimeout(() => setSuccessMessage(false), 3000);
+    // Re-fetch to get full image URLs
+    fetchSurvey();
   };
 
   const observations = survey?.observations || [];
@@ -280,8 +286,8 @@ function SurveyCapture() {
         <div>
           <div className="fw-semibold" style={{ fontSize: "0.95rem", lineHeight: 1.2 }}>
             {viewingIndex !== null
-              ? `Observation #${observations.length - viewingIndex}`
-              : `Add Observation #${observationCount + 1}`}
+              ? `Obs ${observations.length - viewingIndex} of ${observations.length}`
+              : `Add Obs #${observationCount + 1}`}
           </div>
           <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
             <span
@@ -296,10 +302,21 @@ function SurveyCapture() {
                 whiteSpace: "nowrap",
               }}
             >
-              {survey.name}{" "}
-              {new Date(survey.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
-              <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
-              {formatSurveyDuration(survey.created_at, durationTick)}
+              {viewingIndex !== null ? (
+                <>
+                  {survey.site_name || survey.site || ""}{" \u00B7 "}
+                  {viewedObservation && new Date(viewedObservation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}{" \u00B7 "}
+                  {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                </>
+              ) : (
+                <>
+                  {survey.site_name || survey.site || ""}{" \u00B7 "}
+                  {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{" \u00B7 "}
+                  {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                  <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
+                  {formatSurveyDuration(survey.created_at, durationTick)}
+                </>
+              )}
             </span>
             <span
               className="text-success fw-light"
@@ -327,127 +344,106 @@ function SurveyCapture() {
 
       <div className="survey-capture-body">
         {viewedObservation && (
-          <div className="observation-preview">
-            {viewedObservation.image ? (
-              <img
-                src={viewedObservation.image}
-                alt={viewedObservation.title}
-                className="observation-preview-image rounded mb-3"
-                onClick={() => { setPreviewImageUrl(viewedObservation.image); setShowPreviewImageModal(true); }}
-              />
-            ) : (
+          <div className="pt-2 px-3">
+            <div className="d-flex flex-column" style={{ gap: "1.25rem" }}>
+              {/* Image block */}
               <div
-                onClick={() => previewFileInputRef.current?.click()}
-                className="observation-preview-placeholder mb-3"
+                onClick={() => {
+                  if (viewedObservation.image) {
+                    setPreviewImageUrl(viewedObservation.image);
+                    setShowPreviewImageModal(true);
+                  } else {
+                    previewFileInputRef.current?.click();
+                  }
+                }}
                 style={{
-                  border: "2px solid #008000",
+                  width: "336px",
+                  height: "168px",
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  backgroundColor: "#f8f9fa",
+                  overflow: "hidden",
+                  backgroundColor: "#687374",
+                  margin: "0 auto",
                 }}
               >
-                <span className="text-muted text-center">
-                  Add image<br /><strong>+</strong>
-                </span>
-              </div>
-            )}
-
-            <small className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
-              {new Date(viewedObservation.created_at).toLocaleString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              {viewedObservation.owner && ` • ${viewedObservation.owner}`}
-            </small>
-            {(survey.client || survey.site) && (
-              <small className="text-muted d-block" style={{ fontSize: "0.7rem", paddingBottom: "0.25rem" }}>
-                {survey.client}{survey.client && survey.site && " • "}{survey.site}
-              </small>
-            )}
-
-            {/* Observation field */}
-            <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
-              <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-                Observation
-              </legend>
-              <div
-                className="d-flex justify-content-between align-items-start p-1"
-                style={{ cursor: "pointer" }}
-                onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
-              >
-                <span style={{
-                  lineHeight: "1.2",
-                  minWidth: 0,
-                  overflowWrap: "anywhere",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 4,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  height: "calc(1.2em * 4)",
-                }}>{viewedObservation.title}</span>
-              </div>
-            </fieldset>
-
-            {/* Likes & Comments count */}
-            <div className="d-flex align-items-center gap-3 text-muted px-2 py-1" style={{ fontSize: "0.85rem" }}>
-              <div className="d-flex align-items-center gap-1">
-                <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: 0.5 }} />
-                {viewedObservation.likes_count || 0}
-              </div>
-              <div className="d-flex align-items-center gap-1">
-                <img src="/datumise-comment.svg" alt="" width="14" height="14" style={{ opacity: 0.5 }} />
-                {viewedObservation.comment_count || 0}
-              </div>
-            </div>
-
-            {/* Comments field — inline list + add */}
-            <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
-              <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-                Comments
-              </legend>
-              <div style={{ maxHeight: "120px", overflowY: "auto", padding: "0.25rem 0" }}>
-                {captureComments.length === 0 ? (
-                  <em className="text-muted" style={{ fontSize: "0.78rem", padding: "0.25rem" }}>No comments yet</em>
+                {viewedObservation.image ? (
+                  <img src={viewedObservation.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  captureComments.map((c) => (
-                    <div key={c.id} style={{ fontSize: "0.78rem", padding: "0.2rem 0", borderBottom: "1px solid #eee" }}>
-                      <span className="text-muted" style={{ fontSize: "0.68rem" }}>
-                        {c.owner} &bull; {new Date(c.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      <div style={{ overflowWrap: "anywhere" }}>{c.content}</div>
-                    </div>
-                  ))
+                  <div className="d-flex flex-column align-items-center gap-2">
+                    <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Awaiting image</span>
+                    <img src="/datumise-add.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
+                  </div>
                 )}
               </div>
-              <div className="d-flex gap-1 mt-1 mb-1">
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  style={{ fontSize: "0.78rem" }}
-                  placeholder="Write a comment..."
-                  value={captureCommentText}
-                  onChange={(e) => setCaptureCommentText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCaptureComment(); } }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{ background: "#f0ece4", fontSize: "0.75rem", whiteSpace: "nowrap" }}
-                  onClick={handleAddCaptureComment}
-                  disabled={!captureCommentText.trim()}
-                >
-                  Send
-                </button>
-              </div>
-            </fieldset>
 
-            <div style={{ flex: 1 }} />
+              {/* Observation block */}
+              {viewedObservation.title?.trim() ? (
+                <div style={{ width: "336px", margin: "0 auto" }}>
+                  <fieldset className="rounded-top pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", overflow: "hidden" }}>
+                    <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Observation</legend>
+                    <div
+                      className="p-1 flex-grow-1"
+                      style={{ lineHeight: "1.2", overflowWrap: "break-word", wordBreak: "normal", cursor: "pointer", minHeight: "100px" }}
+                      onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
+                    >
+                      {viewedObservation.title}
+                    </div>
+                  </fieldset>
+                  {copiedToDraft ? (
+                    <button
+                      type="button"
+                      className="w-100 text-center"
+                      style={{ background: "#006400", color: "#faf6ef", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, fontStyle: "italic", border: "none", borderRadius: 0, cursor: "pointer" }}
+                      onClick={() => {
+                        resetEditState();
+                        setCopiedToDraft(false);
+                        setViewingIndex(null);
+                      }}
+                    >
+                      Copied to draft - tap tick to confirm
+                    </button>
+                  ) : viewedObservation.image ? (
+                    <button
+                      type="button"
+                      className="w-100"
+                      style={{ background: "#1a5bc4", color: "#faf6ef", border: "none", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+                      onClick={() => {
+                        const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
+                        draft.title = viewedObservation.title;
+                        localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
+                        setCopiedToDraft(true);
+                      }}
+                    >
+                      <img src="/copy.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                      Copy to draft
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div
+                  onClick={() => { setEditingField("title"); setEditValue(""); }}
+                  style={{
+                    width: "336px",
+                    height: "168px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    backgroundColor: "#687374",
+                    margin: "0 auto",
+                  }}
+                >
+                  <div className="d-flex flex-column align-items-center gap-2">
+                    <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Awaiting observation</span>
+                    <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div style={viewingIndex !== null ? { display: "none" } : { height: "100%" }}>
@@ -463,29 +459,42 @@ function SurveyCapture() {
               onStepBack={canStepBack && !(viewingIndex !== null ? viewedObsIncomplete : draftIncomplete) ? handleStepBack : null}
               onStepForward={viewingIndex !== null && !viewedObsIncomplete ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
-              onReturnToCurrent={(() => {
-                if (viewedObsIncomplete) return null;
-                const draft = localStorage.getItem("datumise-observation-draft");
-                const draftImage = localStorage.getItem("datumise-observation-image");
-                const hasDraft = draftImage || (draft && JSON.parse(draft).title?.trim());
-                // Hide if on latest observation and draft is empty
-                if (viewingIndex === 0 && !hasDraft) return null;
-                return () => {
-                  resetEditState();
-                  if (hasDraft) {
-                    setViewingIndex(null);
-                  } else {
-                    setViewingIndex(null);
-                  }
-                };
-              })()}
+              onReturnToCurrent={() => {
+                resetEditState();
+                setCopiedToDraft(false);
+                setViewingIndex(null);
+              }}
+              onEditPrevious={() => {
+                if (viewedObservation) {
+                  setEditingField("title");
+                  setEditValue(viewedObservation.title || "");
+                }
+              }}
               previousObsIncomplete={viewingIndex !== null ? viewedObsIncomplete : draftIncomplete}
               previousObsMissingImage={viewingIndex !== null ? (viewedObservation && !viewedObservation.image) : (draftIncomplete && !localStorage.getItem("datumise-observation-image"))}
               previousObsMissingTitle={viewingIndex !== null ? (viewedObservation && !viewedObservation.title?.trim()) : (draftIncomplete && !!localStorage.getItem("datumise-observation-image"))}
               onReturn={goBack}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
+              observations={observations}
+              onShowObsList={() => setShowObsListModal(true)}
+              onBecomeVisible={viewingIndex === null}
+              copiedToDraft={copiedToDraft}
+              onCancelCopy={() => setCopiedToDraft(false)}
+              onDraftStatus={(hasTitle, hasImage) => { setDraftHasTitle(hasTitle); setDraftHasImage(hasImage); }}
             />
           </div>
+      </div>
+      <div className="text-center" style={{
+        fontSize: "0.82rem",
+        color: "#db440a",
+        padding: "0.4rem 0",
+        fontWeight: 700,
+        fontStyle: "italic",
+        visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
+      }}>
+        {viewingIndex !== null
+          ? (!viewedObservation?.image ? "Add image to proceed" : "Add observation to proceed")
+          : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add observation to proceed")}
       </div>
       <div className="survey-capture-actions" ref={setActionBarEl}>
       </div>
@@ -521,39 +530,75 @@ function SurveyCapture() {
         onHide={() => setShowPreviewImageModal(false)}
         centered
       >
-        <Modal.Header closeButton className="py-1 px-3" style={{ minHeight: "auto" }}>
-          <small className="text-muted">Image preview</small>
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1rem" }}>Image preview</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="text-center p-1" style={{ background: "#2c3e50" }}>
+        <Modal.Body className="text-center p-0" style={{ background: "#2c3e50", overflow: "hidden" }}>
           {previewImageUrl && (
             <img
               src={previewImageUrl}
               alt="Observation"
               className="img-fluid"
-              style={{ maxHeight: "80vh", objectFit: "contain" }}
+              style={{ maxHeight: "calc(100vh - 160px)", objectFit: "contain", width: "100%" }}
             />
           )}
         </Modal.Body>
-        <Modal.Footer className="justify-content-center gap-3">
-          <button
-            type="button"
-            onClick={() => { setShowPreviewImageModal(false); previewFileInputRef.current?.click(); }}
-            className="capture-action-btn"
-            aria-label="Change Image"
-            style={{ background: "#FF7518", border: "none" }}
-          >
-            <img src="/camera.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowPreviewImageModal(false)}
-            className="capture-action-btn"
-            aria-label="Close"
-            style={{ background: "#dce7fa", border: "none" }}
-          >
-            <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
-          </button>
-        </Modal.Footer>
+        <div className="survey-capture-actions">
+          <div className="capture-footer-grid">
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Close"
+              onClick={() => setShowPreviewImageModal(false)}
+              style={{ background: "#2c3e50" }}
+            >
+              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Change Image"
+              onClick={() => { setShowPreviewImageModal(false); previewFileInputRef.current?.click(); }}
+              style={{ background: "#db440a" }}
+            >
+              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Confirm"
+              onClick={() => setShowPreviewImageModal(false)}
+              style={{ background: "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Delete image"
+              onClick={async () => {
+                if (viewedObservation) {
+                  try {
+                    const formData = new FormData();
+                    formData.append("title", viewedObservation.title || "");
+                    formData.append("image", "");
+                    await api.patch(`/api/observations/${viewedObservation.id}/`, { image: null });
+                    fetchSurvey();
+                  } catch (err) {
+                    console.error("Failed to delete image:", err);
+                  }
+                }
+                setShowPreviewImageModal(false);
+              }}
+              style={{ background: "#95a5a6" }}
+            >
+              <div className="d-flex flex-column align-items-center">
+                <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
+              </div>
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Field edit modal */}
@@ -563,7 +608,7 @@ function SurveyCapture() {
         dialogClassName="modal-bottom"
       >
         <Modal.Header closeButton>
-          <Modal.Title>{editingField === "title" ? "Edit Observation" : "Edit Notes"}</Modal.Title>
+          <Modal.Title style={{ fontSize: "1rem" }}>{editingField === "title" ? "Edit Observation" : "Edit Notes"}</Modal.Title>
         </Modal.Header>
         <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
           <textarea
@@ -579,50 +624,117 @@ function SurveyCapture() {
             <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 120 ? "#2c3e50" : editValue.length >= 100 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
               {editValue.length} / {editingField === "title" ? 120 : 280}
             </small>
-            {editValue.length > 0 && (
-              <button
-                type="button"
-                className="field-clear-btn"
-                onClick={() => setEditValue("")}
-              >
-                Clear
-              </button>
-            )}
           </div>
         </Modal.Body>
-        <Modal.Footer className="justify-content-center gap-4 flex-column">
-          {editingField === "title" && !editValue.trim() && (
-            <div style={{
-              fontSize: "0.68rem",
-              color: "#fef0e0",
-              textAlign: "center",
-              marginBottom: "-0.25rem",
-            }}>
-              Add observation to proceed
-            </div>
-          )}
-          <div className="d-flex justify-content-center gap-4">
+        {editingField === "title" && !editValue.trim() && (
+          <div className="text-center" style={{ fontSize: "0.82rem", color: "#db440a", padding: "0.4rem 0", fontWeight: 700, fontStyle: "italic", background: "#faf6ef" }}>
+            Add observation to proceed
+          </div>
+        )}
+        <div className="survey-capture-actions">
+          <div className="capture-footer-grid">
             <button
               type="button"
+              className="capture-footer-btn"
+              aria-label="Cancel"
+              onClick={() => resetEditState()}
+              style={{ background: "#2c3e50" }}
+            >
+              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Copy to draft"
+              onClick={() => {
+                const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
+                draft.title = editValue;
+                localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
+                setCopiedToDraft(true);
+                resetEditState();
+              }}
+              style={{ background: "#1a5bc4" }}
+            >
+              <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Save"
               disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
               onClick={saveField}
-              className={`capture-action-btn ${editingField === "title" && !editValue.trim() ? "capture-action-warning" : ""}`}
-              aria-label="Save"
-              style={{ background: editingField === "title" && !editValue.trim() ? undefined : "#008000", border: "none" }}
+              style={{ background: "#006400" }}
             >
-              <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: editingField === "title" && !editValue.trim() ? "invert(68%) sepia(5%) saturate(581%) hue-rotate(155deg) brightness(89%) contrast(88%)" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
-              onClick={() => resetEditState()}
-              className="capture-action-btn"
-              aria-label="Cancel"
-              style={{ background: "#dce7fa", border: "none" }}
+              className="capture-footer-btn"
+              aria-label="Clear"
+              onClick={() => setEditValue("")}
+              disabled={!editValue.length}
+              style={{ background: "#95a5a6" }}
             >
-              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+              <div className="d-flex flex-column align-items-center">
+                <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
+              </div>
             </button>
           </div>
-        </Modal.Footer>
+        </div>
+      </Modal>
+
+      {/* Observations list modal */}
+      <Modal
+        show={showObsListModal}
+        onHide={() => setShowObsListModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: "1rem" }}>Observations ({observations.length})</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem" }}>
+          {observations.length === 0 ? (
+            <p className="text-muted text-center py-3">No observations yet.</p>
+          ) : (
+            observations.map((obs, idx) => {
+              const imgSrc = obs.image && obs.image.startsWith("/")
+                ? `${process.env.REACT_APP_API_URL || "http://127.0.0.1:8000"}${obs.image}`
+                : obs.image;
+              return (
+              <div
+                key={obs.id}
+                className="d-flex align-items-center gap-2 py-2 px-2"
+                style={{ borderBottom: idx < observations.length - 1 ? "1px solid #eee" : "none", cursor: "pointer" }}
+                onClick={() => {
+                  setViewingIndex(idx);
+                  setShowObsListModal(false);
+                  setCopiedToDraft(false);
+                }}
+              >
+                <div style={{ width: "60px", height: "60px", flexShrink: 0, borderRadius: "6px", overflow: "hidden", backgroundColor: "#ecf0f1" }}>
+                  {imgSrc ? (
+                    <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <div className="d-flex align-items-center justify-content-center h-100">
+                      <span className="text-muted" style={{ fontSize: "0.65rem" }}>No image</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    #{observations.length - idx} {obs.title || "Untitled"}
+                  </div>
+                  <div className="text-muted" style={{ fontSize: "0.72rem" }}>
+                    {new Date(obs.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              </div>
+              );
+            }))
+          }
+        </Modal.Body>
       </Modal>
     </div>
   );

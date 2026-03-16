@@ -12,6 +12,7 @@ import Register from "./Register";
 import Login from "./Login";
 import ClientList from "./ClientList";
 import ClientDetail from "./ClientDetail";
+import SiteList from "./SiteList";
 import SiteDetail from "./SiteDetail";
 import SiteEditForm from "./SiteEditForm";
 import TeamList from "./TeamList";
@@ -53,7 +54,7 @@ function Home({ isLoggedIn }) {
 
   return (
     <div className="container mt-4 px-3">
-      <div className="d-flex flex-wrap gap-3 justify-content-center">
+      <div className="dashboard-grid">
         <Link to="/quick-add" className="dashboard-tile">
           <img src="/datumise-add.svg" alt="" width="28" height="28" />
           <span>Quick Add</span>
@@ -70,9 +71,9 @@ function Home({ isLoggedIn }) {
           <img src="/datumise-observations.svg" alt="" width="28" height="28" />
           <span>Observations</span>
         </Link>
-        <Link to="/settings" className="dashboard-tile">
-          <img src="/datumise-settings.svg" alt="" width="28" height="28" />
-          <span>Settings</span>
+        <Link to="/sites" className="dashboard-tile">
+          <img src="/datumise-sites.svg" alt="" width="28" height="28" />
+          <span>Sites</span>
         </Link>
         <Link to="/surveys" className="dashboard-tile">
           <img src="/datumise-surveys.svg" alt="" width="28" height="28" />
@@ -81,6 +82,10 @@ function Home({ isLoggedIn }) {
         <Link to="/team" className="dashboard-tile">
           <img src="/datumise-surveyors.svg" alt="" width="28" height="28" />
           <span>Team</span>
+        </Link>
+        <Link to="/settings" className="dashboard-tile" style={{ order: 999 }}>
+          <img src="/datumise-settings.svg" alt="" width="28" height="28" />
+          <span>Settings</span>
         </Link>
       </div>
     </div>
@@ -96,6 +101,7 @@ function useScreenTitle() {
   if (pathname === "/") return "DATUMise";
   if (pathname === "/clients") return "Clients";
   if (/^\/clients\/\d+$/.test(pathname)) return "Client";
+  if (pathname === "/sites") return "Sites";
   if (/^\/sites\/\d+\/edit$/.test(pathname)) return "Edit Site";
   if (/^\/sites\/\d+$/.test(pathname)) return "Site";
   if (pathname === "/surveys") return "Surveys";
@@ -174,7 +180,7 @@ function AppLayout() {
   return (
     <>
       {/* ---- Desktop nav (hidden on mobile) ---- */}
-      <nav className="app-nav-desktop navbar px-4" style={{ background: "#FF7518", borderBottom: "none" }}>
+      <nav className="app-nav-desktop navbar px-4" style={{ background: "#db440a", borderBottom: "none" }}>
         <Link className="navbar-brand fw-bold" to="/" style={{ color: "#faf6ef" }}>
           DATUMise
         </Link>
@@ -191,6 +197,9 @@ function AppLayout() {
             </Link>
             <Link className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>
               Settings
+            </Link>
+            <Link className="nav-link ms-3" to="/sites" style={{ color: "#faf6ef" }}>
+              Sites
             </Link>
             <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
               Surveys
@@ -260,6 +269,9 @@ function AppLayout() {
               <Link to="/settings" className="app-nav-dropdown-item">
                 Settings
               </Link>
+              <Link to="/sites" className="app-nav-dropdown-item">
+                Sites
+              </Link>
               <Link to="/surveys" className="app-nav-dropdown-item">
                 Surveys
               </Link>
@@ -305,6 +317,7 @@ function AppLayout() {
         <Route path="/clients/create" element={<ClientCreateForm />} />
         <Route path="/clients/:id" element={<ClientDetail />} />
         <Route path="/clients/:id/edit" element={<ClientEditForm />} />
+        <Route path="/sites" element={<SiteList />} />
         <Route path="/sites/create" element={<SiteCreateForm />} />
         <Route path="/sites/:id" element={<SiteDetail />} />
         <Route path="/sites/:id/edit" element={<SiteEditForm />} />

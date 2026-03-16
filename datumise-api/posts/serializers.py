@@ -223,7 +223,14 @@ class SurveySerializer(serializers.ModelSerializer):
 
     client = serializers.StringRelatedField()
     site = serializers.StringRelatedField()
-    site_address = serializers.CharField(source="site.address", read_only=True, default="")
+    site_name = serializers.CharField(source="site.name", read_only=True, default="")
+    site_address = serializers.SerializerMethodField()
+
+    def get_site_address(self, obj):
+        if not obj.site:
+            return ""
+        parts = [obj.site.address_line_1, obj.site.address_line_2, obj.site.city, obj.site.county, obj.site.postcode]
+        return ", ".join(p for p in parts if p)
 
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     site_id = serializers.IntegerField(source="site.id", read_only=True)
@@ -254,6 +261,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "client_id",
             "site",
             "site_id",
+            "site_name",
             "site_address",
             "created_by",
             "assigned_to",
@@ -383,6 +391,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
 
     client = serializers.StringRelatedField()
     site = serializers.StringRelatedField()
+    site_name = serializers.CharField(source="site.name", read_only=True, default="")
 
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     site_id = serializers.IntegerField(source="site.id", read_only=True)
@@ -412,6 +421,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
             "client",
             "client_id",
             "site",
+            "site_name",
             "site_id",
             "created_by",
             "assigned_to",
@@ -445,7 +455,8 @@ class ClientSiteSerializer(serializers.ModelSerializer):
         model = ClientSite
         fields = [
             "id", "client", "client_name", "name", "site_type", "site_type_display",
-            "address", "postcode", "contact_name", "contact_phone", "contact_email",
+            "address_line_1", "address_line_2", "city", "county",
+            "postcode", "contact_name", "contact_phone", "contact_email",
             "access_notes", "status", "status_display", "survey_count", "created_at",
         ]
 

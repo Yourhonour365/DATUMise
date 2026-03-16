@@ -152,14 +152,17 @@ function ClientDetail() {
             className="text-decoration-none text-dark"
           >
             <div className="survey-queue-card">
-              <div className="survey-queue-grid" style={{ gridTemplateColumns: "1fr auto" }}>
-                <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>{site.name}</span>
-                <span className="text-muted" style={{ fontSize: "0.78rem", justifySelf: "end" }}>
-                  {site.survey_count} {site.survey_count === 1 ? "survey" : "surveys"}
-                </span>
-                <span className="text-muted" style={{ fontSize: "0.78rem" }}>
-                  {[site.site_type_display, site.address, site.postcode].filter(Boolean).join(" \u00B7 ")}
-                </span>
+              <div className="d-flex align-items-center gap-2">
+                <img src="/datumise-sites.svg" alt="" width="22" height="22" style={{ flexShrink: 0 }} />
+                <div className="survey-queue-grid" style={{ gridTemplateColumns: "1fr auto", flex: 1 }}>
+                  <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>{site.name}</span>
+                  <span className="text-muted" style={{ fontSize: "0.78rem", justifySelf: "end" }}>
+                    {site.survey_count} {site.survey_count === 1 ? "survey" : "surveys"}
+                  </span>
+                  <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+                    {[site.site_type_display, site.address_line_1, site.city, site.postcode].filter(Boolean).join(" \u00B7 ")}
+                  </span>
+                </div>
               </div>
             </div>
           </Link>

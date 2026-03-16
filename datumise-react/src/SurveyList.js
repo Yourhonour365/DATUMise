@@ -342,7 +342,7 @@ function SurveyList() {
         <div className="d-md-none text-center mt-3 mb-3">
           <button
             className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
-            style={{ width: "44px", height: "44px", background: "#FF7518", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+            style={{ width: "44px", height: "44px", background: "#db440a", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
             onClick={() =>
               api.get(nextPage).then((response) => {
                 setSurveys((prev) => [...prev, ...response.data.results]);

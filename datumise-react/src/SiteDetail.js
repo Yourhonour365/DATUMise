@@ -70,13 +70,11 @@ function SiteDetail() {
       </div>
 
       <div className="survey-details-grid mb-3">
-        <div className="survey-detail-item">
+        <div className="survey-detail-item" style={{ gridColumn: "1 / -1" }}>
           <span className="survey-detail-label">Address</span>
-          <span>{site.address || "Not set"}</span>
-        </div>
-        <div className="survey-detail-item">
-          <span className="survey-detail-label">Postcode</span>
-          <span>{site.postcode || "Not set"}</span>
+          <span style={{ whiteSpace: "pre-line" }}>
+            {[site.address_line_1, site.address_line_2, site.city, site.county, site.postcode].filter(Boolean).join("\n") || "Not set"}
+          </span>
         </div>
         <div className="survey-detail-item">
           <span className="survey-detail-label">Site contact</span>
