@@ -53,7 +53,7 @@ function Home({ isLoggedIn }) {
 
   return (
     <div className="container mt-4 px-3">
-      <div className="d-flex flex-wrap gap-3">
+      <div className="d-flex flex-wrap gap-3 justify-content-center">
         <Link to="/quick-add" className="dashboard-tile">
           <img src="/datumise-add.svg" alt="" width="28" height="28" />
           <span>Quick Add</span>
