@@ -1,5 +1,5 @@
 from rest_framework import generics, permissions
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.contrib.auth.models import User
 from .models import Observation, Comment, Survey, Client, ClientSite
 from .serializers import (
@@ -28,7 +28,8 @@ class ObservationList(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Observation.objects.annotate(
-            comment_count=Count("comments")
+            comment_count=Count("comments"),
+            reply_count=Count("comments", filter=Q(comments__parent__isnull=False))
         ).order_by("-created_at")
 
         survey_id = self.request.query_params.get("survey")

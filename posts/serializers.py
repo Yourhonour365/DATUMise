@@ -104,6 +104,7 @@ class ObservationSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
     is_owner = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(read_only=True)
+    reply_count = serializers.IntegerField(read_only=True)
     survey_name = serializers.SerializerMethodField()
     internal_note = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
@@ -134,6 +135,7 @@ class ObservationSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "comment_count",
+            "reply_count",
             "is_owner",
             "likes_count",
             "is_liked",
