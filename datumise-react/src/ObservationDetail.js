@@ -233,12 +233,16 @@ function ObservationDetail() {
               <img src="/share.svg" alt="Share" width="14" height="14" />
             </button>
           </div>
-          <div className="fst-italic text-muted" style={{ fontSize: "0.68rem" }}>
-            {new Date(observation.created_at).toLocaleString("en-GB", {
-              day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit",
-            })}
-            {observation.site_name && ` \u00B7 ${observation.site_name}`}
-            {observation.owner && ` \u00B7 ${observation.owner}`}
+          <div className="fst-italic text-muted" style={{ fontSize: "0.68rem", textAlign: "right" }}>
+            <div>
+              {new Date(observation.created_at).toLocaleString("en-GB", {
+                day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit",
+              })}
+              {observation.owner && ` \u00B7 ${observation.owner}`}
+            </div>
+            {observation.site_name && (
+              <div style={{ textAlign: "left" }}>{observation.site_name}</div>
+            )}
           </div>
         </div>
       </div>
@@ -348,12 +352,12 @@ function ObservationDetail() {
                       )}
                       {comment.is_owner && (
                         <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleEditClick(comment)}>
-                          <img src="/datumise-edit.svg" alt="Edit" width="12" height="12" style={{ filter: "invert(8%) sepia(100%) saturate(7000%) hue-rotate(240deg) brightness(0.8) contrast(1.2)" }} />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#0013de"><path d="M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z"/></svg>
                         </button>
                       )}
                       {(comment.is_owner || comment.is_observation_owner) && (
                         <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleDeleteComment(comment.id)}>
-                          <img src="/datumise_delete.svg" alt="Delete" width="12" height="12" style={{ filter: "invert(20%) sepia(90%) saturate(5000%) hue-rotate(350deg) brightness(0.9)" }} />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#d3212f"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
                         </button>
                       )}
                     </div>
