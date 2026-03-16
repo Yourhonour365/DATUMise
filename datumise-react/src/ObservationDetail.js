@@ -17,6 +17,8 @@ function ObservationDetail() {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState("");
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [replyToCommentId, setReplyToCommentId] = useState(null);
 
   const fetchComments = async () => {
     try {
@@ -59,11 +61,13 @@ function ObservationDetail() {
     }
   };
 
-  const handleCommentSubmit = async (e) => {
+  const handleCommentSubmit = async (e, parentId = null) => {
     e.preventDefault();
     setCommentError("");
     try {
-      await api.post("/api/comments/", { observation: id, content: commentContent });
+      const payload = { observation: id, content: commentContent };
+      if (parentId) payload.parent = parentId;
+      await api.post("/api/comments/", payload);
       setCommentContent("");
       fetchComments();
     } catch (err) {
@@ -166,13 +170,13 @@ function ObservationDetail() {
         <img
           src={observation.image}
           alt={observation.title}
-          className="img-fluid rounded mb-2"
+          className="img-fluid rounded-top mb-0"
           style={{ width: "100%", maxHeight: "300px", objectFit: "cover", cursor: "pointer" }}
           onClick={() => setShowImageModal(true)}
         />
       ) : (
         <div
-          className="d-flex align-items-center justify-content-center rounded mb-2"
+          className="d-flex align-items-center justify-content-center rounded-top mb-0"
           style={{ width: "100%", height: "140px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
           onClick={() => observation.can_edit && fileInputRef.current?.click()}
         >
@@ -182,28 +186,62 @@ function ObservationDetail() {
         </div>
       )}
 
-      {/* ---- Date / owner / client ---- */}
-      <small className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
-        {new Date(observation.created_at).toLocaleString("en-GB", {
-          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-        })}
-        {observation.owner && ` \u2022 ${observation.owner}`}
-      </small>
-      {observation.survey_name && (
-        <small className="text-muted d-block" style={{ fontSize: "0.7rem", paddingBottom: "0.25rem" }}>
-          {observation.survey_name}
-        </small>
-      )}
-
       {/* ---- Observation fieldset ---- */}
-      <fieldset className="border rounded pt-0 pb-1 px-2 mb-2 mt-2">
-        <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-          Observation
-        </legend>
-        <div className="p-1" style={{ overflowWrap: "anywhere" }}>
+      <div className="rounded-bottom px-2 py-2 mb-2" style={{ background: "#f0ece4" }}>
+        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere" }}>
           {observation.title}
         </div>
-      </fieldset>
+        <div className="d-flex align-items-center justify-content-between px-1 pt-1" style={{ borderTop: "1px solid #e0dbd2" }}>
+          <div className="d-flex align-items-center gap-3" style={{ fontSize: "0.75rem" }}>
+            {!observation.is_owner && localStorage.getItem("token") ? (
+              <button
+                className="btn btn-sm d-flex align-items-center gap-1 p-0 border-0 bg-transparent"
+                onClick={handleLike}
+                style={{ fontSize: "0.75rem" }}
+              >
+                <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: observation.is_liked ? 1 : 0.4, filter: observation.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                <span className="text-muted">{observation.likes_count || 0}</span>
+              </button>
+            ) : (
+              <div className="d-flex align-items-center gap-1 text-muted">
+                <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: 0.4 }} />
+                {observation.likes_count || 0}
+              </div>
+            )}
+            <button
+              className="btn btn-sm d-flex align-items-center gap-1 p-0 border-0 bg-transparent text-muted"
+              onClick={() => {
+                setReplyToCommentId(null);
+                setShowCommentInput((prev) => !prev);
+              }}
+              style={{ fontSize: "0.75rem" }}
+            >
+              <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: showCommentInput ? 1 : 0.5 }} />
+              {comments.length}
+            </button>
+            <button
+              className="btn btn-sm d-flex align-items-center p-0 border-0 bg-transparent"
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: observation.title, url: window.location.href });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                }
+              }}
+              style={{ fontSize: "0.75rem" }}
+            >
+              <img src="/share.svg" alt="Share" width="14" height="14" />
+            </button>
+          </div>
+          <div className="fst-italic text-muted" style={{ fontSize: "0.68rem" }}>
+            {new Date(observation.created_at).toLocaleString("en-GB", {
+              day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit",
+            })}
+            {observation.site_name && ` \u00B7 ${observation.site_name}`}
+            {observation.owner && ` \u00B7 ${observation.owner}`}
+          </div>
+        </div>
+      </div>
 
       {/* ---- Internal note (survey context + owner/admin only) ---- */}
       {location.state?.fromSurvey && observation.internal_note && (
@@ -217,35 +255,6 @@ function ObservationDetail() {
         </fieldset>
       )}
 
-      {/* ---- Like & Comment ---- */}
-      <div className="d-flex align-items-center gap-3 px-2 py-1 mb-2" style={{ fontSize: "0.85rem" }}>
-        {!observation.is_owner && localStorage.getItem("token") ? (
-          <button
-            className="btn btn-sm d-flex align-items-center gap-1 p-0 border-0 bg-transparent"
-            onClick={handleLike}
-            style={{ fontSize: "0.85rem" }}
-          >
-            <img
-              src="/datumise-like.svg"
-              alt=""
-              width="18"
-              height="18"
-              style={{ opacity: observation.is_liked ? 1 : 0.4 }}
-            />
-            <span className="text-muted">{observation.is_liked ? "Unlike" : "Like"} ({observation.likes_count})</span>
-          </button>
-        ) : (
-          <div className="d-flex align-items-center gap-1 text-muted">
-            <img src="/datumise-like.svg" alt="" width="18" height="18" style={{ opacity: 0.4 }} />
-            {observation.likes_count || 0}
-          </div>
-        )}
-        <div className="d-flex align-items-center gap-1 text-muted">
-          <img src="/datumise-comment.svg" alt="" width="14" height="14" style={{ opacity: 0.5 }} />
-          {comments.length}
-        </div>
-      </div>
-
 
       <input
         ref={fileInputRef}
@@ -256,18 +265,48 @@ function ObservationDetail() {
       />
 
       {/* ---- Comments fieldset ---- */}
-      <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
+      <fieldset className="rounded pt-0 pb-1 px-2 mb-3" style={{ border: "none", background: "#faf6ef" }}>
         <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
           Comments
         </legend>
 
-        {comments.length === 0 ? (
-          <div className="p-1 text-muted fst-italic" style={{ fontSize: "0.85rem" }}>
-            {!localStorage.getItem("token") ? "No comments yet. Login to comment." : "No comments yet, be the first to comment."}
-          </div>
-        ) : (
-          comments.map((comment) => (
-            <div key={comment.id} className="py-2 px-1" style={{ borderBottom: "1px solid #eee" }}>
+        {showCommentInput && !replyToCommentId && localStorage.getItem("token") && (
+          <>
+            {commentError && <Alert variant="danger" className="py-1 px-2 mb-1" style={{ fontSize: "0.8rem" }}>{commentError}</Alert>}
+            <div className="d-flex gap-1 mt-1 mb-2">
+              <input
+                id="comment-input"
+                type="text"
+                className="form-control form-control-sm"
+                style={{ fontSize: "0.78rem" }}
+                placeholder="Write a comment..."
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCommentSubmit(e); } }}
+              />
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{ background: "#DB440A", color: "#faf6ef", border: "1px solid #faf6ef", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}
+                onClick={handleCommentSubmit}
+                disabled={!commentContent.trim()}
+              >
+                Send
+              </button>
+            </div>
+          </>
+        )}
+
+        {(() => {
+          const topLevel = comments.filter((c) => !c.parent);
+          const repliesMap = {};
+          comments.filter((c) => c.parent).forEach((c) => {
+            if (!repliesMap[c.parent]) repliesMap[c.parent] = [];
+            repliesMap[c.parent].push(c);
+          });
+
+          const renderComment = (comment, isReply = false) => (
+            <div key={comment.id} className="py-2 px-2 mb-1 rounded" style={{ background: isReply ? "#faf6ef" : "#f5f0e8", marginLeft: isReply ? "1.5rem" : 0 }}>
               {editingCommentId === comment.id ? (
                 <>
                   <Form.Control
@@ -285,115 +324,133 @@ function ObservationDetail() {
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: "0.85rem", overflowWrap: "anywhere" }}>{comment.content}</div>
-                  <div className="d-flex align-items-center gap-2 mt-1" style={{ fontSize: "0.72rem" }}>
-                    <span className="text-muted">
+                  <div style={{ fontSize: isReply ? "0.8rem" : "0.85rem", overflowWrap: "anywhere" }}>{comment.content}</div>
+                  <div className="d-flex align-items-center justify-content-between mt-1" style={{ fontSize: "0.72rem" }}>
+                    <div className="d-flex align-items-center gap-2">
+                      {!comment.is_owner && !comment.is_observation_owner && (
+                        <button
+                          className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
+                          style={{ fontSize: "0.72rem", textDecoration: "none" }}
+                          onClick={() => handleCommentLike(comment.id)}
+                        >
+                          <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: comment.is_liked ? 1 : 0.4, filter: comment.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                          {comment.likes_count || 0}
+                        </button>
+                      )}
+                      {!isReply && (
+                        <button
+                          className="btn btn-link btn-sm p-0 text-muted"
+                          style={{ fontSize: "0.72rem", textDecoration: "none", fontWeight: replyToCommentId === comment.id ? 700 : 400 }}
+                          onClick={() => { setReplyToCommentId(replyToCommentId === comment.id ? null : comment.id); setShowCommentInput(false); }}
+                        >
+                          Reply
+                        </button>
+                      )}
+                      {comment.is_owner && (
+                        <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleEditClick(comment)}>
+                          <img src="/datumise-edit.svg" alt="Edit" width="12" height="12" style={{ filter: "invert(8%) sepia(100%) saturate(7000%) hue-rotate(240deg) brightness(0.8) contrast(1.2)" }} />
+                        </button>
+                      )}
+                      {(comment.is_owner || comment.is_observation_owner) && (
+                        <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleDeleteComment(comment.id)}>
+                          <img src="/datumise_delete.svg" alt="Delete" width="12" height="12" style={{ filter: "invert(20%) sepia(90%) saturate(5000%) hue-rotate(350deg) brightness(0.9)" }} />
+                        </button>
+                      )}
+                    </div>
+                    <span style={{ fontSize: "0.6rem", color: "#95a5a6", fontStyle: "italic" }}>
                       {comment.owner} &bull;{" "}
                       {new Date(comment.created_at).toLocaleString("en-GB", {
                         day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
                       })}
                     </span>
-                    {!comment.is_owner && (
-                      <button
-                        className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
-                        style={{ fontSize: "0.72rem", textDecoration: "none" }}
-                        onClick={() => handleCommentLike(comment.id)}
-                      >
-                        <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: comment.is_liked ? 1 : 0.4 }} />
-                        {comment.likes_count}
-                      </button>
-                    )}
-                    {comment.is_owner && (
-                      <button className="btn btn-link btn-sm p-0 text-primary" style={{ fontSize: "0.72rem" }} onClick={() => handleEditClick(comment)}>Edit</button>
-                    )}
-                    {(comment.is_owner || comment.is_observation_owner) && (
-                      <button className="btn btn-link btn-sm p-0 text-danger" style={{ fontSize: "0.72rem" }} onClick={() => handleDeleteComment(comment.id)}>Delete</button>
-                    )}
                   </div>
                 </>
               )}
+              {replyToCommentId === comment.id && localStorage.getItem("token") && (
+                <div className="d-flex gap-1 mt-2 mb-1">
+                  <input
+                    id="comment-input"
+                    type="text"
+                    className="form-control form-control-sm"
+                    style={{ fontSize: "0.78rem" }}
+                    placeholder="Write a reply..."
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCommentSubmit(e, comment.id); setReplyToCommentId(null); } }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ background: "#DB440A", color: "#faf6ef", border: "1px solid #faf6ef", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}
+                    onClick={(e) => { handleCommentSubmit(e, comment.id); setReplyToCommentId(null); }}
+                    disabled={!commentContent.trim()}
+                  >
+                    Send
+                  </button>
+                </div>
+              )}
+              {repliesMap[comment.id] && repliesMap[comment.id].map((reply) => renderComment(reply, true))}
             </div>
-          ))
-        )}
-      </fieldset>
+          );
 
-      {/* ---- Add comment form ---- */}
-      {localStorage.getItem("token") && (
-        <fieldset className="border rounded pt-0 pb-1 px-2 mb-3">
-          <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-            Comments
-          </legend>
-          {commentError && <Alert variant="danger" className="py-1 px-2 mb-1" style={{ fontSize: "0.8rem" }}>{commentError}</Alert>}
-          <div className="d-flex gap-1 mt-1 mb-1">
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              style={{ fontSize: "0.78rem" }}
-              placeholder="Write a comment..."
-              value={commentContent}
-              onChange={(e) => setCommentContent(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCommentSubmit(e); } }}
-            />
-            <button
-              type="button"
-              className="btn btn-sm"
-              style={{ background: "#f0ece4", fontSize: "0.75rem", whiteSpace: "nowrap" }}
-              onClick={handleCommentSubmit}
-              disabled={!commentContent.trim()}
-            >
-              Send
-            </button>
-          </div>
-        </fieldset>
-      )}
+          return topLevel.length === 0 ? (
+            <div className="p-1 text-muted fst-italic" style={{ fontSize: "0.85rem" }}>
+              {!localStorage.getItem("token") ? "No comments yet. Login to comment." : "No comments yet, be the first to comment."}
+            </div>
+          ) : (
+            topLevel.map((comment) => renderComment(comment))
+          );
+        })()}
+
+      </fieldset>
 
       {/* ---- Image preview modal ---- */}
       <Modal show={showImageModal} onHide={() => setShowImageModal(false)} centered size="lg">
         <Modal.Header closeButton className="pb-2">
           <Modal.Title>Image preview</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="text-center pt-2 pb-4" style={{ background: "#2c3e50" }}>
+        <Modal.Body className="text-center p-0" style={{ background: "#2c3e50" }}>
           {observation.image ? (
             <img src={observation.image} alt={observation.title} className="img-fluid" style={{ maxHeight: "80vh", objectFit: "contain" }} />
           ) : (
             <p className="text-muted fst-italic">No image yet.</p>
           )}
         </Modal.Body>
-        <Modal.Footer className="pt-2 pb-3 border-0">
-          <div className="d-flex justify-content-center gap-3 w-100 align-items-center">
-            {observation.can_edit && (
+        <div className="survey-capture-actions">
+          <div className="capture-footer-grid" style={observation.can_edit && location.state?.fromSurvey ? {} : { gridTemplateColumns: "1fr" }}>
+            {observation.can_edit && location.state?.fromSurvey && (
               <>
                 <button
                   type="button"
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: "44px", height: "44px", background: "#db440a", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-                  onClick={() => fileInputRef.current?.click()}
+                  className="capture-footer-btn"
                   aria-label={observation.image ? "Change Image" : "Add Image"}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ background: "#db440a" }}
                 >
-                  <img src="/camera.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+                  <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
                 </button>
                 <button
                   type="button"
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: "44px", height: "44px", background: "#dc3545", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-                  onClick={handleDelete}
+                  className="capture-footer-btn"
                   aria-label="Delete observation"
+                  onClick={handleDelete}
+                  style={{ background: "#dc3545" }}
                 >
-                  <img src="/datumise_delete.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+                  <img src="/datumise_delete.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
                 </button>
               </>
             )}
             <button
               type="button"
-              className="rounded-circle d-flex align-items-center justify-content-center"
-              style={{ width: "44px", height: "44px", background: "#1a5bc4", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-              onClick={() => setShowImageModal(false)}
+              className="capture-footer-btn"
               aria-label="Close"
+              onClick={() => setShowImageModal(false)}
+              style={{ background: "#2c3e50" }}
             >
-              <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
           </div>
-        </Modal.Footer>
+        </div>
       </Modal>
 
       <ReturnButton to={location.state?.fromSurvey ? `/surveys/${location.state.surveyId}` : "/observations"} />

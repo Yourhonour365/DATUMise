@@ -448,7 +448,7 @@ function SurveyCapture() {
             </div>
           </div>
         )}
-        <div style={viewingIndex !== null ? { display: "none" } : { height: "100%" }}>
+        <div style={viewingIndex !== null ? { display: "none" } : {}}>
             <ObservationCreateForm
               surveyId={survey.id}
               onPauseSurvey={anyIncomplete ? null : startPauseCountdown}
@@ -485,18 +485,18 @@ function SurveyCapture() {
               onDraftStatus={(hasTitle, hasImage) => { setDraftHasTitle(hasTitle); setDraftHasImage(hasImage); }}
             />
           </div>
-      </div>
-      <div className="text-center" style={{
-        fontSize: "0.82rem",
-        color: "#db440a",
-        padding: "0.4rem 0",
-        fontWeight: 700,
-        fontStyle: "italic",
-        visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
-      }}>
-        {viewingIndex !== null
-          ? (!viewedObservation?.image ? "Add image to proceed" : "Add observation to proceed")
-          : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add observation to proceed")}
+        <div className="text-center" style={{
+          fontSize: "0.82rem",
+          color: "#db440a",
+          padding: "0.4rem 0",
+          fontWeight: 700,
+          fontStyle: "italic",
+          visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
+        }}>
+          {viewingIndex !== null
+            ? (!viewedObservation?.image ? "Add image to proceed" : "Add observation to proceed")
+            : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add observation to proceed")}
+        </div>
       </div>
       <div className="survey-capture-actions" ref={setActionBarEl}>
       </div>

@@ -110,7 +110,7 @@ function useScreenTitle() {
   if (/^\/surveys\/\d+$/.test(pathname)) return "Survey";
   if (pathname === "/observations") return "Observations";
   if (/^\/observations\/survey\/\d+$/.test(pathname)) return "Observations";
-  if (/^\/observations\/\d+$/.test(pathname)) return "Observation";
+  if (/^\/observations\/\d+$/.test(pathname)) return "Observation View";
   if (pathname === "/team") return "Team";
   if (/^\/team\/\d+$/.test(pathname)) return "Team Member";
   if (/^\/team\/\d+\/edit$/.test(pathname)) return "Edit Team Member";
