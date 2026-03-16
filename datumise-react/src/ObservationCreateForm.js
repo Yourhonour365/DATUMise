@@ -193,10 +193,10 @@ function ObservationCreateForm(props) {
   };
 
   return (
-  <div className="pt-2 px-0 d-flex flex-column" style={{ flex: 1, minHeight: 0 }}>
-    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3 d-flex flex-column flex-grow-1" style={{ minHeight: 0, overflow: "visible" }}>
-      <div className="d-flex flex-column gap-2 flex-grow-1">
-        <div className="flex-grow-1">
+  <div className="pt-2 px-0">
+    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3">
+      <div>
+        <div>
           <div className="d-flex flex-column" style={{ gap: "1.25rem" }}>
             <Form.Control
                 ref={fileInputRef}
@@ -307,6 +307,7 @@ function ObservationCreateForm(props) {
               onClick={() => setShowNotesModal(true)}
               style={{
                 width: "336px",
+                maxWidth: "100%",
                 height: "168px",
                 borderRadius: "8px",
                 display: "flex",
@@ -466,7 +467,7 @@ function ObservationCreateForm(props) {
             type="button"
             className="capture-footer-btn"
             aria-label="Observations list"
-            style={{ paddingLeft: "8px", background: (props.copiedToDraft || (props.isViewingPrevious && props.anyIncomplete)) ? "#2c3e50" : "#008080" }}
+            style={{ background: (props.copiedToDraft || (props.isViewingPrevious && props.anyIncomplete)) ? "#2c3e50" : "#008080" }}
             onClick={() => props.onShowObsList?.()}
             disabled={props.copiedToDraft || (props.isViewingPrevious && props.anyIncomplete)}
           >
