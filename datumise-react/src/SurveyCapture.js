@@ -358,6 +358,7 @@ function SurveyCapture() {
                 }}
                 style={{
                   width: "336px",
+                  maxWidth: "100%",
                   height: "168px",
                   borderRadius: "8px",
                   display: "flex",
@@ -381,7 +382,7 @@ function SurveyCapture() {
 
               {/* Observation block */}
               {viewedObservation.title?.trim() ? (
-                <div style={{ width: "336px", margin: "0 auto" }}>
+                <div style={{ width: "336px", maxWidth: "100%", margin: "0 auto" }}>
                   <fieldset className="rounded-top pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", overflow: "hidden" }}>
                     <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Observation</legend>
                     <div
@@ -427,6 +428,7 @@ function SurveyCapture() {
                   onClick={() => { setEditingField("title"); setEditValue(""); }}
                   style={{
                     width: "336px",
+                    maxWidth: "100%",
                     height: "168px",
                     borderRadius: "8px",
                     display: "flex",

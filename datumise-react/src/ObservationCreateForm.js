@@ -193,9 +193,9 @@ function ObservationCreateForm(props) {
   };
 
   return (
-  <div className="pt-2 px-0 d-flex flex-column h-100">
-    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3 d-flex flex-column flex-grow-1">
-      <div className="d-flex flex-column gap-2 flex-grow-1" style={{ minHeight: "calc(100% + 3.5rem)" }}>
+  <div className="pt-2 px-0 d-flex flex-column" style={{ flex: 1, minHeight: 0 }}>
+    <Form id="observation-create-form" onSubmit={handleSubmit} className="px-3 d-flex flex-column flex-grow-1" style={{ minHeight: 0, overflow: "visible" }}>
+      <div className="d-flex flex-column gap-2 flex-grow-1">
         <div className="flex-grow-1">
           <div className="d-flex flex-column" style={{ gap: "1.25rem" }}>
             <Form.Control
@@ -247,6 +247,7 @@ function ObservationCreateForm(props) {
                   }}
                   style={{
                     width: "336px",
+                    maxWidth: "100%",
                     height: "168px",
                     border: !imagePreview && title.trim() ? "2px solid #008000" : "none",
                     borderRadius: "8px",
@@ -284,7 +285,7 @@ function ObservationCreateForm(props) {
           <Form.Control ref={titleInputRef} className="d-none" as="textarea" name="title_hidden" value={title} onChange={handleChange} onBlur={handleTitleBlur} maxLength={150} autoComplete="off" />
 
           {title.trim() ? (
-            <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", width: "336px", height: "168px", margin: "0 auto", overflow: "hidden" }}>
+            <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", width: "336px", maxWidth: "100%", height: "168px", margin: "0 auto", overflow: "hidden" }}>
               <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
                 Observation
               </legend>
