@@ -108,9 +108,15 @@ class ObservationSerializer(serializers.ModelSerializer):
     internal_note = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     comment_likes_count = serializers.SerializerMethodField()
+    site_name = serializers.SerializerMethodField()
 
     def get_survey_name(self, obj):
         return str(obj.survey) if obj.survey else None
+
+    def get_site_name(self, obj):
+        if obj.survey and obj.survey.site:
+            return obj.survey.site.name
+        return ""
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
 
@@ -121,6 +127,7 @@ class ObservationSerializer(serializers.ModelSerializer):
             "owner",
             "survey",
             "survey_name",
+            "site_name",
             "title",
             "description",
             "image",
@@ -181,6 +188,7 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "observation",
+            "parent",
             "owner",
             "content",
             "created_at",
