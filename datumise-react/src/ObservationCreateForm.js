@@ -220,12 +220,8 @@ function ObservationCreateForm(props) {
                     };
                     reader.readAsDataURL(file);
 
-                    if (reopenPreviewRef.current) {
-                      reopenPreviewRef.current = false;
-                      setTimeout(() => setShowImagePreviewModal(true), 100);
-                    } else {
-                      setTimeout(() => titleInputRef.current?.focus(), 100);
-                    }
+                    reopenPreviewRef.current = false;
+                    setTimeout(() => setShowImagePreviewModal(true), 100);
                   } else {
                     setImagePreview("");
                     localStorage.removeItem("datumise-observation-image");
@@ -287,7 +283,7 @@ function ObservationCreateForm(props) {
           {title.trim() ? (
             <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", width: "336px", maxWidth: "100%", height: "168px", margin: "0 auto", overflow: "hidden" }}>
               <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
-                Observation
+                Description
               </legend>
               <div
                 className="p-1 flex-grow-1"
@@ -320,7 +316,7 @@ function ObservationCreateForm(props) {
             >
               <div className="d-flex flex-column align-items-center gap-2">
                 <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>
-                  Awaiting observation
+                  Awaiting description
                 </span>
                 <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
               </div>
@@ -376,7 +372,7 @@ function ObservationCreateForm(props) {
                   }}
                 >
                   {!imagePreview && title.trim() && "Add image"}
-                  {imagePreview && !title.trim() && "Add Observation"}
+                  {imagePreview && !title.trim() && "Add Description"}
                 </div>
 
                 <Button
@@ -396,83 +392,135 @@ function ObservationCreateForm(props) {
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
         <div className="capture-footer-grid">
-          <button
-            type="button"
-            className="capture-footer-btn"
-            aria-label="Pause Survey"
-            disabled={props.copiedToDraft}
-            onClick={() => {
-              props.onPauseSurvey?.();
-              props.onClose?.();
-            }}
-            style={{ background: props.copiedToDraft ? "#2c3e50" : undefined }}
-          >
-            <img src="/datumise_pause.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1)" }} />
-          </button>
+          {props.isViewingPrevious ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Back to list"
+              disabled={props.copiedToDraft || props.obsListOpen}
+              onClick={() => props.onShowObsList?.()}
+              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
+            >
+              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Pause Survey"
+              disabled={props.copiedToDraft || props.obsListOpen}
+              onClick={() => {
+                props.onPauseSurvey?.();
+                props.onClose?.();
+              }}
+              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
+            >
+              <img src="/datumise_pause.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          )}
           {props.copiedToDraft && props.isViewingPrevious ? (
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Cancel copy"
-              onClick={() => props.onCancelCopy?.()}
-              style={{ background: "#95a5a6" }}
+              aria-label="Confirm copy"
+              disabled={props.obsListOpen}
+              onClick={() => props.onReturnToCurrent?.()}
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#006400" }}
             >
-              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           ) : (
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Edit observation"
+              disabled={props.obsListOpen}
               onClick={() => props.isViewingPrevious ? props.onEditPrevious?.() : setShowNotesModal(true)}
-              style={{ background: "#1a5bc4" }}
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#1a5bc4" }}
             >
-              <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
           {props.isViewingPrevious ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="New Observation"
-              disabled={props.anyIncomplete && !props.copiedToDraft}
-              onClick={() => props.onReturnToCurrent?.()}
-              style={{ background: props.anyIncomplete && !props.copiedToDraft ? "#2c3e50" : "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.anyIncomplete && !props.copiedToDraft ? "none" : "brightness(0) invert(1)" }} />
-            </button>
+            props.copiedToDraft ? (
+              <button
+                type="button"
+                className="capture-footer-btn"
+                aria-label="Cancel copy"
+                disabled={props.obsListOpen}
+                onClick={() => props.onCancelCopy?.()}
+                style={{ background: props.obsListOpen ? "#2c3e50" : "#95a5a6" }}
+              >
+                <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="capture-footer-btn"
+                aria-label="Change image"
+                disabled={props.obsListOpen}
+                onClick={() => props.onCaptureForPrevious?.()}
+                style={{ background: props.obsListOpen ? "#2c3e50" : "#db440a" }}
+              >
+                <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+              </button>
+            )
           ) : imagePreview && title.trim() ? (
             <button
               type="submit"
               form="observation-create-form"
               className="capture-footer-btn"
               aria-label="Save and New"
-              disabled={isSubmitting}
-              style={{ background: "#006400" }}
+              disabled={isSubmitting || props.obsListOpen}
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#006400" }}
             >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           ) : (
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Take Photo"
+              disabled={props.obsListOpen}
               onClick={() => fileInputRef.current?.click()}
-              style={{ background: "#db440a" }}
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#db440a" }}
             >
-              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
-          <button
-            type="button"
-            className="capture-footer-btn"
-            aria-label="Observations list"
-            style={{ background: (props.copiedToDraft || (props.isViewingPrevious && props.anyIncomplete)) ? "#2c3e50" : "#008080" }}
-            onClick={() => props.onShowObsList?.()}
-            disabled={props.copiedToDraft || (props.isViewingPrevious && props.anyIncomplete)}
-          >
-            <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1)" }} />
-          </button>
+          {props.obsListOpen ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Close list"
+              onClick={() => props.onCloseObsList?.()}
+              style={{ background: "#95a5a6" }}
+            >
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
+          ) : props.isViewingPrevious ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Return to draft"
+              disabled={props.copiedToDraft}
+              onClick={() => props.onReturnToCurrent?.()}
+              style={{ background: props.copiedToDraft ? "#2c3e50" : "#95a5a6" }}
+            >
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Observations list"
+              style={{ background: props.copiedToDraft ? "#2c3e50" : "#008080" }}
+              onClick={() => props.onShowObsList?.()}
+              disabled={props.copiedToDraft}
+            >
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          )}
         </div>
       </>,
       props.actionBarTarget
@@ -500,27 +548,11 @@ function ObservationCreateForm(props) {
       </Modal.Body>
 
       <div className="survey-capture-actions">
-        <div className="capture-footer-grid">
+        <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Revert image"
-            disabled={imagePreview === originalImageRef.current}
-            onClick={() => {
-              setImagePreview(originalImageRef.current);
-              setImage(originalImageFileRef.current);
-              if (originalImageRef.current && originalImageRef.current.startsWith("data:")) {
-                localStorage.setItem("datumise-observation-image", originalImageRef.current);
-              }
-            }}
-            style={{ background: "#2c3e50" }}
-          >
-            <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-          </button>
-          <button
-            type="button"
-            className="capture-footer-btn"
-            aria-label="Change image"
+            aria-label="Retake photo"
             onClick={() => {
               reopenPreviewRef.current = true;
               setShowImagePreviewModal(false);
@@ -533,7 +565,7 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Save"
+            aria-label="Confirm image"
             onClick={() => setShowImagePreviewModal(false)}
             style={{ background: "#006400" }}
           >
@@ -566,7 +598,7 @@ function ObservationCreateForm(props) {
       dialogClassName="modal-bottom"
     >
       <Modal.Header closeButton>
-        <Modal.Title style={{ fontSize: "1rem" }}>Observation</Modal.Title>
+        <Modal.Title style={{ fontSize: "1rem" }}>Description</Modal.Title>
       </Modal.Header>
       <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
         <Form.Control

@@ -42,13 +42,14 @@ function ObservationDetail() {
     fetchObservation();
     fetchComments();
 
-    if (window.location.hash === "#comment-form") {
+    if (window.location.hash === "#comment-form" || location.state?.openComment) {
+      setShowCommentInput(true);
       setTimeout(() => {
         const input = document.getElementById("comment-input");
         if (input) input.focus();
-      }, 100);
+      }, 200);
     }
-  }, [id]);
+  }, [id, location.state?.openComment]);
 
   const handleDelete = async () => {
     const confirmed = window.confirm("Are you sure you want to delete this observation?");
@@ -152,10 +153,10 @@ function ObservationDetail() {
   }
 
   return (
-    <div className="container mt-3 px-3">
+    <div className="container mt-3 px-3" style={{ overflow: "hidden" }}>
       <div className="mb-3 d-none d-md-block">
         {location.state?.fromSurvey ? (
-          <Link to={`/surveys/${location.state.surveyId}`} className="text-decoration-none">
+          <Link to={`/surveys/${location.state.surveyId}`} state={{ highlightObs: Number(id) }} className="text-decoration-none">
             &larr; Back to Survey
           </Link>
         ) : (
@@ -187,8 +188,8 @@ function ObservationDetail() {
       )}
 
       {/* ---- Observation fieldset ---- */}
-      <div className="rounded-bottom px-2 py-2 mb-2" style={{ background: "#f0ece4" }}>
-        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere" }}>
+      <div className="px-2 py-2 mb-0" style={{ background: "#f0ece4" }}>
+        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere", color: "#1a2332" }}>
           {observation.title}
         </div>
         <div className="d-flex align-items-center justify-content-between px-1 pt-1" style={{ borderTop: "1px solid #e0dbd2" }}>
@@ -249,7 +250,7 @@ function ObservationDetail() {
 
       {/* ---- Internal note (survey context + owner/admin only) ---- */}
       {location.state?.fromSurvey && observation.internal_note && (
-        <fieldset className="border rounded pt-0 pb-1 px-2 mb-2">
+        <fieldset className="border rounded pt-0 pb-1 px-2 mb-2" style={{ margin: 0 }}>
           <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
             Internal Note
           </legend>
@@ -269,10 +270,10 @@ function ObservationDetail() {
       />
 
       {/* ---- Comments fieldset ---- */}
-      <fieldset className="rounded pt-0 pb-1 px-2 mb-3" style={{ border: "none", background: "#faf6ef" }}>
-        <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
+      <div className="mb-3">
+        <div className="px-2 py-1 fs-6 fw-bold text-dark" style={{ background: "#faf6ef" }}>
           Comments
-        </legend>
+        </div>
 
         {showCommentInput && !replyToCommentId && localStorage.getItem("token") && (
           <>
@@ -310,7 +311,7 @@ function ObservationDetail() {
           });
 
           const renderComment = (comment, isReply = false) => (
-            <div key={comment.id} className="py-2 px-2 mb-1 rounded" style={{ background: isReply ? "#faf6ef" : "#f5f0e8", marginLeft: isReply ? "1.5rem" : 0 }}>
+            <div key={comment.id} className="px-2 py-2 mb-0" style={{ background: isReply ? "#faf6ef" : "#f5f0e8", marginLeft: isReply ? "1.5rem" : 0, overflow: "hidden", minWidth: 0 }}>
               {editingCommentId === comment.id ? (
                 <>
                   <Form.Control
@@ -328,9 +329,9 @@ function ObservationDetail() {
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: isReply ? "0.8rem" : "0.85rem", overflowWrap: "anywhere" }}>{comment.content}</div>
+                  <div style={{ fontSize: isReply ? "0.8rem" : "0.85rem", overflowWrap: "anywhere", color: "#1a2332" }}>{comment.content}</div>
                   <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap mt-1" style={{ fontSize: "0.72rem" }}>
-                      {!comment.is_owner && !comment.is_observation_owner && (
+                      {!comment.is_owner && (
                         <button
                           className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
                           style={{ fontSize: "0.72rem", textDecoration: "none" }}
@@ -351,12 +352,12 @@ function ObservationDetail() {
                       )}
                       {comment.is_owner && (
                         <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleEditClick(comment)}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#0013de"><path d="M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z"/></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#0013de" opacity="0.45"><path d="M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z"/></svg>
                         </button>
                       )}
                       {(comment.is_owner || comment.is_observation_owner) && (
                         <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleDeleteComment(comment.id)}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#d3212f"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#d3212f" opacity="0.45"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
                         </button>
                       )}
                       <span style={{ fontSize: "0.6rem", color: "#95a5a6", fontStyle: "italic" }}>
@@ -404,7 +405,7 @@ function ObservationDetail() {
           );
         })()}
 
-      </fieldset>
+      </div>
 
       {/* ---- Image preview modal ---- */}
       <Modal show={showImageModal} onHide={() => setShowImageModal(false)} centered size="lg">
@@ -455,7 +456,7 @@ function ObservationDetail() {
         </div>
       </Modal>
 
-      <ReturnButton to={location.state?.fromSurvey ? `/surveys/${location.state.surveyId}` : "/observations"} />
+      <ReturnButton to={location.state?.fromSurvey ? `/surveys/${location.state.surveyId}` : "/observations"} state={location.state?.fromSurvey ? { highlightObs: Number(id) } : undefined} />
       <BackToTop />
     </div>
   );

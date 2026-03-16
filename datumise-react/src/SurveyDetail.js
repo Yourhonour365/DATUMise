@@ -33,6 +33,22 @@ const fetchSurvey = async () => {
   }
 };
 
+const handleObsLike = async (e, obsId) => {
+  e.preventDefault();
+  e.stopPropagation();
+  try {
+    const response = await api.post(`/api/observations/${obsId}/like/`);
+    setSurvey((prev) => ({
+      ...prev,
+      observations: prev.observations.map((obs) =>
+        obs.id === obsId ? { ...obs, is_liked: response.data.liked, likes_count: response.data.likes_count } : obs
+      ),
+    }));
+  } catch (err) {
+    console.error("Failed to like:", err);
+  }
+};
+
 useEffect(() => {
   if (!localStorage.getItem("token")) {
     setLoading(false);
@@ -44,8 +60,9 @@ useEffect(() => {
 
 const hasScrolledRef = useRef(false);
 const scrollTarget = location.state?.scrollToObservation;
+const returnHighlight = location.state?.highlightObs;
 const [scrollReady, setScrollReady] = useState(!scrollTarget);
-const [highlightedObs, setHighlightedObs] = useState(scrollTarget || null);
+const [highlightedObs, setHighlightedObs] = useState(scrollTarget || returnHighlight || null);
 
 useLayoutEffect(() => {
   if (scrollTarget && survey?.observations && !hasScrolledRef.current) {
@@ -70,6 +87,24 @@ useLayoutEffect(() => {
   }
 }, [survey?.observations, scrollTarget]);
 
+
+// Restore highlight when returning from observation detail
+useLayoutEffect(() => {
+  if (returnHighlight && survey?.observations && !loading) {
+    const el = document.getElementById(`obs-${returnHighlight}`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+      const rowDiv = el.querySelector(".observation-row") || el;
+      rowDiv.style.background = "#9a8255";
+      rowDiv.style.transition = "none";
+      setTimeout(() => {
+        rowDiv.style.transition = "background 2s ease";
+        rowDiv.style.background = "";
+      }, 600);
+    }
+    window.history.replaceState({}, "");
+  }
+}, [returnHighlight, survey?.observations, loading]);
 
     const startSurvey = async () => {
         if (!survey.assigned_to || !survey.is_surveyor) return;
@@ -378,60 +413,63 @@ const formatSurveyDuration = (startTime, _tick) => {
 
           <div id="observations-list" style={{ opacity: scrollReady ? 1 : 0 }}>
             {survey?.observations?.map((observation, index) => (
-              <Link
+              <div
                 key={observation.id}
                 id={`obs-${observation.id}`}
-                to={`/observations/${observation.id}`}
-                state={{ fromSurvey: true, surveyId: id }}
                 className="text-decoration-none text-dark"
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, returnHighlight: observation.id } })}
               >
                 <div
                   className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
                   onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
+                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px" }}
                 >
                   {observation.image ? (
                     <img
                       src={observation.image}
                       alt=""
-                      className="observation-row-thumb"
+                      style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }}
                     />
                   ) : (
-                    <div className="observation-row-thumb observation-row-thumb-empty">
-                      <span style={{ fontSize: "0.65rem" }}>No img</span>
+                    <div style={{ width: "80px", minHeight: "100%", borderRadius: "8px 0 0 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                      <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
                     </div>
                   )}
-                  <div className="observation-row-content">
-                    <div className="observation-row-title">{observation.title}</div>
-                    {(observation.likes_count > 0 || observation.comment_count > 0) && (
-                      <div className="observation-row-desc d-flex align-items-center gap-2">
-                        {observation.likes_count > 0 && (
-                          <span className="d-flex align-items-center gap-1">
-                            <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
-                            {observation.likes_count}
-                          </span>
-                        )}
-                        {observation.comment_count > 0 && (
-                          <span className="d-flex align-items-center gap-1">
-                            <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
-                            {observation.comment_count}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <div className="observation-row-meta">
-                      <span>#{survey.observations.length - index} of {survey.observations.length}</span>
-                      <span>
-                        {new Date(observation.created_at).toLocaleString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                  <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
+                    <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                      {observation.title}
+                    </div>
+                    <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
+                  <span>#{survey.observations.length - index} of {survey.observations.length}</span>
+                  <button
+                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                    onClick={(e) => handleObsLike(e, observation.id)}
+                  >
+                    <img src="/datumise-like.svg" alt="" width="11" height="11" style={{ opacity: observation.is_liked ? 1 : 0.4, filter: observation.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                    {observation.likes_count || 0}
+                  </button>
+                  <button
+                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, openComment: true } }); }}
+                  >
+                    <img src="/datumise-comment.svg" alt="" width="11" height="11" style={{ opacity: 0.5 }} />
+                    {observation.comment_count || 0}
+                  </button>
+                  <span>
+                    {new Date(observation.created_at).toLocaleString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </>

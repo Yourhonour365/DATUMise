@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router-dom";
 
-function ReturnButton({ to }) {
+function ReturnButton({ to, state }) {
   const navigate = useNavigate();
 
   return (
     <button
       type="button"
       className="d-md-none"
-      onClick={() => navigate(to)}
+      onClick={() => navigate(to, { state })}
       aria-label="Return to list"
       style={{
         position: "fixed",

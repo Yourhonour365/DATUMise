@@ -30,9 +30,6 @@ function ObservationList() {
   const { filters, setFilters, clearFilters } = useFilters();
 
   useEffect(() => {
-    // Idempotent: skip initial fetch when cache provided (safe in Strict Mode)
-    if (initialCache && searchTerm === "") return;
-
     let url = surveyId
       ? `/api/observations/?survey=${surveyId}&search=${searchTerm}`
       : `/api/observations/?search=${searchTerm}`;
@@ -42,6 +39,21 @@ function ObservationList() {
     if (filters.surveyors.length) url += `&owner=${filters.surveyors.map((s) => s.id).join(",")}`;
     if (filters.site_types.length) url += `&site_type=${filters.site_types.map((s) => s.id).join(",")}`;
     if (filters.timePeriod) url += `&time_period=${filters.timePeriod}`;
+
+    // If cache exists, show cached data immediately but update counts in background
+    if (initialCache && searchTerm === "") {
+      api.get(url).then((response) => {
+        const freshMap = {};
+        response.data.results.forEach((obs) => { freshMap[obs.id] = obs; });
+        setObservations((prev) =>
+          prev.map((obs) => freshMap[obs.id]
+            ? { ...obs, likes_count: freshMap[obs.id].likes_count, comment_count: freshMap[obs.id].comment_count, reply_count: freshMap[obs.id].reply_count, is_liked: freshMap[obs.id].is_liked }
+            : obs
+          )
+        );
+      }).catch(() => {});
+      return;
+    }
 
     setLoading(true);
     api
@@ -58,26 +70,25 @@ function ObservationList() {
       });
   }, [surveyId, searchTerm, initialCache, filters]);
 
-  // Restore scroll + highlight from cache (idempotent — safe for Strict Mode double-mount)
-  useEffect(() => {
+  // Restore scroll + highlight from cache
+  useLayoutEffect(() => {
     if (!initialCache || loading) return;
 
-    requestAnimationFrame(() => {
-      if (initialCache.scrollY) {
-        window.scrollTo(0, initialCache.scrollY);
+    if (initialCache.highlightId) {
+      const el = document.getElementById(`obs-${initialCache.highlightId}`);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+        const rowDiv = el.querySelector(".observation-row") || el;
+        rowDiv.style.background = "#9a8255";
+        rowDiv.style.transition = "none";
+        setTimeout(() => {
+          rowDiv.style.transition = "background 2s ease";
+          rowDiv.style.background = "";
+        }, 600);
       }
-      if (initialCache.highlightId) {
-        const el = document.getElementById(`obs-${initialCache.highlightId}`);
-        if (el) {
-          el.style.background = "#9a8255";
-          el.style.transition = "none";
-          setTimeout(() => {
-            el.style.transition = "background 2s ease";
-            el.style.background = "";
-          }, 600);
-        }
-      }
-    });
+    } else if (initialCache.scrollY) {
+      window.scrollTo(0, initialCache.scrollY);
+    }
   }, [initialCache, loading]);
 
   // Scroll-to-observation from capture mode return
@@ -119,6 +130,20 @@ function ObservationList() {
       .catch((err) => {
         console.error("Error fetching observations:", err);
       });
+  };
+
+  const handleObsLike = async (e, obsId) => {
+    e.stopPropagation();
+    try {
+      const response = await api.post(`/api/observations/${obsId}/like/`);
+      setObservations((prev) =>
+        prev.map((obs) =>
+          obs.id === obsId ? { ...obs, is_liked: response.data.liked, likes_count: response.data.likes_count } : obs
+        )
+      );
+    } catch (err) {
+      console.error("Failed to like:", err);
+    }
   };
 
   const navigateWithCache = (to, options, obsId) => {
@@ -239,7 +264,7 @@ function ObservationList() {
               key={obs.id}
               id={`obs-${obs.id}`}
               className={`observation-row${highlightedObs === obs.id ? " observation-row-highlight" : ""}`}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px" }}
               onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
                 navigateWithCache(`/observations/${obs.id}`, {}, obs.id)
@@ -249,39 +274,34 @@ function ObservationList() {
                 <img
                   src={obs.image}
                   alt=""
-                  className="observation-row-thumb"
+                  style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }}
                 />
               ) : (
-                <div className="observation-row-thumb observation-row-thumb-empty">
-                  <span style={{ fontSize: "0.65rem" }}>No img</span>
+                <div style={{ width: "80px", minHeight: "100%", borderRadius: "8px 0 0 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                  <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
                 </div>
               )}
-              <div className="observation-row-content">
-                <div className="observation-row-title">{obs.title}</div>
-                {(obs.likes_count > 0 || obs.comment_count > 0 || obs.comment_likes_count > 0) && (
-                  <div className="observation-row-desc d-flex align-items-center gap-2">
-                    {obs.likes_count > 0 && (
-                      <span className="d-flex align-items-center gap-1">
-                        <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
-                        {obs.likes_count}
-                      </span>
-                    )}
-                    {obs.comment_count > 0 && (
-                      <span className="d-flex align-items-center gap-1">
-                        <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
-                        {obs.comment_count}
-                      </span>
-                    )}
-                    {obs.comment_likes_count > 0 && (
-                      <span className="d-flex align-items-center gap-1">
-                        <img src="/datumise-comment.svg" alt="" width="10" height="10" style={{ opacity: 0.4 }} />
-                        <img src="/datumise-like.svg" alt="" width="10" height="10" style={{ opacity: 0.4, marginLeft: "-4px" }} />
-                        {obs.comment_likes_count}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="observation-row-meta">
+              <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
+                <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                  {obs.title}
+                </div>
+                <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
+                  <button
+                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                    onClick={(e) => handleObsLike(e, obs.id)}
+                  >
+                    <img src="/datumise-like.svg" alt="" width="11" height="11" style={{ opacity: obs.is_liked ? 1 : 0.4, filter: obs.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                    {obs.likes_count || 0}
+                  </button>
+                  <button
+                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                    onClick={(e) => { e.stopPropagation(); navigateWithCache(`/observations/${obs.id}`, { state: { openComment: true } }, obs.id); }}
+                  >
+                    <img src="/datumise-comment.svg" alt="" width="11" height="11" style={{ opacity: 0.5 }} />
+                    {obs.comment_count || 0}
+                  </button>
                   <span>
                     {new Date(obs.created_at).toLocaleString("en-GB", {
                       day: "numeric",
@@ -289,8 +309,8 @@ function ObservationList() {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
+                    {" \u00B7 "}{obs.owner || "Unassigned"}
                   </span>
-                  <span>{obs.owner || "Unassigned"}</span>
                 </div>
               </div>
             </div>

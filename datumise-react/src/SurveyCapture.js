@@ -31,6 +31,7 @@ function SurveyCapture() {
   const [copiedToDraft, setCopiedToDraft] = useState(false);
   const [draftHasTitle, setDraftHasTitle] = useState(false);
   const [draftHasImage, setDraftHasImage] = useState(false);
+  const [previewImageChanged, setPreviewImageChanged] = useState(false);
 
   const fetchSurvey = async () => {
     try {
@@ -247,6 +248,30 @@ function SurveyCapture() {
     }
   };
 
+  const handleDeleteObservation = async () => {
+    if (!viewedObservation) return;
+    const parts = ["Delete this observation?"];
+    const counts = [];
+    if (viewedObservation.comment_count) counts.push(`${viewedObservation.comment_count} comment${viewedObservation.comment_count > 1 ? "s" : ""}`);
+    if (viewedObservation.likes_count) counts.push(`${viewedObservation.likes_count} like${viewedObservation.likes_count > 1 ? "s" : ""}`);
+    if (counts.length) parts.push(`It has ${counts.join(" and ")} that will also be removed.`);
+    const confirmed = window.confirm(parts.join(" "));
+    if (!confirmed) return;
+    try {
+      await api.delete(`/api/observations/${viewedObservation.id}/`);
+      setSurvey((prev) => ({
+        ...prev,
+        observations: prev.observations.filter((obs) => obs.id !== viewedObservation.id),
+      }));
+      setObservationCount((prev) => prev - 1);
+      setViewingIndex(null);
+      setCopiedToDraft(false);
+      resetEditState();
+    } catch (err) {
+      console.error("Failed to delete observation:", err);
+    }
+  };
+
 
   if (loading) return <p className="container mt-4">Loading survey...</p>;
   if (!survey) return <p className="container mt-4">Survey not found.</p>;
@@ -350,6 +375,7 @@ function SurveyCapture() {
                 onClick={() => {
                   if (viewedObservation.image) {
                     setPreviewImageUrl(viewedObservation.image);
+                    setPreviewImageChanged(false);
                     setShowPreviewImageModal(true);
                   } else {
                     previewFileInputRef.current?.click();
@@ -383,7 +409,7 @@ function SurveyCapture() {
               {viewedObservation.title?.trim() ? (
                 <div style={{ width: "336px", maxWidth: "100%", margin: "0 auto" }}>
                   <fieldset className="rounded-top pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", overflow: "hidden" }}>
-                    <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Observation</legend>
+                    <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Description</legend>
                     <div
                       className="p-1 flex-grow-1"
                       style={{ lineHeight: "1.2", overflowWrap: "break-word", wordBreak: "normal", cursor: "pointer", minHeight: "100px" }}
@@ -406,20 +432,29 @@ function SurveyCapture() {
                       Copied to draft - tap tick to confirm
                     </button>
                   ) : viewedObservation.image ? (
-                    <button
-                      type="button"
-                      className="w-100"
-                      style={{ background: "#1a5bc4", color: "#faf6ef", border: "none", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-                      onClick={() => {
-                        const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
-                        draft.title = viewedObservation.title;
-                        localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
-                        setCopiedToDraft(true);
-                      }}
-                    >
-                      <img src="/copy.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-                      Copy to draft
-                    </button>
+                    <div style={{ display: "flex", borderRadius: 0 }}>
+                      <button
+                        type="button"
+                        onClick={handleDeleteObservation}
+                        style={{ background: "#95a5a6", color: "#faf6ef", border: "none", padding: "0.85rem 0.7rem", cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#d3212f"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex-grow-1"
+                        style={{ background: "#1a5bc4", color: "#faf6ef", border: "none", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+                        onClick={() => {
+                          const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
+                          draft.title = viewedObservation.title;
+                          localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
+                          setCopiedToDraft(true);
+                        }}
+                      >
+                        <img src="/copy.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                        Copy to draft
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               ) : (
@@ -439,7 +474,7 @@ function SurveyCapture() {
                   }}
                 >
                   <div className="d-flex flex-column align-items-center gap-2">
-                    <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Awaiting observation</span>
+                    <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Awaiting description</span>
                     <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
                   </div>
                 </div>
@@ -478,26 +513,29 @@ function SurveyCapture() {
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
               observations={observations}
               onShowObsList={() => setShowObsListModal(true)}
+              onCloseObsList={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+              obsListOpen={showObsListModal}
               onBecomeVisible={viewingIndex === null}
               copiedToDraft={copiedToDraft}
               onCancelCopy={() => setCopiedToDraft(false)}
               onDraftStatus={(hasTitle, hasImage) => { setDraftHasTitle(hasTitle); setDraftHasImage(hasImage); }}
             />
           </div>
-        <div className="text-center" style={{
-          fontSize: "0.82rem",
-          color: "#db440a",
-          padding: "0.4rem 0",
-          fontWeight: 700,
-          fontStyle: "italic",
-          visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
-        }}>
-          {viewingIndex !== null
-            ? (!viewedObservation?.image ? "Add image to proceed" : "Add observation to proceed")
-            : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add observation to proceed")}
-        </div>
       </div>
-      <div className="survey-capture-actions" ref={setActionBarEl}>
+      <div className="text-center" style={{
+        fontSize: "0.82rem",
+        color: "#db440a",
+        padding: "0.25rem 0",
+        fontWeight: 700,
+        fontStyle: "italic",
+        flexShrink: 0,
+        visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
+      }}>
+        {viewingIndex !== null
+          ? (!viewedObservation?.image ? "Add image to proceed" : "Add description to proceed")
+          : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add description to proceed")}
+      </div>
+      <div className="survey-capture-actions" ref={setActionBarEl} style={showObsListModal ? { position: "relative", zIndex: 1060 } : undefined}>
       </div>
 
       {/* Hidden file input for changing previous observation image */}
@@ -509,6 +547,10 @@ function SurveyCapture() {
         onChange={async (event) => {
           const selectedFile = event.target.files[0];
           if (!selectedFile || !viewedObservation) return;
+          const previewUrl = URL.createObjectURL(selectedFile);
+          setPreviewImageUrl(previewUrl);
+          setPreviewImageChanged(true);
+          setShowPreviewImageModal(true);
           const formData = new FormData();
           formData.append("title", viewedObservation.title);
           formData.append("description", viewedObservation.description || "");
@@ -545,15 +587,16 @@ function SurveyCapture() {
           )}
         </Modal.Body>
         <div className="survey-capture-actions">
-          <div className="capture-footer-grid">
+          <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Close"
+              disabled={previewImageChanged}
               onClick={() => setShowPreviewImageModal(false)}
-              style={{ background: "#2c3e50" }}
+              style={{ background: previewImageChanged ? "#2c3e50" : undefined }}
             >
-              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: previewImageChanged ? "none" : "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
@@ -568,35 +611,11 @@ function SurveyCapture() {
               type="button"
               className="capture-footer-btn"
               aria-label="Confirm"
+              disabled={!previewImageChanged}
               onClick={() => setShowPreviewImageModal(false)}
-              style={{ background: "#006400" }}
+              style={{ background: !previewImageChanged ? "#2c3e50" : "#006400" }}
             >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-            </button>
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Delete image"
-              onClick={async () => {
-                if (viewedObservation) {
-                  try {
-                    const formData = new FormData();
-                    formData.append("title", viewedObservation.title || "");
-                    formData.append("image", "");
-                    await api.patch(`/api/observations/${viewedObservation.id}/`, { image: null });
-                    fetchSurvey();
-                  } catch (err) {
-                    console.error("Failed to delete image:", err);
-                  }
-                }
-                setShowPreviewImageModal(false);
-              }}
-              style={{ background: "#95a5a6" }}
-            >
-              <div className="d-flex flex-column align-items-center">
-                <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-                <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
-              </div>
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: !previewImageChanged ? "none" : "brightness(0) invert(1)" }} />
             </button>
           </div>
         </div>
@@ -609,7 +628,7 @@ function SurveyCapture() {
         dialogClassName="modal-bottom"
       >
         <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem" }}>{editingField === "title" ? "Edit Observation" : "Edit Notes"}</Modal.Title>
+          <Modal.Title style={{ fontSize: "1rem" }}>{editingField === "title" ? "Edit Description" : "Edit Notes"}</Modal.Title>
         </Modal.Header>
         <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
           <textarea
@@ -617,19 +636,19 @@ function SurveyCapture() {
             rows={editingField === "title" ? 4 : 8}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            maxLength={editingField === "title" ? 120 : 280}
+            maxLength={editingField === "title" ? 150 : 280}
             autoFocus
             style={{ resize: "none", lineHeight: "1.25", fontSize: "0.9rem", backgroundColor: editValue.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
           />
           <div className="d-flex justify-content-between" style={{ marginTop: "0.65rem", marginBottom: "0.5rem" }}>
-            <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 120 ? "#2c3e50" : editValue.length >= 100 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
-              {editValue.length} / {editingField === "title" ? 120 : 280}
+            <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 150 ? "#2c3e50" : editValue.length >= 130 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
+              {editValue.length} / {editingField === "title" ? 150 : 280}
             </small>
           </div>
         </Modal.Body>
         {editingField === "title" && !editValue.trim() && (
           <div className="text-center" style={{ fontSize: "0.82rem", color: "#db440a", padding: "0.4rem 0", fontWeight: 700, fontStyle: "italic", background: "#faf6ef" }}>
-            Add observation to proceed
+            Add description to proceed
           </div>
         )}
         <div className="survey-capture-actions">
@@ -688,7 +707,14 @@ function SurveyCapture() {
       {/* Observations list modal */}
       <Modal
         show={showObsListModal}
-        onHide={() => setShowObsListModal(false)}
+        onHide={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+        backdrop="static"
+        onEntered={() => {
+          if (viewingIndex !== null) {
+            const el = document.getElementById(`capture-obs-${viewingIndex}`);
+            if (el) el.scrollIntoView({ block: "center", behavior: "instant" });
+          }
+        }}
         centered
         size="lg"
       >
@@ -706,29 +732,31 @@ function SurveyCapture() {
               return (
               <div
                 key={obs.id}
-                className="d-flex align-items-center gap-2 py-2 px-2"
-                style={{ borderBottom: idx < observations.length - 1 ? "1px solid #eee" : "none", cursor: "pointer" }}
+                id={`capture-obs-${idx}`}
+                className="observation-row"
+                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
                 onClick={() => {
                   setViewingIndex(idx);
                   setShowObsListModal(false);
                   setCopiedToDraft(false);
                 }}
               >
-                <div style={{ width: "60px", height: "60px", flexShrink: 0, borderRadius: "6px", overflow: "hidden", backgroundColor: "#ecf0f1" }}>
-                  {imgSrc ? (
-                    <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <div className="d-flex align-items-center justify-content-center h-100">
-                      <span className="text-muted" style={{ fontSize: "0.65rem" }}>No image</span>
-                    </div>
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    #{observations.length - idx} {obs.title || "Untitled"}
+                {imgSrc ? (
+                  <img src={imgSrc} alt="" style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: "80px", minHeight: "100%", borderRadius: "8px 0 0 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                    <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
                   </div>
-                  <div className="text-muted" style={{ fontSize: "0.72rem" }}>
-                    {new Date(obs.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                )}
+                <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
+                  <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                    {obs.title || "Untitled"}
+                  </div>
+                  <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
+                    <span>#{observations.length - idx} of {observations.length}</span>
+                    <span>
+                      {new Date(obs.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
                   </div>
                 </div>
               </div>
