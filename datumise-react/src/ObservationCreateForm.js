@@ -435,16 +435,7 @@ function ObservationCreateForm(props) {
       <>
         <div className="capture-footer-grid">
           {props.isViewingPrevious ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Back to list"
-              disabled={props.copiedToDraft || props.obsListOpen}
-              onClick={() => props.onShowObsList?.()}
-              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : "#008080" }}
-            >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
-            </button>
+            <div />
           ) : (
             <button
               type="button"
@@ -541,12 +532,11 @@ function ObservationCreateForm(props) {
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Return to draft"
-              disabled={props.copiedToDraft}
-              onClick={() => props.onReturnToCurrent?.()}
-              style={{ background: props.copiedToDraft ? "#2c3e50" : "#95a5a6" }}
+              aria-label="Back to list"
+              onClick={() => props.onShowObsList?.()}
+              style={{ background: "#95a5a6" }}
             >
-              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
             </button>
           ) : (
             <button
