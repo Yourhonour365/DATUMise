@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "react-bootstrap";
+import heic2any from "heic2any";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
@@ -10,7 +12,6 @@ function SurveyCapture() {
   const location = useLocation();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [observationCount, setObservationCount] = useState(0);
   const [durationTick, setDurationTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState(false);
   const [actionBarEl, setActionBarEl] = useState(null);
@@ -25,19 +26,20 @@ function SurveyCapture() {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const previewFileInputRef = useRef(null);
   const modalClosedAtRef = useRef(0);
-  const [captureComments, setCaptureComments] = useState([]);
-  const [captureCommentText, setCaptureCommentText] = useState("");
   const [showObsListModal, setShowObsListModal] = useState(false);
   const [copiedToDraft, setCopiedToDraft] = useState(false);
   const [draftHasTitle, setDraftHasTitle] = useState(false);
   const [draftHasImage, setDraftHasImage] = useState(false);
   const [previewImageChanged, setPreviewImageChanged] = useState(false);
+  const [hasPendingPreview, setHasPendingPreview] = useState(false);
+  const pendingPreviewFileRef = useRef(null);
+  const pendingPreviewUrlRef = useRef(null);
+  const originalPreviewUrlRef = useRef(null);
 
   const fetchSurvey = async () => {
     try {
       const response = await api.get(`/api/surveys/${id}/`);
       setSurvey(response.data);
-      setObservationCount(response.data.observations?.length || 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -71,6 +73,17 @@ function SurveyCapture() {
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-pause survey when user backgrounds or closes the app
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && survey?.status === "live") {
+        api.patch(`/api/surveys/${id}/`, { status: "paused" }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [survey?.status, id]);
 
   const formatSurveyDuration = (startTime, _tick) => {
     if (!startTime) return "";
@@ -145,7 +158,6 @@ function SurveyCapture() {
   };
 
   const handleSuccess = (newObservation) => {
-    setObservationCount((prev) => prev + 1);
     setSurvey((prev) => ({
       ...prev,
       observations: [newObservation, ...(prev.observations || [])],
@@ -162,31 +174,6 @@ function SurveyCapture() {
   const observations = survey?.observations || [];
   const viewedObservation = viewingIndex !== null ? observations[viewingIndex] : null;
 
-  // Fetch comments for the currently viewed observation
-  useEffect(() => {
-    if (!viewedObservation?.id) { setCaptureComments([]); return; }
-    api.get(`/api/comments/?observation=${viewedObservation.id}`)
-      .then((res) => setCaptureComments(res.data.results || res.data))
-      .catch(() => setCaptureComments([]));
-  }, [viewedObservation?.id]);
-
-  const handleAddCaptureComment = async () => {
-    if (!captureCommentText.trim() || !viewedObservation?.id) return;
-    try {
-      await api.post("/api/comments/", { observation: viewedObservation.id, content: captureCommentText.trim() });
-      setCaptureCommentText("");
-      const res = await api.get(`/api/comments/?observation=${viewedObservation.id}`);
-      setCaptureComments(res.data.results || res.data);
-      setSurvey((prev) => ({
-        ...prev,
-        observations: prev.observations.map((obs) =>
-          obs.id === viewedObservation.id ? { ...obs, comment_count: (obs.comment_count || 0) + 1 } : obs
-        ),
-      }));
-    } catch (err) {
-      console.error("Failed to add comment:", err);
-    }
-  };
 
   const viewedObsIncomplete = viewedObservation && (!viewedObservation.image || !viewedObservation.title?.trim());
   const anyIncomplete = viewingIndex !== null ? viewedObsIncomplete : draftIncomplete;
@@ -263,7 +250,6 @@ function SurveyCapture() {
         ...prev,
         observations: prev.observations.filter((obs) => obs.id !== viewedObservation.id),
       }));
-      setObservationCount((prev) => prev - 1);
       setViewingIndex(null);
       setCopiedToDraft(false);
       resetEditState();
@@ -309,10 +295,10 @@ function SurveyCapture() {
       )}
       <div className="survey-capture-header">
         <div>
-          <div className="fw-semibold" style={{ fontSize: "0.95rem", lineHeight: 1.2 }}>
+          <div className="fw-semibold" style={{ fontSize: "1.1rem", lineHeight: 1.2 }}>
             {viewingIndex !== null
               ? `Obs ${observations.length - viewingIndex} of ${observations.length}`
-              : `Add Obs #${observationCount + 1}`}
+              : `Add Observation`}
           </div>
           <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
             <span
@@ -374,6 +360,10 @@ function SurveyCapture() {
               <div
                 onClick={() => {
                   if (viewedObservation.image) {
+                    originalPreviewUrlRef.current = viewedObservation.image;
+                    pendingPreviewFileRef.current = null;
+                    pendingPreviewUrlRef.current = null;
+                    setHasPendingPreview(false);
                     setPreviewImageUrl(viewedObservation.image);
                     setPreviewImageChanged(false);
                     setShowPreviewImageModal(true);
@@ -523,17 +513,17 @@ function SurveyCapture() {
           </div>
       </div>
       <div className="text-center" style={{
-        fontSize: "0.82rem",
+        fontSize: "1rem",
         color: "#db440a",
-        padding: "0.25rem 0",
+        padding: "0.4rem 0",
         fontWeight: 700,
         fontStyle: "italic",
         flexShrink: 0,
         visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
       }}>
         {viewingIndex !== null
-          ? (!viewedObservation?.image ? "Add image to proceed" : "Add description to proceed")
-          : (draftHasTitle && !draftHasImage ? "Add image to proceed" : "Add description to proceed")}
+          ? (!viewedObservation?.image ? "Add photo to proceed" : "Add description to proceed")
+          : (draftHasTitle && !draftHasImage ? "Add photo to proceed" : "Add description to proceed")}
       </div>
       <div className="survey-capture-actions" ref={setActionBarEl} style={showObsListModal ? { position: "relative", zIndex: 1060 } : undefined}>
       </div>
@@ -545,24 +535,23 @@ function SurveyCapture() {
         accept="image/*"
         style={{ display: "none" }}
         onChange={async (event) => {
-          const selectedFile = event.target.files[0];
-          if (!selectedFile || !viewedObservation) return;
-          const previewUrl = URL.createObjectURL(selectedFile);
+          let file = event.target.files[0];
+          if (!file || !viewedObservation) return;
+          if (file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif")) {
+            try {
+              const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+              file = new File([converted], file.name.replace(/\.hei[cf]$/i, ".jpg"), { type: "image/jpeg" });
+            } catch (err) {
+              console.error("HEIC conversion failed:", err);
+            }
+          }
+          const previewUrl = URL.createObjectURL(file);
+          pendingPreviewFileRef.current = file;
+          pendingPreviewUrlRef.current = previewUrl;
+          setHasPendingPreview(true);
           setPreviewImageUrl(previewUrl);
           setPreviewImageChanged(true);
           setShowPreviewImageModal(true);
-          const formData = new FormData();
-          formData.append("title", viewedObservation.title);
-          formData.append("description", viewedObservation.description || "");
-          formData.append("image", selectedFile);
-          try {
-            await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
-              headers: { "Content-Type": "multipart/form-data" },
-            });
-            fetchSurvey();
-          } catch (err) {
-            console.error("Error replacing image:", err);
-          }
           event.target.value = null;
         }}
       />
@@ -571,33 +560,50 @@ function SurveyCapture() {
       <Modal
         show={showPreviewImageModal}
         onHide={() => setShowPreviewImageModal(false)}
-        centered
+        fullscreen={true}
       >
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem" }}>Image preview</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center p-0" style={{ background: "#2c3e50", overflow: "hidden" }}>
+        <Modal.Body className="p-0 d-flex align-items-center justify-content-center" style={{ background: "#2c3e50", overflow: "hidden", flex: 1 }}>
           {previewImageUrl && (
             <img
               src={previewImageUrl}
               alt="Observation"
-              className="img-fluid"
-              style={{ maxHeight: "calc(100vh - 160px)", objectFit: "contain", width: "100%" }}
+              style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
             />
           )}
         </Modal.Body>
         <div className="survey-capture-actions">
-          <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Close"
-              disabled={previewImageChanged}
-              onClick={() => setShowPreviewImageModal(false)}
-              style={{ background: previewImageChanged ? "#2c3e50" : undefined }}
-            >
-              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: previewImageChanged ? "none" : "brightness(0) invert(1)" }} />
-            </button>
+          <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            {/* Button 1: list (plain view) or shift/toggle (comparing) */}
+            {hasPendingPreview ? (
+              <button
+                type="button"
+                className="capture-footer-btn"
+                aria-label="Toggle image"
+                onClick={() => {
+                  if (previewImageChanged) {
+                    setPreviewImageUrl(originalPreviewUrlRef.current);
+                    setPreviewImageChanged(false);
+                  } else {
+                    setPreviewImageUrl(pendingPreviewUrlRef.current);
+                    setPreviewImageChanged(true);
+                  }
+                }}
+                style={{ background: "#1a5bc4" }}
+              >
+                <img src="/shift.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="capture-footer-btn"
+                aria-label="Observations list"
+                onClick={() => { setShowPreviewImageModal(false); setShowObsListModal(true); }}
+                style={{ background: "#008080" }}
+              >
+                <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              </button>
+            )}
+            {/* Button 2: camera */}
             <button
               type="button"
               className="capture-footer-btn"
@@ -607,15 +613,50 @@ function SurveyCapture() {
             >
               <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
+            {/* Button 3: tick — saves pending image if comparing, else just closes */}
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Confirm"
-              disabled={!previewImageChanged}
-              onClick={() => setShowPreviewImageModal(false)}
-              style={{ background: !previewImageChanged ? "#2c3e50" : "#006400" }}
+              onClick={async () => {
+                if (hasPendingPreview && pendingPreviewFileRef.current && viewedObservation) {
+                  const formData = new FormData();
+                  formData.append("title", viewedObservation.title || "");
+                  formData.append("description", viewedObservation.description || "");
+                  formData.append("image", pendingPreviewFileRef.current);
+                  try {
+                    await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
+                      headers: { "Content-Type": "multipart/form-data" },
+                    });
+                    fetchSurvey();
+                  } catch (err) {
+                    console.error("Error replacing image:", err);
+                  }
+                  pendingPreviewFileRef.current = null;
+                  pendingPreviewUrlRef.current = null;
+                  setHasPendingPreview(false);
+                }
+                setShowPreviewImageModal(false);
+              }}
+              style={{ background: "#006400" }}
             >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: !previewImageChanged ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            {/* Button 4: close — dismisses without saving */}
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Close"
+              onClick={() => {
+                pendingPreviewFileRef.current = null;
+                pendingPreviewUrlRef.current = null;
+                setHasPendingPreview(false);
+                setPreviewImageChanged(false);
+                setShowPreviewImageModal(false);
+              }}
+              style={{ background: "#95a5a6" }}
+            >
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
             </button>
           </div>
         </div>
@@ -633,12 +674,12 @@ function SurveyCapture() {
         <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
           <textarea
             className="form-control"
-            rows={editingField === "title" ? 4 : 8}
+            rows={editingField === "title" ? 7 : 10}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             maxLength={editingField === "title" ? 150 : 280}
             autoFocus
-            style={{ resize: "none", lineHeight: "1.25", fontSize: "0.9rem", backgroundColor: editValue.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
+            style={{ resize: "none", lineHeight: "1.4", fontSize: "1.05rem", backgroundColor: editValue.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
           />
           <div className="d-flex justify-content-between" style={{ marginTop: "0.65rem", marginBottom: "0.5rem" }}>
             <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 150 ? "#2c3e50" : editValue.length >= 130 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
@@ -675,7 +716,7 @@ function SurveyCapture() {
               }}
               style={{ background: "#1a5bc4" }}
             >
-              <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/text.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
@@ -704,6 +745,17 @@ function SurveyCapture() {
         </div>
       </Modal>
 
+      {showObsListModal && createPortal(
+        <button
+          type="button"
+          onClick={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+          style={{ position: "fixed", bottom: 0, right: 0, width: "25%", height: "80px", background: "#95a5a6", border: "none", zIndex: 1070, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+        >
+          <img src="/x.svg" alt="Close" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+        </button>,
+        document.body
+      )}
+
       {/* Observations list modal */}
       <Modal
         show={showObsListModal}
@@ -712,7 +764,15 @@ function SurveyCapture() {
         onEntered={() => {
           if (viewingIndex !== null) {
             const el = document.getElementById(`capture-obs-${viewingIndex}`);
-            if (el) el.scrollIntoView({ block: "center", behavior: "instant" });
+            if (el) {
+              el.scrollIntoView({ block: "center", behavior: "instant" });
+              el.style.background = "#9a8255";
+              el.style.transition = "none";
+              setTimeout(() => {
+                el.style.transition = "background 2s ease";
+                el.style.background = "";
+              }, 600);
+            }
           }
         }}
         centered

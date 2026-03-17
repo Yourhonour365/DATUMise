@@ -195,9 +195,7 @@ function ObservationDetail() {
             onClick={async () => {
               try {
                 await api.patch(`/api/surveys/${location.state.surveyId}/`, { status: "live" });
-                navigate(`/surveys/${location.state.surveyId}/capture`, {
-                  state: { viewObservationId: observation.id },
-                });
+                navigate(`/surveys/${location.state.surveyId}/capture`);
               } catch (err) {
                 console.error("Failed to resume survey:", err);
               }

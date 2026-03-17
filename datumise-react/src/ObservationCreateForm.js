@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Form, Button, Container, Modal } from "react-bootstrap";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Form, Button, Modal } from "react-bootstrap";
+import { useSearchParams } from "react-router-dom";
 import api from "./api/api";
+import heic2any from "heic2any";
 
 function ObservationCreateForm(props) {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ function ObservationCreateForm(props) {
  
  
   const clearForm = () => {
+    imageWriteCancelledRef.current = true;
     setFormData({
       title: "",
       description: "",
@@ -25,7 +27,6 @@ function ObservationCreateForm(props) {
   
   
   const { title, description } = formData;
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const surveyId = props.surveyId || searchParams.get("survey");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,9 +34,15 @@ function ObservationCreateForm(props) {
   const fileInputRef = useRef(null);
   const titleInputRef = useRef(null);
   const reopenPreviewRef = useRef(false);
+  const imageWriteCancelledRef = useRef(false);
   const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
   const originalImageRef = useRef(null);
   const originalImageFileRef = useRef(null);
+  const [hasPendingImage, setHasPendingImage] = useState(false);
+  const [showingOriginal, setShowingOriginal] = useState(false);
+  const pendingImageFileRef = useRef(null);
+  const pendingImageUrlRef = useRef(null);
+  const isFirstPhotoModalRef = useRef(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   
   useEffect(() => {
@@ -45,8 +52,14 @@ function ObservationCreateForm(props) {
     if (savedDraft) {
       try {
         const parsedDraft = JSON.parse(savedDraft);
-        
-        
+
+        // Only restore if the draft belongs to the current survey
+        if (parsedDraft.surveyId && String(parsedDraft.surveyId) !== String(surveyId)) {
+          localStorage.removeItem("datumise-observation-draft");
+          localStorage.removeItem("datumise-observation-image");
+          return;
+        }
+
         setFormData({
           title: parsedDraft.title || "",
           description: parsedDraft.description || "",
@@ -54,16 +67,27 @@ function ObservationCreateForm(props) {
 
         const savedImage = localStorage.getItem("datumise-observation-image");
         if (savedImage) {
-          setImagePreview(savedImage);
-          // Restore File object from base64 data URL
-          try {
-            const res = await fetch(savedImage);
-            const blob = await res.blob();
-            const file = new File([blob], "restored-image.jpg", { type: blob.type });
-            setImage(file);
-          } catch (e) {
-            console.error("Failed to restore image file:", e);
-          }
+          // Validate image loads before using it
+          await new Promise((resolve) => {
+            const testImg = new Image();
+            testImg.onload = async () => {
+              setImagePreview(savedImage);
+              try {
+                const res = await fetch(savedImage);
+                const blob = await res.blob();
+                const file = new File([blob], "restored-image.jpg", { type: blob.type });
+                setImage(file);
+              } catch (e) {
+                console.error("Failed to restore image file:", e);
+              }
+              resolve();
+            };
+            testImg.onerror = () => {
+              localStorage.removeItem("datumise-observation-image");
+              resolve();
+            };
+            testImg.src = savedImage;
+          });
         }
 
 
@@ -114,7 +138,7 @@ function ObservationCreateForm(props) {
 
     localStorage.setItem(
       "datumise-observation-draft",
-      JSON.stringify(updatedData)
+      JSON.stringify({ ...updatedData, surveyId })
     );
   };
 
@@ -203,37 +227,55 @@ function ObservationCreateForm(props) {
                 className="d-none"
                 type="file"
                 accept="image/*"
-                capture="environment"
-                key={image ? image.name : "empty"}
-                
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  setImage(file || null);
-
+                onChange={async (e) => {
+                  let file = e.target.files[0];
                   if (file) {
-                    const previewUrl = URL.createObjectURL(file);
-                    setImagePreview(previewUrl);
-
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      localStorage.setItem("datumise-observation-image", reader.result);
-                    };
-                    reader.readAsDataURL(file);
-
+                    // Convert HEIC/HEIF to JPEG for browser compatibility
+                    if (file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif")) {
+                      try {
+                        const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+                        file = new File([converted], file.name.replace(/\.hei[cf]$/i, ".jpg"), { type: "image/jpeg" });
+                      } catch (err) {
+                        console.error("HEIC conversion failed:", err);
+                      }
+                    }
                     reopenPreviewRef.current = false;
-                    setTimeout(() => setShowImagePreviewModal(true), 100);
-                  } else {
-                    setImagePreview("");
-                    localStorage.removeItem("datumise-observation-image");
+                    if (imagePreview) {
+                      // Retake: store as pending, keep original in imagePreview
+                      pendingImageFileRef.current = file;
+                      pendingImageUrlRef.current = URL.createObjectURL(file);
+                      setHasPendingImage(true);
+                      setShowingOriginal(false);
+                      setShowImagePreviewModal(true);
+                    } else {
+                      // First photo: set directly
+                      isFirstPhotoModalRef.current = true;
+                      imageWriteCancelledRef.current = false;
+                      setImage(file);
+                      const blobUrl = URL.createObjectURL(file);
+                      setImagePreview(blobUrl);
+                      setShowImagePreviewModal(true);
+                      // Save base64 to localStorage for draft restoration
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (reader.result && !imageWriteCancelledRef.current) {
+                          localStorage.setItem("datumise-observation-image", reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
                   }
                 }}
-
-
             />
 
             <div
                   onClick={() => {
                     if (imagePreview) {
+                      isFirstPhotoModalRef.current = false;
+                      setHasPendingImage(false);
+                      setShowingOriginal(false);
+                      pendingImageFileRef.current = null;
+                      pendingImageUrlRef.current = null;
                       originalImageRef.current = imagePreview;
                       originalImageFileRef.current = image;
                       setShowImagePreviewModal(true);
@@ -245,7 +287,7 @@ function ObservationCreateForm(props) {
                     width: "336px",
                     maxWidth: "100%",
                     height: "168px",
-                    border: !imagePreview && title.trim() ? "2px solid #008000" : "none",
+                    border: !imagePreview && title.trim() ? "4px solid #FF7518" : "none",
                     borderRadius: "8px",
                     display: "flex",
                     alignItems: "center",
@@ -269,7 +311,7 @@ function ObservationCreateForm(props) {
               ) : (
                 <div className="d-flex flex-column align-items-center gap-2">
                   <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>
-                    Awaiting image
+                    {title.trim() ? "ADD PHOTO TO PROCEED" : "Start by adding a photo"}
                   </span>
                   <img src="/datumise-add.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
                 </div>
@@ -316,7 +358,7 @@ function ObservationCreateForm(props) {
             >
               <div className="d-flex flex-column align-items-center gap-2">
                 <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>
-                  Awaiting description
+                  Add description
                 </span>
                 <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
               </div>
@@ -399,23 +441,20 @@ function ObservationCreateForm(props) {
               aria-label="Back to list"
               disabled={props.copiedToDraft || props.obsListOpen}
               onClick={() => props.onShowObsList?.()}
-              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
+              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : "#008080" }}
             >
-              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
             </button>
           ) : (
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Pause Survey"
+              aria-label="Observations list"
+              style={{ background: props.copiedToDraft || props.obsListOpen ? "#2c3e50" : (!props.isViewingPrevious && title.trim() && !imagePreview ? "#336666" : "#008080") }}
+              onClick={() => props.onShowObsList?.()}
               disabled={props.copiedToDraft || props.obsListOpen}
-              onClick={() => {
-                props.onPauseSurvey?.();
-                props.onClose?.();
-              }}
-              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
             >
-              <img src="/datumise_pause.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft || props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
           {props.copiedToDraft && props.isViewingPrevious ? (
@@ -436,9 +475,9 @@ function ObservationCreateForm(props) {
               aria-label="Edit observation"
               disabled={props.obsListOpen}
               onClick={() => props.isViewingPrevious ? props.onEditPrevious?.() : setShowNotesModal(true)}
-              style={{ background: props.obsListOpen ? "#2c3e50" : "#1a5bc4" }}
+              style={{ background: props.obsListOpen ? "#2c3e50" : (!props.isViewingPrevious && title.trim() && !imagePreview ? "#3d6b9e" : !props.isViewingPrevious && !title.trim() && !imagePreview ? "#2d4a7a" : "#1a5bc4") }}
             >
-              <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/text.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
           {props.isViewingPrevious ? (
@@ -485,7 +524,7 @@ function ObservationCreateForm(props) {
               onClick={() => fileInputRef.current?.click()}
               style={{ background: props.obsListOpen ? "#2c3e50" : "#db440a" }}
             >
-              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/camera.svg" alt="" width={title.trim() && !imagePreview ? 62 : !title.trim() && !imagePreview ? 58 : 47} height={title.trim() && !imagePreview ? 62 : !title.trim() && !imagePreview ? 58 : 47} style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
           {props.obsListOpen ? (
@@ -513,12 +552,15 @@ function ObservationCreateForm(props) {
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Observations list"
-              style={{ background: props.copiedToDraft ? "#2c3e50" : "#008080" }}
-              onClick={() => props.onShowObsList?.()}
-              disabled={props.copiedToDraft}
+              aria-label="Pause Survey"
+              disabled={props.copiedToDraft || props.obsListOpen}
+              onClick={() => {
+                props.onPauseSurvey?.();
+                props.onClose?.();
+              }}
+              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
             >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft ? "none" : "brightness(0) invert(1)" }} />
+              <img src="/datumise_pause.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
         </div>
@@ -529,33 +571,71 @@ function ObservationCreateForm(props) {
 
     <Modal
       show={showImagePreviewModal}
-      onHide={() => setShowImagePreviewModal(false)}
-      centered
+      onHide={() => {
+        if (hasPendingImage) {
+          setHasPendingImage(false);
+          setShowingOriginal(false);
+          pendingImageFileRef.current = null;
+          pendingImageUrlRef.current = null;
+        } else if (isFirstPhotoModalRef.current) {
+          imageWriteCancelledRef.current = true;
+          setImage(null);
+          setImagePreview("");
+          localStorage.removeItem("datumise-observation-image");
+        }
+        setShowImagePreviewModal(false);
+      }}
+      fullscreen={true}
     >
-      <Modal.Header closeButton>
-        <Modal.Title style={{ fontSize: "1rem" }}>Image preview</Modal.Title>
-      </Modal.Header>
-
-      <Modal.Body className="text-center p-0" style={{ background: "#2c3e50" }}>
-        {imagePreview && (
+      <Modal.Body className="text-center p-0" style={{ background: "#687374", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {(hasPendingImage && !showingOriginal ? pendingImageUrlRef.current : imagePreview) ? (
           <img
-            src={imagePreview}
+            src={hasPendingImage && !showingOriginal ? pendingImageUrlRef.current : imagePreview}
             alt="Observation"
             className="img-fluid"
-            style={{ maxHeight: "70vh", objectFit: "contain" }}
+            style={{ maxHeight: "calc(100vh - 80px)", objectFit: "contain", width: "100%" }}
           />
+        ) : (
+          <div
+            className="d-flex flex-column align-items-center gap-2"
+            style={{ cursor: "pointer" }}
+            onClick={() => { reopenPreviewRef.current = true; fileInputRef.current?.click(); }}
+          >
+            <span style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Add a photo</span>
+            <img src="/datumise-add.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
+          </div>
         )}
       </Modal.Body>
 
       <div className="survey-capture-actions">
-        <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          {hasPendingImage ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Toggle image"
+              onClick={() => setShowingOriginal(prev => !prev)}
+              style={{ background: "#1a5bc4" }}
+            >
+              <img src="/shift.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Prior observations"
+              onClick={() => { setShowImagePreviewModal(false); props.onShowObsList?.(); }}
+              style={{ background: "#008080" }}
+            >
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+          )}
           <button
             type="button"
             className="capture-footer-btn"
             aria-label="Retake photo"
             onClick={() => {
               reopenPreviewRef.current = true;
-              setShowImagePreviewModal(false);
               fileInputRef.current?.click();
             }}
             style={{ background: "#db440a" }}
@@ -566,7 +646,26 @@ function ObservationCreateForm(props) {
             type="button"
             className="capture-footer-btn"
             aria-label="Confirm image"
-            onClick={() => setShowImagePreviewModal(false)}
+            onClick={() => {
+              if (hasPendingImage) {
+                // Accept pending: write to state and localStorage
+                imageWriteCancelledRef.current = false;
+                setImage(pendingImageFileRef.current);
+                setImagePreview(pendingImageUrlRef.current);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  if (reader.result && !imageWriteCancelledRef.current) {
+                    localStorage.setItem("datumise-observation-image", reader.result);
+                  }
+                };
+                reader.readAsDataURL(pendingImageFileRef.current);
+                setHasPendingImage(false);
+                setShowingOriginal(false);
+                pendingImageFileRef.current = null;
+                pendingImageUrlRef.current = null;
+              }
+              setShowImagePreviewModal(false);
+            }}
             style={{ background: "#006400" }}
           >
             <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
@@ -574,19 +673,24 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Delete image"
+            aria-label="Close"
             onClick={() => {
-              setImage(null);
-              setImagePreview("");
-              localStorage.removeItem("datumise-observation-image");
+              if (hasPendingImage) {
+                setHasPendingImage(false);
+                setShowingOriginal(false);
+                pendingImageFileRef.current = null;
+                pendingImageUrlRef.current = null;
+              } else if (isFirstPhotoModalRef.current) {
+                imageWriteCancelledRef.current = true;
+                setImage(null);
+                setImagePreview("");
+                localStorage.removeItem("datumise-observation-image");
+              }
               setShowImagePreviewModal(false);
             }}
             style={{ background: "#95a5a6" }}
           >
-            <div className="d-flex flex-column align-items-center">
-              <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-              <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
-            </div>
+            <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
         </div>
       </div>
@@ -603,19 +707,19 @@ function ObservationCreateForm(props) {
       <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
         <Form.Control
           as="textarea"
-          rows={4}
+          rows={7}
           value={title}
           onChange={(e) => {
             if (e.target.value.length <= 150) {
               const updatedData = { ...formData, title: e.target.value };
               setFormData(updatedData);
-              localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
+              localStorage.setItem("datumise-observation-draft", JSON.stringify({ ...updatedData, surveyId }));
             }
           }}
-          placeholder="Add observation description"
+          placeholder="Add description"
           maxLength={150}
           autoFocus
-          style={{ resize: "none", lineHeight: "1.25", fontSize: "0.9rem", backgroundColor: title.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
+          style={{ resize: "none", lineHeight: "1.4", fontSize: "1.05rem", backgroundColor: title.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
         />
         <div className="d-flex justify-content-between mt-1">
           <small style={{ fontSize: "0.72rem", color: "#db440a" }}>{title.length} / 150</small>
@@ -626,20 +730,28 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Go back"
-            onClick={() => setShowNotesModal(false)}
-            style={{ background: "#2c3e50" }}
+            aria-label="Prior observations"
+            onClick={() => { setShowNotesModal(false); props.onShowObsList?.(); }}
+            style={{ background: "#008080" }}
           >
-            <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
           </button>
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Edit"
-            onClick={() => titleInputRef.current?.focus()}
-            style={{ background: "#1a5bc4" }}
+            aria-label="Clear"
+            onClick={() => {
+              const updatedData = { ...formData, title: "" };
+              setFormData(updatedData);
+              localStorage.setItem("datumise-observation-draft", JSON.stringify({ ...updatedData, surveyId }));
+            }}
+            disabled={!title.length}
+            style={{ background: "#95a5a6" }}
           >
-            <img src="/datumise-edit.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            <div className="d-flex flex-column align-items-center">
+              <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
+            </div>
           </button>
           <button
             type="button"
@@ -653,19 +765,11 @@ function ObservationCreateForm(props) {
           <button
             type="button"
             className="capture-footer-btn"
-            aria-label="Clear"
-            onClick={() => {
-              const updatedData = { ...formData, title: "" };
-              setFormData(updatedData);
-              localStorage.setItem("datumise-observation-draft", JSON.stringify(updatedData));
-            }}
-            disabled={!title.length}
+            aria-label="Go back"
+            onClick={() => setShowNotesModal(false)}
             style={{ background: "#95a5a6" }}
           >
-            <div className="d-flex flex-column align-items-center">
-              <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-              <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
-            </div>
+            <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
         </div>
       </div>
