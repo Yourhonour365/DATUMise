@@ -19,7 +19,7 @@ function SurveyCapture() {
   const [editingField, setEditingField] = useState(null); // "title" | "description" | null
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [editOriginIndex, setEditOriginIndex] = useState(null);
+  const listReturnRef = useRef(null); // saved state to restore when list is closed via X
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -189,14 +189,23 @@ function SurveyCapture() {
     if (editingField !== null) modalClosedAtRef.current = Date.now();
     setEditingField(null);
     setEditValue("");
-    setEditOriginIndex(null);
+  };
+
+  const openObsList = () => {
+    listReturnRef.current = { viewingIndex, editingField, editValue };
+    setShowObsListModal(true);
   };
 
   const closeObsList = () => {
+    const ret = listReturnRef.current;
+    listReturnRef.current = null;
     setShowObsListModal(false);
-    if (editOriginIndex !== null) {
-      setViewingIndex(editOriginIndex);
-      setEditOriginIndex(null);
+    if (ret !== null) {
+      setViewingIndex(ret.viewingIndex);
+      if (ret.editingField) {
+        setEditingField(ret.editingField);
+        setEditValue(ret.editValue);
+      }
     } else {
       setViewingIndex(null);
       setCopiedToDraft(false);
@@ -516,7 +525,7 @@ function SurveyCapture() {
               onReturn={goBack}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
               observations={observations}
-              onShowObsList={() => setShowObsListModal(true)}
+              onShowObsList={() => openObsList()}
               onCloseObsList={() => closeObsList()}
               obsListOpen={showObsListModal}
               onBecomeVisible={viewingIndex === null}
@@ -611,7 +620,7 @@ function SurveyCapture() {
                 type="button"
                 className="capture-footer-btn"
                 aria-label="Observations list"
-                onClick={() => { setShowPreviewImageModal(false); setShowObsListModal(true); }}
+                onClick={() => { setShowPreviewImageModal(false); openObsList(); }}
                 style={{ background: "#008080" }}
               >
                 <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
@@ -712,7 +721,7 @@ function SurveyCapture() {
               type="button"
               className="capture-footer-btn"
               aria-label="Observations list"
-              onClick={() => { setEditOriginIndex(viewingIndex); setShowObsListModal(true); }}
+              onClick={() => openObsList()}
               style={{ background: "#008080" }}
             >
               <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
@@ -804,6 +813,8 @@ function SurveyCapture() {
                 className="observation-row"
                 style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
                 onClick={() => {
+                  listReturnRef.current = null;
+                  resetEditState();
                   setViewingIndex(idx);
                   setShowObsListModal(false);
                   setCopiedToDraft(false);
