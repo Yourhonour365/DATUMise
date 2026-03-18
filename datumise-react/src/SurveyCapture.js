@@ -19,7 +19,7 @@ function SurveyCapture() {
   const [editingField, setEditingField] = useState(null); // "title" | "description" | null
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const listReturnRef = useRef(null); // saved state to restore when list is closed via X
+  const navStackRef = useRef([]); // navigation stack: each entry is {viewingIndex, editingField, editValue}
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -191,27 +191,11 @@ function SurveyCapture() {
     setEditValue("");
   };
 
-  const openObsList = () => {
-    listReturnRef.current = { viewingIndex, editingField, editValue };
-    setShowObsListModal(true);
-  };
-
-  const closeObsList = () => {
-    const ret = listReturnRef.current;
-    listReturnRef.current = null;
-    setShowObsListModal(false);
-    if (ret !== null) {
-      setViewingIndex(ret.viewingIndex);
-      if (ret.editingField) {
-        setEditingField(ret.editingField);
-        setEditValue(ret.editValue);
-      }
-    } else {
-      setViewingIndex(null);
-      setCopiedToDraft(false);
-      resetEditState();
-    }
-  };
+  // The list is a pure chooser overlay — opening/closing it does not change navigation state.
+  // Picking an obs from the list pushes current state onto navStackRef.
+  // The close button on an obs pops the stack to restore the previous state.
+  const openObsList = () => setShowObsListModal(true);
+  const closeObsList = () => setShowObsListModal(false);
 
   const handleStepBack = () => {
     if (Date.now() - modalClosedAtRef.current < 400) return;
@@ -230,6 +214,7 @@ function SurveyCapture() {
       if (viewingIndex > 0) {
         setViewingIndex(viewingIndex - 1);
       } else {
+        navStackRef.current = [];
         setViewingIndex(null);
       }
     }
@@ -509,10 +494,18 @@ function SurveyCapture() {
               onStepForward={viewingIndex !== null && !viewedObsIncomplete ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={() => {
-                listReturnRef.current = null;
+                const prev = navStackRef.current.pop();
                 resetEditState();
                 setCopiedToDraft(false);
-                setViewingIndex(null);
+                if (prev !== undefined) {
+                  setViewingIndex(prev.viewingIndex);
+                  if (prev.editingField) {
+                    setEditingField(prev.editingField);
+                    setEditValue(prev.editValue);
+                  }
+                } else {
+                  setViewingIndex(null);
+                }
               }}
               onEditPrevious={() => {
                 if (viewedObservation) {
@@ -814,7 +807,7 @@ function SurveyCapture() {
                 className="observation-row"
                 style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
                 onClick={() => {
-                  listReturnRef.current = null;
+                  navStackRef.current.push({ viewingIndex, editingField, editValue });
                   resetEditState();
                   setViewingIndex(idx);
                   setShowObsListModal(false);
