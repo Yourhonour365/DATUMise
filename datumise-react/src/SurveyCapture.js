@@ -19,6 +19,7 @@ function SurveyCapture() {
   const [editingField, setEditingField] = useState(null); // "title" | "description" | null
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editOriginIndex, setEditOriginIndex] = useState(null);
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -188,6 +189,19 @@ function SurveyCapture() {
     if (editingField !== null) modalClosedAtRef.current = Date.now();
     setEditingField(null);
     setEditValue("");
+    setEditOriginIndex(null);
+  };
+
+  const closeObsList = () => {
+    setShowObsListModal(false);
+    if (editOriginIndex !== null) {
+      setViewingIndex(editOriginIndex);
+      setEditOriginIndex(null);
+    } else {
+      setViewingIndex(null);
+      setCopiedToDraft(false);
+      resetEditState();
+    }
   };
 
   const handleStepBack = () => {
@@ -503,7 +517,7 @@ function SurveyCapture() {
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
               observations={observations}
               onShowObsList={() => setShowObsListModal(true)}
-              onCloseObsList={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+              onCloseObsList={() => closeObsList()}
               obsListOpen={showObsListModal}
               onBecomeVisible={viewingIndex === null}
               copiedToDraft={copiedToDraft}
@@ -664,7 +678,7 @@ function SurveyCapture() {
 
       {/* Field edit modal */}
       <Modal
-        show={editingField !== null}
+        show={editingField !== null && !showObsListModal}
         onHide={() => resetEditState()}
         dialogClassName="modal-bottom"
       >
@@ -697,36 +711,11 @@ function SurveyCapture() {
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Cancel"
-              onClick={() => resetEditState()}
-              style={{ background: "#2c3e50" }}
+              aria-label="Observations list"
+              onClick={() => { setEditOriginIndex(viewingIndex); setShowObsListModal(true); }}
+              style={{ background: "#008080" }}
             >
-              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-            </button>
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Copy to draft"
-              onClick={() => {
-                const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
-                draft.title = editValue;
-                localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
-                setCopiedToDraft(true);
-                resetEditState();
-              }}
-              style={{ background: "#1a5bc4" }}
-            >
-              <img src="/text.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-            </button>
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Save"
-              disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
-              onClick={saveField}
-              style={{ background: "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
@@ -741,6 +730,25 @@ function SurveyCapture() {
                 <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
               </div>
             </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Save"
+              disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
+              onClick={saveField}
+              style={{ background: "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Close"
+              onClick={() => resetEditState()}
+              style={{ background: "#95a5a6" }}
+            >
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+            </button>
           </div>
         </div>
       </Modal>
@@ -748,7 +756,7 @@ function SurveyCapture() {
       {showObsListModal && createPortal(
         <button
           type="button"
-          onClick={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+          onClick={() => closeObsList()}
           style={{ position: "fixed", bottom: 0, right: 0, width: "25%", height: "80px", background: "#95a5a6", border: "none", zIndex: 1070, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
         >
           <img src="/x.svg" alt="Close" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
@@ -759,7 +767,7 @@ function SurveyCapture() {
       {/* Observations list modal */}
       <Modal
         show={showObsListModal}
-        onHide={() => { setShowObsListModal(false); setViewingIndex(null); setCopiedToDraft(false); resetEditState(); }}
+        onHide={() => closeObsList()}
         backdrop="static"
         onEntered={() => {
           if (viewingIndex !== null) {
