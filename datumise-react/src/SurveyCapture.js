@@ -449,8 +449,8 @@ function SurveyCapture() {
 
       <div className="survey-capture-body">
         {viewedObservation && (
-          <div className="pt-2 px-3">
-            <div className="prior-obs-container d-flex flex-column" style={{ gap: "1.25rem" }}>
+          <div>
+            <div className="prior-obs-container d-flex flex-column" style={{ gap: "0.75rem" }}>
               {/* Image block */}
               <div
                 className="prior-obs-image"
@@ -468,7 +468,7 @@ function SurveyCapture() {
                   }
                 }}
                 style={{
-                  borderRadius: "8px",
+                  borderRadius: "2px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -490,16 +490,13 @@ function SurveyCapture() {
               {/* Observation block */}
               {viewedObservation.title?.trim() ? (
                 <div style={{ width: "100%" }}>
-                  <fieldset className="rounded-top pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", overflow: "hidden" }}>
-                    <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Description</legend>
-                    <div
-                      className="p-1 flex-grow-1"
-                      style={{ lineHeight: "1.2", overflowWrap: "break-word", wordBreak: "normal", cursor: "pointer", minHeight: "100px" }}
-                      onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
-                    >
+                  <div style={{ backgroundColor: "#dbd5ca", padding: "0 0.4rem 0.4rem 0.4rem", borderRadius: "2px", cursor: "pointer" }}
+                    onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
+                  >
+                    <div style={{ lineHeight: "1.5", fontSize: "16px", fontWeight: 500, color: "#1A1D21", overflowWrap: "break-word", wordBreak: "normal", whiteSpace: "pre-line", maxHeight: "calc(6 * 1.5 * 16px)", overflow: "hidden" }}>
                       {viewedObservation.title}
                     </div>
-                  </fieldset>
+                  </div>
                   {copiedToDraft ? (
                     <button
                       type="button"
@@ -837,21 +834,28 @@ function SurveyCapture() {
         <Modal.Header closeButton>
           <Modal.Title style={{ fontSize: "1rem" }}>{editingField === "title" ? "Edit Description" : "Edit Notes"}</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
+        <Modal.Body className="py-2" style={{ backgroundColor: "#fefdf8" }}>
           <textarea
             className="form-control"
-            rows={editingField === "title" ? 7 : 10}
+            rows={editingField === "title" ? 6 : 10}
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            maxLength={editingField === "title" ? 150 : 280}
+            onChange={(e) => {
+              if (editingField !== "title") { setEditValue(e.target.value); return; }
+              const ta = e.target;
+              const maxScrollHeight = 24 * 6 + 8; // 6 lines × 24px + paddingBottom
+              if (ta.scrollHeight <= maxScrollHeight || e.target.value.length < editValue.length) {
+                setEditValue(e.target.value);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (editingField === "title" && e.key === "Enter") {
+                if ((editValue.match(/\n/g) || []).length >= 5) e.preventDefault();
+              }
+            }}
+            maxLength={editingField === "title" ? 500 : 280}
             autoFocus
-            style={{ resize: "none", lineHeight: "1.4", fontSize: "1.05rem", backgroundColor: editValue.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
+            style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #b8d8ea calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ffaaaa 14px, #ffaaaa 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
           />
-          <div className="d-flex justify-content-between" style={{ marginTop: "0.65rem", marginBottom: "0.5rem" }}>
-            <small style={{ fontSize: "0.72rem", color: editingField === "title" ? (editValue.length >= 150 ? "#2c3e50" : editValue.length >= 130 ? "#e67e22" : "#2c3e50") : (editValue.length >= 280 ? "#2c3e50" : editValue.length >= 240 ? "#e67e22" : "#2c3e50") }}>
-              {editValue.length} / {editingField === "title" ? 150 : 280}
-            </small>
-          </div>
         </Modal.Body>
         {editingField === "title" && !editValue.trim() && (
           <div className="text-center" style={{ fontSize: "0.82rem", color: "#db440a", padding: "0.4rem 0", fontWeight: 700, fontStyle: "italic", background: "#faf6ef" }}>

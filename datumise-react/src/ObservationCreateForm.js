@@ -375,15 +375,10 @@ function ObservationCreateForm(props) {
               </legend>
               <div
                 className="p-1 flex-grow-1"
-                style={{ lineHeight: "1.2", cursor: "pointer", overflowWrap: "break-word", wordBreak: "normal" }}
+                style={{ lineHeight: "1.5", fontSize: "16px", cursor: "pointer", overflowWrap: "break-word", wordBreak: "normal", whiteSpace: "pre-line" }}
                 onClick={() => setShowNotesModal(true)}
               >
                 {title}
-              </div>
-              <div>
-                <small style={{ fontSize: "0.72rem", color: "#db440a" }}>
-                  {title.length} / 150
-                </small>
               </div>
             </fieldset>
           ) : (
@@ -774,26 +769,29 @@ function ObservationCreateForm(props) {
       <Modal.Header closeButton>
         <Modal.Title style={{ fontSize: "1rem" }}>Description</Modal.Title>
       </Modal.Header>
-      <Modal.Body className="py-2" style={{ backgroundColor: "#faf6ef" }}>
+      <Modal.Body className="py-2" style={{ backgroundColor: "#fefdf8" }}>
         <Form.Control
           as="textarea"
-          rows={7}
+          rows={6}
           value={title}
           onChange={(e) => {
-            if (e.target.value.length <= 150) {
-              const updatedData = { ...formData, title: e.target.value };
+            const newValue = e.target.value;
+            const ta = e.target;
+            const maxScrollHeight = 24 * 6 + 8;
+            if (ta.scrollHeight <= maxScrollHeight || newValue.length < title.length) {
+              const updatedData = { ...formData, title: newValue };
               setFormData(updatedData);
               localStorage.setItem("datumise-observation-draft", JSON.stringify({ ...updatedData, surveyId }));
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (title.match(/\n/g) || []).length >= 5) e.preventDefault();
+          }}
           placeholder="Add description"
-          maxLength={150}
+          maxLength={500}
           autoFocus
-          style={{ resize: "none", lineHeight: "1.4", fontSize: "1.05rem", backgroundColor: title.trim() ? "#f0ece4" : "#ecf0f1", border: "none" }}
+          style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #b8d8ea calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ffaaaa 14px, #ffaaaa 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
         />
-        <div className="d-flex justify-content-between mt-1">
-          <small style={{ fontSize: "0.72rem", color: "#db440a" }}>{title.length} / 150</small>
-        </div>
       </Modal.Body>
       <div className="survey-capture-actions">
         <div className="capture-footer-grid">

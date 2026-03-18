@@ -67,6 +67,12 @@ fieldset {
   box-shadow: 0 0 0 0.2rem rgba(154, 130, 85, 0.25);
 }
 
+.modal-bottom textarea.form-control:focus {
+  border: 1px solid #ffaaaa;
+  box-shadow: none;
+  outline: none;
+}
+
 /* Edit form fieldset/legend pattern (matches observation form) */
 .edit-fieldset {
   border: none;
@@ -296,7 +302,7 @@ textarea.edit-field {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
   /* prevent iOS safari rubber-band exposing background */
   overscroll-behavior: contain;
 }
@@ -397,6 +403,58 @@ textarea.edit-field {
   }
 }
 
+
+/* --- Observation detail layout --- */
+.obs-detail-main {
+  display: block;
+}
+.obs-detail-img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  cursor: pointer;
+  display: block;
+}
+.obs-detail-img-placeholder {
+  width: 100%;
+  height: 300px;
+  background-color: #ecf0f1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (min-width: 768px) {
+  .obs-detail-img {
+    height: 500px;
+  }
+  .obs-detail-img-placeholder {
+    height: 500px;
+  }
+}
+@media (min-width: 1200px) {
+  .obs-detail-img {
+    height: 600px;
+  }
+  .obs-detail-img-placeholder {
+    height: 600px;
+  }
+}
+
+/* --- Observation detail description block --- */
+.obs-detail-desc {
+  overflow-wrap: anywhere;
+  color: #1A1D21;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: pre-line;
+  max-height: calc(6 * 1.5 * 16px + 1rem);
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
 
 /* --- Prior observation detail view --- */
 
@@ -794,6 +852,8 @@ textarea.edit-field {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 
 @media (min-width: 768px) {
@@ -808,6 +868,12 @@ textarea.edit-field {
   .modal-bottom .modal-content {
     border-radius: 8px !important;
   }
+}
+
+.modal-bottom textarea.form-control {
+  max-width: 360px;
+  margin: 0 auto;
+  display: block;
 }
 
 /* ---- Dashboard grid ---- */

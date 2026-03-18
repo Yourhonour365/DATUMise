@@ -268,7 +268,7 @@ function ObservationList() {
               style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px" }}
               onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
-                navigateWithCache(`/observations/${obs.id}`, { state: { observationIds: obsIds, observationIndex: obsIds.indexOf(obs.id), obsCreatedAt: obs.created_at, obsOwner: obs.owner } }, obs.id)
+                navigateWithCache(`/observations/${obs.id}`, { state: { observationIds: obsIds, observationIndex: obsIds.indexOf(obs.id), obsCreatedAt: obs.created_at, obsOwner: obs.owner, nextPage } }, obs.id)
               }
             >
               {obs.image ? (
@@ -322,8 +322,8 @@ function ObservationList() {
           })()}
       </div>
 
-      {nextPage && (
-        <div className="text-center mt-3 mb-3">
+      <div className="text-center mt-3 mb-3">
+        {nextPage ? (
           <button
             className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
             style={{ width: "44px", height: "44px", background: "#db440a", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
@@ -332,8 +332,18 @@ function ObservationList() {
           >
             <img src="/datumise-load.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
           </button>
-        </div>
-      )}
+        ) : !loading && observations.length > 0 && (
+          <>
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+              style={{ width: "44px", height: "44px", background: "#2c3e50", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+            >
+              <img src="/end.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)", opacity: 0.7 }} />
+            </div>
+            <div className="text-muted fst-italic mt-2" style={{ fontSize: "0.78rem" }}>All observations loaded</div>
+          </>
+        )}
+      </div>
       <ReturnButton to="/" />
       <BackToTop />
     </div>

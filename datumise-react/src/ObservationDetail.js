@@ -167,13 +167,33 @@ function ObservationDetail() {
     if (window.__obsListCache) window.__obsListCache.highlightId = targetId;
     navigate(`/observations/${targetId}`, {
       replace: true,
-      state: { ...location.state, returnHighlight: targetId, observationIndex: newIdx, ...(openImage ? { autoOpenImage: true } : {}) },
+      state: { ...location.state, returnHighlight: targetId, observationIndex: newIdx, autoOpenImage: openImage || false },
     });
   };
 
   const returnTo = location.state?.fromSurvey
     ? { path: `/surveys/${location.state.surveyId}`, state: { highlightObs: Number(id) } }
     : { path: "/observations", state: undefined };
+
+  const handleLoadMore = async () => {
+    const url = location.state?.nextPage;
+    if (!url) return;
+    try {
+      const response = await api.get(url);
+      const newObs = response.data.results;
+      const updatedIds = [...obsIds, ...newObs.map(o => o.id)];
+      if (window.__obsListCache) {
+        window.__obsListCache.observations = [...(window.__obsListCache.observations || []), ...newObs];
+        window.__obsListCache.nextPage = response.data.next;
+      }
+      navigate(location.pathname, {
+        replace: true,
+        state: { ...location.state, observationIds: updatedIds, nextPage: response.data.next },
+      });
+    } catch (err) {
+      console.error("Failed to load more observations:", err);
+    }
+  };
 
   return (
     <div style={{ overflow: "hidden", paddingBottom: obsIds.length > 0 ? "80px" : undefined }}>
@@ -189,20 +209,21 @@ function ObservationDetail() {
         )}
       </div>
 
-      {/* ---- Image (full-bleed on mobile/tablet) ---- */}
+      {/* ---- Two-column on desktop, stacked on mobile ---- */}
+      <div className="obs-detail-main">
+
+      {/* ---- Image ---- */}
       <div style={{ position: "relative" }}>
         {observation.image ? (
           <img
             src={observation.image}
             alt={observation.title}
-            className="img-fluid mb-0"
-            style={{ width: "100%", height: "300px", objectFit: "cover", cursor: "pointer", display: "block" }}
+            className="obs-detail-img"
             onClick={() => setShowImageModal(true)}
           />
         ) : (
           <div
-            className="d-flex align-items-center justify-content-center mb-0"
-            style={{ width: "100%", height: "300px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
+            className="obs-detail-img-placeholder"
             onClick={() => observation.can_edit && fileInputRef.current?.click()}
           >
             <span className="text-muted text-center">
@@ -229,15 +250,15 @@ function ObservationDetail() {
         )}
       </div>
 
-      {/* ---- Content below image ---- */}
+      {/* ---- Content (right column on desktop) ---- */}
       <div>
 
       {/* ---- Observation fieldset ---- */}
-      <div className="px-2 py-2 mb-0" style={{ background: "#f0ece4" }}>
-        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere", color: "#1a2332", fontSize: "16px", lineHeight: 1.5, height: "calc(4 * 1.5 * 16px)", overflow: "hidden" }}>
+      <div className="pt-0 pb-0 mb-0" style={{ background: "#dbd5ca" }}>
+        <div className="obs-detail-desc" style={{ paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
           {observation.title}
         </div>
-        <div className="d-flex align-items-center justify-content-between px-1 pt-1" style={{ borderTop: "1px solid #e0dbd2", height: "32px", flexShrink: 0 }}>
+        <div className="d-flex align-items-center justify-content-between" style={{ height: "24px", flexShrink: 0, background: "#faf6ef", paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
           <div className="d-flex align-items-center gap-3" style={{ fontSize: "0.75rem" }}>
             {!observation.is_owner && localStorage.getItem("token") ? (
               <button
@@ -429,7 +450,7 @@ function ObservationDetail() {
                   </button>
                 </div>
               )}
-              {repliesMap[comment.id] && repliesMap[comment.id].map((reply) => renderComment(reply, true))}
+              {repliesMap[comment.id] && <div style={{ marginTop: "0.4rem" }}>{repliesMap[comment.id].map((reply) => renderComment(reply, true))}</div>}
             </div>
           );
 
@@ -444,7 +465,9 @@ function ObservationDetail() {
 
       </div>
 
-      </div>{/* end content container */}
+      </div>{/* end content column */}
+
+      </div>{/* end obs-detail-main */}
 
       {/* ---- Image preview modal ---- */}
       {(() => {
@@ -520,7 +543,25 @@ function ObservationDetail() {
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
         <div className="survey-capture-actions">
           <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            <div />
+            {!nextObsId ? (
+              location.state?.nextPage ? (
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Load more observations"
+                  onClick={handleLoadMore}
+                  style={{ background: "#db440a" }}
+                >
+                  <img src="/datumise-load.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+                </button>
+              ) : (
+                <div className="capture-footer-btn" style={{ cursor: "default" }}>
+                  <img src="/end.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)", opacity: 0.7 }} />
+                </div>
+              )
+            ) : (
+              <div />
+            )}
             <button
               type="button"
               className="capture-footer-btn"
