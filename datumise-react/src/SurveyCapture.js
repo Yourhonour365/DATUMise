@@ -509,6 +509,7 @@ function SurveyCapture() {
               onStepForward={viewingIndex !== null && !viewedObsIncomplete ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={() => {
+                listReturnRef.current = null;
                 resetEditState();
                 setCopiedToDraft(false);
                 setViewingIndex(null);

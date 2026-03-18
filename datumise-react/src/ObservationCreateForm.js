@@ -532,8 +532,8 @@ function ObservationCreateForm(props) {
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Back to list"
-              onClick={() => props.onShowObsList?.()}
+              aria-label="Return to draft"
+              onClick={() => props.onReturnToCurrent?.()}
               style={{ background: "#95a5a6" }}
             >
               <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
