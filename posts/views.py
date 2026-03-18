@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from django.db.models import Count, Q
 from django.contrib.auth.models import User
-from .models import Observation, Comment, Survey, Client, ClientSite
+from .models import Observation, Comment, Survey, Client, ClientSite, SurveySession
 from .serializers import (
     ObservationSerializer, CommentSerializer,
     SurveySerializer, SurveyDetailSerializer,
@@ -122,6 +122,62 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
             from .serializers import SurveyWriteSerializer
             return SurveyWriteSerializer
         return SurveyDetailSerializer
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        new_status = serializer.validated_data.get("status", old_status)
+
+        if old_status != new_status:
+            survey = serializer.instance
+            active_session = SurveySession.objects.filter(
+                survey=survey,
+                status__in=["active", "paused"],
+            ).first()
+
+            if new_status == "live":
+                if active_session and active_session.status == "paused":
+                    # Resume: reactivate the paused session
+                    active_session.status = "active"
+                    active_session.save(update_fields=["status"])
+                elif not active_session:
+                    # Start: create a new session
+                    session_number = (
+                        SurveySession.objects.filter(survey=survey).count() + 1
+                    )
+                    SurveySession.objects.create(
+                        survey=survey,
+                        session_number=session_number,
+                        status="active",
+                        started_by=self.request.user,
+                    )
+
+            elif new_status == "paused":
+                if active_session and active_session.status == "active":
+                    active_session.status = "paused"
+                    active_session.save(update_fields=["status"])
+
+            elif new_status == "submitted":
+                if active_session:
+                    active_session.status = "completed"
+                    active_session.ended_at = timezone.now()
+                    active_session.save(update_fields=["status", "ended_at"])
+
+            elif new_status == "completed":
+                if active_session:
+                    raise ValidationError(
+                        {"status": (
+                            "Complete or abandon the current session "
+                            "before marking the survey as complete."
+                        )}
+                    )
+
+            elif new_status in ("cancelled", "missed"):
+                if active_session:
+                    active_session.status = "abandoned"
+                    active_session.ended_at = timezone.now()
+                    active_session.save(update_fields=["status", "ended_at"])
+
+        serializer.save()
 
 class SurveyAssign(APIView):
     permission_classes = [permissions.IsAuthenticated]

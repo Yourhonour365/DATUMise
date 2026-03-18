@@ -129,6 +129,7 @@ class Survey(models.Model):
         ("live", "Live"),
         ("paused", "Paused"),
         ("submitted", "Submitted"),
+        ("completed", "Completed"),
         ("missed", "Missed"),
         ("cancelled", "Cancelled"),
     ]
@@ -248,6 +249,44 @@ class Observation(models.Model):
 
     def __str__(self):
         return self.title or f"Draft observation {self.pk}"
+
+class SurveySession(models.Model):
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("paused", "Paused"),
+        ("completed", "Completed"),
+        ("abandoned", "Abandoned"),
+    ]
+
+    survey = models.ForeignKey(
+        Survey,
+        on_delete=models.CASCADE,
+        related_name="sessions",
+    )
+    session_number = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    started_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="survey_sessions",
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["session_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["survey"],
+                condition=models.Q(status__in=["active", "paused"]),
+                name="unique_active_session_per_survey",
+            )
+        ]
+
+    def __str__(self):
+        return f"Session {self.session_number} – {self.survey}"
+
 
 class Comment(models.Model):
     owner = models.ForeignKey(
