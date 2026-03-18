@@ -229,8 +229,9 @@ class Observation(models.Model):
     blank=True,
     )
 
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=200, blank=True, default="")
     description = models.TextField(blank=True)
+    is_draft = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     image = models.ImageField(upload_to="images/", blank=True, null=True)
@@ -246,8 +247,8 @@ class Observation(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return self.title
-    
+        return self.title or f"Draft observation {self.pk}"
+
 class Comment(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -40,9 +40,12 @@ class ObservationList(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         survey = serializer.validated_data.get("survey")
+        is_draft = serializer.validated_data.get("is_draft", False)
 
-        if survey and survey.status != "live":
-            raise ValidationError("Observations can only be added to a live survey.")
+        if survey and survey.status != "live" and not is_draft:
+            raise ValidationError(
+                "Observations can only be added to a live survey."
+            )
 
         serializer.save(owner=self.request.user)
 

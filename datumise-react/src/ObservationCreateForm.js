@@ -44,10 +44,52 @@ function ObservationCreateForm(props) {
   const pendingImageUrlRef = useRef(null);
   const isFirstPhotoModalRef = useRef(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const autoSaveFnRef = useRef(null);
 
   useEffect(() => {
     if (props.openNotesTrigger) setShowNotesModal(true);
   }, [props.openNotesTrigger]);
+
+  // Keep auto-save function up to date with latest state
+  autoSaveFnRef.current = async () => {
+    if (!title.trim() && !imagePreview) return;
+    const data = new FormData();
+    data.append("title", title || "");
+    data.append("description", description || "");
+    data.append("is_draft", "true");
+    if (surveyId) data.append("survey", surveyId);
+    let imageFile = image;
+    if (!imageFile && imagePreview) {
+      try {
+        const res = await fetch(imagePreview);
+        const blob = await res.blob();
+        imageFile = new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" });
+      } catch (e) { /* silent */ }
+    }
+    if (!imageFile) {
+      const saved = localStorage.getItem("datumise-observation-image");
+      if (saved) {
+        try {
+          const res = await fetch(saved);
+          const blob = await res.blob();
+          imageFile = new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" });
+        } catch (e) { /* silent */ }
+      }
+    }
+    if (imageFile) data.append("image", imageFile);
+    try {
+      const response = await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+      clearForm();
+      props.onDraftSaved?.(response.data);
+    } catch (e) {
+      console.error("Auto-save draft failed:", e);
+    }
+  };
+
+  useEffect(() => {
+    props.onRegisterAutoSave?.(() => autoSaveFnRef.current?.());
+    return () => props.onRegisterAutoSave?.(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const restoreDraft = async () => {
@@ -438,7 +480,17 @@ function ObservationCreateForm(props) {
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
         <div className="capture-footer-grid">
-          {props.isViewingPrevious ? (
+          {props.isViewingPrevious && props.isDraftObs && !props.previousObsIncomplete ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Complete draft"
+              onClick={() => props.onCompleteDraft?.()}
+              style={{ background: "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+          ) : props.isViewingPrevious ? (
             <div />
           ) : (
             <button
@@ -537,10 +589,11 @@ function ObservationCreateForm(props) {
               type="button"
               className="capture-footer-btn"
               aria-label="Return to draft"
+              disabled={props.isDraftObs}
               onClick={() => props.onReturnToCurrent?.()}
-              style={{ background: "#95a5a6" }}
+              style={{ background: props.isDraftObs ? "#2c3e50" : "#95a5a6" }}
             >
-              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.isDraftObs ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
             </button>
           ) : (
             <button

@@ -22,6 +22,7 @@ function SurveyCapture() {
   const navStackRef = useRef([]); // navigation stack: each entry is {viewingIndex, editingField, editValue, notesOpen}
   const listOpenFromStateRef = useRef({});
   const [openNotesTrigger, setOpenNotesTrigger] = useState(0);
+  const autoSaveDraftRef = useRef(null); // set by ObservationCreateForm
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -58,16 +59,19 @@ function SurveyCapture() {
     fetchSurvey();
   }, [id]);
 
-  // If navigated with a specific observation to view, or resuming from a saved position
+  // Navigate to specific obs, resume position, or auto-open any draft obs
   useEffect(() => {
+    if (!survey?.observations) return;
     const targetId = location.state?.viewObservationId || localStorage.getItem(`datumise-capture-pos-${id}`);
-    if (targetId && survey?.observations) {
+    if (targetId) {
       const idx = survey.observations.findIndex((obs) => obs.id === Number(targetId) || obs.id === targetId);
-      if (idx !== -1) {
-        setViewingIndex(idx);
-      }
+      if (idx !== -1) setViewingIndex(idx);
       localStorage.removeItem(`datumise-capture-pos-${id}`);
+      return;
     }
+    // Auto-navigate to any existing draft observation
+    const draftIdx = survey.observations.findIndex((obs) => obs.is_draft);
+    if (draftIdx !== -1) setViewingIndex(draftIdx);
   }, [survey?.observations, location.state?.viewObservationId, id]);
 
   useEffect(() => {
@@ -77,15 +81,23 @@ function SurveyCapture() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-pause survey when user backgrounds or closes the app
+  // Auto-save draft and auto-pause when user backgrounds or closes the app
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && survey?.status === "live") {
+        autoSaveDraftRef.current?.(); // fire and forget
         api.patch(`/api/surveys/${id}/`, { status: "paused" }).catch(() => {});
       }
     };
+    const handleBeforeUnload = () => {
+      autoSaveDraftRef.current?.(); // fire and forget
+    };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, [survey?.status, id]);
 
   const formatSurveyDuration = (startTime, _tick) => {
@@ -125,6 +137,8 @@ function SurveyCapture() {
 
   const executePause = async () => {
     setPauseCountdown(null);
+    // Auto-save any in-progress draft before leaving
+    if (autoSaveDraftRef.current) await autoSaveDraftRef.current();
     if (viewingIndex !== null && observations[viewingIndex]) {
       localStorage.setItem(`datumise-capture-pos-${id}`, observations[viewingIndex].id);
     } else {
@@ -310,7 +324,12 @@ function SurveyCapture() {
         <div>
           <div className="fw-semibold" style={{ fontSize: "1.1rem", lineHeight: 1.2 }}>
             {viewingIndex !== null
-              ? `Obs ${observations.length - viewingIndex} of ${observations.length}`
+              ? <>
+                  {viewedObservation?.is_draft && (
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 5px", marginRight: "6px", verticalAlign: "middle" }}>DRAFT</span>
+                  )}
+                  {`Obs ${observations.length - viewingIndex} of ${observations.length}`}
+                </>
               : `Add Observation`}
           </div>
           <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
@@ -533,6 +552,23 @@ function SurveyCapture() {
               copiedToDraft={copiedToDraft}
               onCancelCopy={() => setCopiedToDraft(false)}
               onDraftStatus={(hasTitle, hasImage) => { setDraftHasTitle(hasTitle); setDraftHasImage(hasImage); }}
+              onRegisterAutoSave={(fn) => { autoSaveDraftRef.current = fn; }}
+              onDraftSaved={(obs) => {
+                setSurvey((prev) => ({
+                  ...prev,
+                  observations: [obs, ...(prev.observations || [])],
+                }));
+              }}
+              isDraftObs={viewedObservation?.is_draft || false}
+              onCompleteDraft={async () => {
+                if (!viewedObservation) return;
+                try {
+                  await api.patch(`/api/observations/${viewedObservation.id}/`, { is_draft: false });
+                  fetchSurvey();
+                } catch (err) {
+                  console.error("Failed to complete draft:", err);
+                }
+              }}
             />
           </div>
       </div>
@@ -831,6 +867,9 @@ function SurveyCapture() {
                 )}
                 <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
                   <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                    {obs.is_draft && (
+                      <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 4px", marginRight: "5px", verticalAlign: "middle" }}>DRAFT</span>
+                    )}
                     {obs.title || "Untitled"}
                   </div>
                   <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
