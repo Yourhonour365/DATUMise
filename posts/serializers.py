@@ -136,6 +136,7 @@ class ObservationSerializer(serializers.ModelSerializer):
             "site_name",
             "title",
             "description",
+            "is_draft",
             "image",
             "created_at",
             "updated_at",
