@@ -110,6 +110,7 @@ class ObservationSerializer(serializers.ModelSerializer):
     can_edit = serializers.SerializerMethodField()
     comment_likes_count = serializers.SerializerMethodField()
     site_name = serializers.SerializerMethodField()
+    site_postcode = serializers.SerializerMethodField()
     survey_status = serializers.SerializerMethodField()
 
     def get_survey_name(self, obj):
@@ -118,6 +119,11 @@ class ObservationSerializer(serializers.ModelSerializer):
     def get_site_name(self, obj):
         if obj.survey and obj.survey.site:
             return obj.survey.site.name
+        return ""
+
+    def get_site_postcode(self, obj):
+        if obj.survey and obj.survey.site:
+            return obj.survey.site.postcode or ""
         return ""
 
     def get_survey_status(self, obj):
@@ -134,6 +140,7 @@ class ObservationSerializer(serializers.ModelSerializer):
             "survey",
             "survey_name",
             "site_name",
+            "site_postcode",
             "title",
             "description",
             "is_draft",
@@ -237,6 +244,15 @@ class SurveySerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     schedule_type_display = serializers.CharField(source="get_schedule_type_display", read_only=True)
+    session_count = serializers.SerializerMethodField()
+    current_session_number = serializers.SerializerMethodField()
+
+    def get_session_count(self, obj):
+        return obj.sessions.count()
+
+    def get_current_session_number(self, obj):
+        session = obj.sessions.filter(status__in=["active", "paused"]).first()
+        return session.session_number if session else None
 
     client = serializers.StringRelatedField()
     site = serializers.StringRelatedField()
@@ -299,6 +315,8 @@ class SurveySerializer(serializers.ModelSerializer):
             "observation_count",
             "total_likes_count",
             "total_comments_count",
+            "session_count",
+            "current_session_number",
             "is_owner",
             "is_surveyor",
         ]
@@ -330,7 +348,7 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
         else:
             new_assigned = instance.assigned_to if instance else None
 
-        requires_assignment = {"live", "paused", "submitted", "missed"}
+        requires_assignment = {"live", "paused", "submitted", "completed", "missed"}
         if new_status in requires_assignment and new_assigned is None:
             raise serializers.ValidationError(
                 {"status": f"Survey must be assigned before it can be {new_status}."}
@@ -405,6 +423,15 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     schedule_type_display = serializers.CharField(source="get_schedule_type_display", read_only=True)
+    session_count = serializers.SerializerMethodField()
+    current_session_number = serializers.SerializerMethodField()
+
+    def get_session_count(self, obj):
+        return obj.sessions.count()
+
+    def get_current_session_number(self, obj):
+        session = obj.sessions.filter(status__in=["active", "paused"]).first()
+        return session.session_number if session else None
 
     client = serializers.StringRelatedField()
     site = serializers.StringRelatedField()
@@ -457,6 +484,8 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
             "site_contact_email",
             "created_at",
             "observations",
+            "session_count",
+            "current_session_number",
             "is_owner",
             "is_surveyor",
         ]

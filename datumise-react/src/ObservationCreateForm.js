@@ -480,15 +480,16 @@ function ObservationCreateForm(props) {
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
         <div className="capture-footer-grid">
-          {props.isViewingPrevious && props.isDraftObs && !props.previousObsIncomplete ? (
+          {props.isViewingPrevious && props.isDraftObs ? (
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Complete draft"
-              onClick={() => props.onCompleteDraft?.()}
-              style={{ background: "#006400" }}
+              aria-label="Observations list"
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#008080" }}
+              onClick={() => props.onShowObsList?.()}
+              disabled={props.obsListOpen}
             >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           ) : props.isViewingPrevious ? (
             <div />
@@ -510,10 +511,21 @@ function ObservationCreateForm(props) {
               className="capture-footer-btn"
               aria-label="Confirm copy"
               disabled={props.obsListOpen}
-              onClick={() => props.onReturnToCurrent?.()}
+              onClick={() => props.onConfirmCopy?.()}
               style={{ background: props.obsListOpen ? "#2c3e50" : "#006400" }}
             >
               <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          ) : props.isViewingPrevious && !props.isDraftObs ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Newer observation"
+              disabled={props.obsListOpen || !props.onStepForward}
+              onClick={() => props.onStepForward?.()}
+              style={{ background: props.obsListOpen || !props.onStepForward ? "#2c3e50" : "#1a5bc4" }}
+            >
+              <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepForward ? "none" : "brightness(0) invert(1)" }} />
             </button>
           ) : (
             <button
@@ -527,7 +539,18 @@ function ObservationCreateForm(props) {
               <img src="/text.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
             </button>
           )}
-          {props.isViewingPrevious ? (
+          {props.isViewingPrevious && props.isDraftObs ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Complete draft"
+              disabled={props.obsListOpen || props.previousObsIncomplete}
+              onClick={() => props.onCompleteDraft?.()}
+              style={{ background: props.obsListOpen || props.previousObsIncomplete ? "#2c3e50" : "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || props.previousObsIncomplete ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          ) : props.isViewingPrevious ? (
             props.copiedToDraft ? (
               <button
                 type="button"
@@ -543,12 +566,12 @@ function ObservationCreateForm(props) {
               <button
                 type="button"
                 className="capture-footer-btn"
-                aria-label="Change image"
-                disabled={props.obsListOpen}
-                onClick={() => props.onCaptureForPrevious?.()}
-                style={{ background: props.obsListOpen ? "#2c3e50" : "#db440a" }}
+                aria-label="Older observation"
+                disabled={props.obsListOpen || !props.onStepBack}
+                onClick={() => props.onStepBack?.()}
+                style={{ background: props.obsListOpen || !props.onStepBack ? "#2c3e50" : "#1a5bc4" }}
               >
-                <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+                <img src="/right.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepBack ? "none" : "brightness(0) invert(1)" }} />
               </button>
             )
           ) : imagePreview && title.trim() ? (

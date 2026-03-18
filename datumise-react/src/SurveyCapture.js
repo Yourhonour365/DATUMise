@@ -20,9 +20,11 @@ function SurveyCapture() {
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const navStackRef = useRef([]); // navigation stack: each entry is {viewingIndex, editingField, editValue, notesOpen}
+  const initialNavDoneRef = useRef(false); // prevent fetchSurvey refreshes from resetting viewingIndex
   const listOpenFromStateRef = useRef({});
   const [openNotesTrigger, setOpenNotesTrigger] = useState(0);
   const autoSaveDraftRef = useRef(null); // set by ObservationCreateForm
+  const observationsRef = useRef([]); // always-current copy for use in event handlers
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -67,8 +69,12 @@ function SurveyCapture() {
       const idx = survey.observations.findIndex((obs) => obs.id === Number(targetId) || obs.id === targetId);
       if (idx !== -1) setViewingIndex(idx);
       localStorage.removeItem(`datumise-capture-pos-${id}`);
+      initialNavDoneRef.current = true;
       return;
     }
+    // Only auto-navigate to draft on initial load — not on fetchSurvey refreshes after edits
+    if (initialNavDoneRef.current) return;
+    initialNavDoneRef.current = true;
     // Auto-navigate to any existing draft observation
     const draftIdx = survey.observations.findIndex((obs) => obs.is_draft);
     if (draftIdx !== -1) setViewingIndex(draftIdx);
@@ -85,12 +91,16 @@ function SurveyCapture() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && survey?.status === "live") {
-        autoSaveDraftRef.current?.(); // fire and forget
+        if (!observationsRef.current.some((o) => o.is_draft)) {
+          autoSaveDraftRef.current?.(); // fire and forget
+        }
         api.patch(`/api/surveys/${id}/`, { status: "paused" }).catch(() => {});
       }
     };
     const handleBeforeUnload = () => {
-      autoSaveDraftRef.current?.(); // fire and forget
+      if (!observationsRef.current.some((o) => o.is_draft)) {
+        autoSaveDraftRef.current?.(); // fire and forget
+      }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -137,8 +147,10 @@ function SurveyCapture() {
 
   const executePause = async () => {
     setPauseCountdown(null);
-    // Auto-save any in-progress draft before leaving
-    if (autoSaveDraftRef.current) await autoSaveDraftRef.current();
+    // Auto-save only if no draft obs already exists in the survey
+    if (!observations.some((o) => o.is_draft) && autoSaveDraftRef.current) {
+      await autoSaveDraftRef.current();
+    }
     if (viewingIndex !== null && observations[viewingIndex]) {
       localStorage.setItem(`datumise-capture-pos-${id}`, observations[viewingIndex].id);
     } else {
@@ -175,20 +187,21 @@ function SurveyCapture() {
   };
 
   const handleSuccess = (newObservation) => {
-    setSurvey((prev) => ({
-      ...prev,
-      observations: [newObservation, ...(prev.observations || [])],
-    }));
+    // Delete any existing draft obs now that a confirmed obs has been submitted
+    const draftObs = (survey?.observations || []).find((o) => o.is_draft);
+    if (draftObs) {
+      api.delete(`/api/observations/${draftObs.id}/`).catch(console.error);
+    }
     setDraftIncomplete(false);
     setViewingIndex(null);
     setSuccessMessage(false);
     setTimeout(() => setSuccessMessage(true), 100);
     setTimeout(() => setSuccessMessage(false), 3000);
-    // Re-fetch to get full image URLs
     fetchSurvey();
   };
 
   const observations = survey?.observations || [];
+  observationsRef.current = observations;
   const viewedObservation = viewingIndex !== null ? observations[viewingIndex] : null;
 
 
@@ -201,20 +214,51 @@ function SurveyCapture() {
     ? observations.length > 0
     : viewingIndex < observations.length - 1;
 
+  const canStepForward = viewingIndex !== null && (
+    viewingIndex === 0 || !observations[viewingIndex - 1]?.is_draft
+  );
+
   const resetEditState = () => {
     if (editingField !== null) modalClosedAtRef.current = Date.now();
     setEditingField(null);
     setEditValue("");
   };
 
-  // The list is a pure chooser overlay — opening/closing it does not change navigation state.
-  // Picking an obs from the list pushes current state onto navStackRef.
-  // The close button on an obs pops the stack to restore the previous state.
+  // List navigation model:
+  // - openObsList saves full current state to listOpenFromStateRef
+  // - clicking an obs from the list pushes {fromList:true} onto navStackRef, closes list
+  // - onReturnToCurrent: if fromList, reopens list (restoring listOpenFromStateRef for close)
+  // - closeObsList restores the full pre-list state from listOpenFromStateRef
   const openObsList = (fromState = {}) => {
-    listOpenFromStateRef.current = fromState;
+    listOpenFromStateRef.current = {
+      viewingIndex,
+      editingField,
+      editValue,
+      notesOpen: fromState.notesOpen || false,
+      previewImageOpen: showPreviewImageModal,
+    };
     setShowObsListModal(true);
   };
-  const closeObsList = () => setShowObsListModal(false);
+  const closeObsList = () => {
+    const saved = listOpenFromStateRef.current;
+    listOpenFromStateRef.current = {};
+    setShowObsListModal(false);
+    if (saved.viewingIndex !== undefined) setViewingIndex(saved.viewingIndex);
+    if (saved.editingField) {
+      setEditingField(saved.editingField);
+      setEditValue(saved.editValue || "");
+    }
+    if (saved.notesOpen) setOpenNotesTrigger(t => t + 1);
+    if (saved.previewImageOpen && saved.viewingIndex !== undefined) {
+      const obs = observations[saved.viewingIndex];
+      if (obs?.image) {
+        setPreviewImageUrl(obs.image);
+        setPreviewImageChanged(false);
+        setHasPendingPreview(false);
+        setShowPreviewImageModal(true);
+      }
+    }
+  };
 
   const handleStepBack = () => {
     if (Date.now() - modalClosedAtRef.current < 400) return;
@@ -322,15 +366,33 @@ function SurveyCapture() {
       )}
       <div className="survey-capture-header">
         <div>
+          {viewingIndex !== null && !viewedObservation?.is_draft && (
+            <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", fontWeight: 700, fontSize: "1.35rem", lineHeight: 1.2, pointerEvents: "none", whiteSpace: "nowrap" }}>
+              {observations.length - viewingIndex} of {observations.length}
+            </span>
+          )}
           <div className="fw-semibold" style={{ fontSize: "1.1rem", lineHeight: 1.2 }}>
             {viewingIndex !== null
-              ? <>
-                  {viewedObservation?.is_draft && (
-                    <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 5px", marginRight: "6px", verticalAlign: "middle" }}>DRAFT</span>
-                  )}
-                  {`Obs ${observations.length - viewingIndex} of ${observations.length}`}
-                </>
-              : `Add Observation`}
+              ? viewedObservation?.is_draft
+                ? (() => {
+                    const dd = new Date(viewedObservation.created_at);
+                    const dh = dd.getHours();
+                    const dm = String(dd.getMinutes()).padStart(2, "0");
+                    return <span style={{ color: "#db440a", fontWeight: 700, letterSpacing: "0.03em" }}>DRAFT {`${dh % 12 || 12}:${dm}${dh < 12 ? "am" : "pm"}`}</span>;
+                  })()
+                : null
+              : (draftHasImage || draftHasTitle)
+                ? (() => {
+                    const savedDraft = observations.find(o => o.is_draft);
+                    if (savedDraft) {
+                      const dd = new Date(savedDraft.created_at);
+                      const dh = dd.getHours();
+                      const dm = String(dd.getMinutes()).padStart(2, "0");
+                      return <span style={{ color: "#db440a", fontWeight: 700, letterSpacing: "0.03em" }}>DRAFT {`${dh % 12 || 12}:${dm}${dh < 12 ? "am" : "pm"}`}</span>;
+                    }
+                    return <span style={{ color: "#db440a", fontWeight: 700, letterSpacing: "0.03em" }}>DRAFT Observation</span>;
+                  })()
+                : `NEW Observation`}
           </div>
           <div style={{ fontSize: "0.72rem", position: "relative", minHeight: "0.9rem" }}>
             <span
@@ -343,12 +405,13 @@ function SurveyCapture() {
                 top: 0,
                 gap: "0.35em",
                 whiteSpace: "nowrap",
+                fontStyle: viewingIndex !== null ? "italic" : "normal",
               }}
             >
               {viewingIndex !== null ? (
                 <>
                   {survey.site_name || survey.site || ""}{" \u00B7 "}
-                  {viewedObservation && new Date(viewedObservation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}{" \u00B7 "}
+                  {!viewedObservation?.is_draft && <>{viewedObservation && new Date(viewedObservation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}{" \u00B7 "}</>}
                   {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                 </>
               ) : (
@@ -387,9 +450,10 @@ function SurveyCapture() {
       <div className="survey-capture-body">
         {viewedObservation && (
           <div className="pt-2 px-3">
-            <div className="d-flex flex-column" style={{ gap: "1.25rem" }}>
+            <div className="prior-obs-container d-flex flex-column" style={{ gap: "1.25rem" }}>
               {/* Image block */}
               <div
+                className="prior-obs-image"
                 onClick={() => {
                   if (viewedObservation.image) {
                     originalPreviewUrlRef.current = viewedObservation.image;
@@ -404,9 +468,6 @@ function SurveyCapture() {
                   }
                 }}
                 style={{
-                  width: "336px",
-                  maxWidth: "100%",
-                  height: "168px",
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
@@ -414,7 +475,6 @@ function SurveyCapture() {
                   cursor: "pointer",
                   overflow: "hidden",
                   backgroundColor: "#687374",
-                  margin: "0 auto",
                 }}
               >
                 {viewedObservation.image ? (
@@ -429,7 +489,7 @@ function SurveyCapture() {
 
               {/* Observation block */}
               {viewedObservation.title?.trim() ? (
-                <div style={{ width: "336px", maxWidth: "100%", margin: "0 auto" }}>
+                <div style={{ width: "100%" }}>
                   <fieldset className="rounded-top pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", overflow: "hidden" }}>
                     <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">Description</legend>
                     <div
@@ -448,12 +508,13 @@ function SurveyCapture() {
                       onClick={() => {
                         resetEditState();
                         setCopiedToDraft(false);
-                        setViewingIndex(null);
+                        const draftIdx = observations.findIndex((o) => o.is_draft);
+                        setViewingIndex(draftIdx !== -1 ? draftIdx : null);
                       }}
                     >
                       Copied to draft - tap tick to confirm
                     </button>
-                  ) : viewedObservation.image ? (
+                  ) : viewedObservation.image && !viewedObservation.is_draft ? (
                     <div style={{ display: "flex", borderRadius: 0 }}>
                       <button
                         type="button"
@@ -466,10 +527,20 @@ function SurveyCapture() {
                         type="button"
                         className="flex-grow-1"
                         style={{ background: "#1a5bc4", color: "#faf6ef", border: "none", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-                        onClick={() => {
-                          const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
-                          draft.title = viewedObservation.title;
-                          localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
+                        onClick={async () => {
+                          const draftObs = observations.find((o) => o.is_draft);
+                          if (draftObs) {
+                            try {
+                              await api.patch(`/api/observations/${draftObs.id}/`, { title: viewedObservation.title });
+                              fetchSurvey();
+                            } catch (err) {
+                              console.error("Failed to copy to draft obs:", err);
+                            }
+                          } else {
+                            const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
+                            draft.title = viewedObservation.title;
+                            localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
+                          }
                           setCopiedToDraft(true);
                         }}
                       >
@@ -515,19 +586,32 @@ function SurveyCapture() {
               anyIncomplete={anyIncomplete}
               onDraftIncomplete={setDraftIncomplete}
               onStepBack={canStepBack && !(viewingIndex !== null ? viewedObsIncomplete : draftIncomplete) ? handleStepBack : null}
-              onStepForward={viewingIndex !== null && !viewedObsIncomplete ? handleStepForward : null}
+              onStepForward={canStepForward && !viewedObsIncomplete ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={() => {
                 const prev = navStackRef.current.pop();
                 resetEditState();
                 setCopiedToDraft(false);
                 if (prev !== undefined) {
-                  setViewingIndex(prev.viewingIndex);
-                  if (prev.editingField) {
-                    setEditingField(prev.editingField);
-                    setEditValue(prev.editValue);
+                  if (prev.fromList) {
+                    // Came from list — reopen it without changing background state.
+                    // closeObsList will restore viewingIndex/editingField when list is dismissed.
+                    listOpenFromStateRef.current = {
+                      viewingIndex: prev.viewingIndex,
+                      editingField: prev.editingField || null,
+                      editValue: prev.editValue || "",
+                      notesOpen: prev.notesOpen || false,
+                      previewImageOpen: prev.previewImageOpen || false,
+                    };
+                    setShowObsListModal(true);
+                  } else {
+                    setViewingIndex(prev.viewingIndex);
+                    if (prev.editingField) {
+                      setEditingField(prev.editingField);
+                      setEditValue(prev.editValue);
+                    }
+                    if (prev.notesOpen) setOpenNotesTrigger(t => t + 1);
                   }
-                  if (prev.notesOpen) setOpenNotesTrigger(t => t + 1);
                 } else {
                   setViewingIndex(null);
                 }
@@ -551,6 +635,13 @@ function SurveyCapture() {
               onBecomeVisible={viewingIndex === null}
               copiedToDraft={copiedToDraft}
               onCancelCopy={() => setCopiedToDraft(false)}
+              onConfirmCopy={() => {
+                navStackRef.current = [];
+                resetEditState();
+                setCopiedToDraft(false);
+                const draftIdx = observations.findIndex((o) => o.is_draft);
+                setViewingIndex(draftIdx !== -1 ? draftIdx : null);
+              }}
               onDraftStatus={(hasTitle, hasImage) => { setDraftHasTitle(hasTitle); setDraftHasImage(hasImage); }}
               onRegisterAutoSave={(fn) => { autoSaveDraftRef.current = fn; }}
               onDraftSaved={(obs) => {
@@ -663,45 +754,60 @@ function SurveyCapture() {
                 <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
               </button>
             )}
-            {/* Button 2: camera */}
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Change Image"
-              onClick={() => { setShowPreviewImageModal(false); previewFileInputRef.current?.click(); }}
-              style={{ background: "#db440a" }}
-            >
-              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-            </button>
-            {/* Button 3: tick — saves pending image if comparing, else just closes */}
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Confirm"
-              onClick={async () => {
-                if (hasPendingPreview && pendingPreviewFileRef.current && viewedObservation) {
-                  const formData = new FormData();
-                  formData.append("title", viewedObservation.title || "");
-                  formData.append("description", viewedObservation.description || "");
-                  formData.append("image", pendingPreviewFileRef.current);
-                  try {
-                    await api.put(`/api/observations/${viewedObservation.id}/`, formData, {
-                      headers: { "Content-Type": "multipart/form-data" },
-                    });
-                    fetchSurvey();
-                  } catch (err) {
-                    console.error("Error replacing image:", err);
-                  }
-                  pendingPreviewFileRef.current = null;
-                  pendingPreviewUrlRef.current = null;
-                  setHasPendingPreview(false);
-                }
-                setShowPreviewImageModal(false);
-              }}
-              style={{ background: "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-            </button>
+            {/* Button 2: navigate to newer observation */}
+            {(() => {
+              const canGoNewer = viewingIndex !== null && viewingIndex > 0 && !observations[viewingIndex - 1]?.is_draft;
+              return (
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Newer observation"
+                  disabled={!canGoNewer}
+                  onClick={() => {
+                    if (!canGoNewer) return;
+                    const newIdx = viewingIndex - 1;
+                    setViewingIndex(newIdx);
+                    const newObs = observations[newIdx];
+                    if (newObs?.image) {
+                      setPreviewImageUrl(newObs.image);
+                      setPreviewImageChanged(false);
+                    } else {
+                      setShowPreviewImageModal(false);
+                    }
+                  }}
+                  style={{ background: canGoNewer ? "#1a5bc4" : "#2c3e50" }}
+                >
+                  <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: canGoNewer ? "brightness(0) invert(1)" : "none" }} />
+                </button>
+              );
+            })()}
+            {/* Button 3: navigate to older observation */}
+            {(() => {
+              const canGoOlder = viewingIndex !== null && viewingIndex < observations.length - 1;
+              return (
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Older observation"
+                  disabled={!canGoOlder}
+                  onClick={() => {
+                    if (!canGoOlder) return;
+                    const newIdx = viewingIndex + 1;
+                    setViewingIndex(newIdx);
+                    const newObs = observations[newIdx];
+                    if (newObs?.image) {
+                      setPreviewImageUrl(newObs.image);
+                      setPreviewImageChanged(false);
+                    } else {
+                      setShowPreviewImageModal(false);
+                    }
+                  }}
+                  style={{ background: canGoOlder ? "#1a5bc4" : "#2c3e50" }}
+                >
+                  <img src="/right.svg" alt="" width="47" height="47" style={{ filter: canGoOlder ? "brightness(0) invert(1)" : "none" }} />
+                </button>
+              );
+            })()}
             {/* Button 4: close — dismisses without saving */}
             <button
               type="button"
@@ -850,8 +956,7 @@ function SurveyCapture() {
                 className="observation-row"
                 style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
                 onClick={() => {
-                  navStackRef.current.push({ viewingIndex, editingField, editValue, notesOpen: listOpenFromStateRef.current.notesOpen || false });
-                  listOpenFromStateRef.current = {};
+                  navStackRef.current.push({ viewingIndex, editingField, editValue, notesOpen: listOpenFromStateRef.current.notesOpen || false, previewImageOpen: listOpenFromStateRef.current.previewImageOpen || false, fromList: true });
                   resetEditState();
                   setViewingIndex(idx);
                   setShowObsListModal(false);

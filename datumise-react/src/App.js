@@ -96,7 +96,7 @@ function Home({ isLoggedIn }) {
 /*  Derive a screen title from the current pathname                   */
 /* ------------------------------------------------------------------ */
 function useScreenTitle() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
 
   if (pathname === "/") return "DATUMise";
   if (pathname === "/clients") return "Clients";
@@ -110,7 +110,24 @@ function useScreenTitle() {
   if (/^\/surveys\/\d+$/.test(pathname)) return "Survey";
   if (pathname === "/observations") return "Observations";
   if (/^\/observations\/survey\/\d+$/.test(pathname)) return "Observations";
-  if (/^\/observations\/\d+$/.test(pathname)) return "Observation View";
+  if (/^\/observations\/\d+$/.test(pathname)) {
+    if (state?.observationIds && state?.obsCreatedAt) {
+      const obsIdx = state.observationIndex ?? 0;
+      const total = state.observationIds.length;
+      const d = new Date(state.obsCreatedAt);
+      const h = d.getHours();
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      const timeStr = `${h % 12 || 12}:${mins}${h < 12 ? "am" : "pm"}`;
+      const dateStr = `${d.getDate()} ${d.toLocaleString("en-GB", { month: "short" })} '${String(d.getFullYear()).slice(2)}`;
+      return (
+        <>
+          <span style={{ fontSize: "1rem", fontWeight: 700 }}>{obsIdx + 1} of {total}</span>
+          <span style={{ fontSize: "0.68rem", fontWeight: 400 }}>{dateStr}&nbsp;&nbsp;{timeStr}</span>
+        </>
+      );
+    }
+    return "Observation View";
+  }
   if (pathname === "/team") return "Team";
   if (/^\/team\/\d+$/.test(pathname)) return "Team Member";
   if (/^\/team\/\d+\/edit$/.test(pathname)) return "Edit Team Member";
@@ -180,7 +197,7 @@ function AppLayout() {
   return (
     <>
       {/* ---- Desktop nav (hidden on mobile) ---- */}
-      <nav className="app-nav-desktop navbar px-4" style={{ background: "#db440a", borderBottom: "none" }}>
+      <nav className="app-nav-desktop navbar px-4" style={{ background: "#1F0E05", borderBottom: "none" }}>
         <Link className="navbar-brand fw-bold" to="/" style={{ color: "#faf6ef" }}>
           DATUMise
         </Link>

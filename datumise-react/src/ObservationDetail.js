@@ -148,13 +148,36 @@ function ObservationDetail() {
     }
   };
 
+  useEffect(() => {
+    if (location.state?.autoOpenImage && observation?.image) {
+      setShowImageModal(true);
+    }
+  }, [observation, location.state?.autoOpenImage]);
+
   if (!observation) {
     return <p className="container mt-3">Loading observation...</p>;
   }
 
+  const obsIds = location.state?.observationIds || [];
+  const obsIdx = location.state?.observationIndex ?? obsIds.indexOf(Number(id));
+  const prevObsId = obsIdx > 0 ? obsIds[obsIdx - 1] : null;
+  const nextObsId = obsIdx < obsIds.length - 1 ? obsIds[obsIdx + 1] : null;
+
+  const goToObs = (targetId, newIdx, openImage = false) => {
+    if (window.__obsListCache) window.__obsListCache.highlightId = targetId;
+    navigate(`/observations/${targetId}`, {
+      replace: true,
+      state: { ...location.state, returnHighlight: targetId, observationIndex: newIdx, ...(openImage ? { autoOpenImage: true } : {}) },
+    });
+  };
+
+  const returnTo = location.state?.fromSurvey
+    ? { path: `/surveys/${location.state.surveyId}`, state: { highlightObs: Number(id) } }
+    : { path: "/observations", state: undefined };
+
   return (
-    <div className="container mt-3 px-3" style={{ overflow: "hidden" }}>
-      <div className="mb-3 d-none d-md-block">
+    <div style={{ overflow: "hidden", paddingBottom: obsIds.length > 0 ? "80px" : undefined }}>
+      <div className="container px-3 mt-3 mb-3 d-none d-md-block">
         {location.state?.fromSurvey ? (
           <Link to={`/surveys/${location.state.surveyId}`} state={{ highlightObs: Number(id) }} className="text-decoration-none">
             &larr; Back to Survey
@@ -166,20 +189,20 @@ function ObservationDetail() {
         )}
       </div>
 
-      {/* ---- Image ---- */}
+      {/* ---- Image (full-bleed on mobile/tablet) ---- */}
       <div style={{ position: "relative" }}>
         {observation.image ? (
           <img
             src={observation.image}
             alt={observation.title}
-            className="img-fluid rounded-top mb-0"
-            style={{ width: "100%", maxHeight: "300px", objectFit: "cover", cursor: "pointer" }}
+            className="img-fluid mb-0"
+            style={{ width: "100%", height: "300px", objectFit: "cover", cursor: "pointer", display: "block" }}
             onClick={() => setShowImageModal(true)}
           />
         ) : (
           <div
-            className="d-flex align-items-center justify-content-center rounded-top mb-0"
-            style={{ width: "100%", height: "140px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
+            className="d-flex align-items-center justify-content-center mb-0"
+            style={{ width: "100%", height: "300px", backgroundColor: "#ecf0f1", cursor: "pointer" }}
             onClick={() => observation.can_edit && fileInputRef.current?.click()}
           >
             <span className="text-muted text-center">
@@ -206,12 +229,15 @@ function ObservationDetail() {
         )}
       </div>
 
+      {/* ---- Content below image ---- */}
+      <div>
+
       {/* ---- Observation fieldset ---- */}
       <div className="px-2 py-2 mb-0" style={{ background: "#f0ece4" }}>
-        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere", color: "#1a2332" }}>
+        <div className="px-1 pb-2" style={{ overflowWrap: "anywhere", color: "#1a2332", fontSize: "16px", lineHeight: 1.5, height: "calc(4 * 1.5 * 16px)", overflow: "hidden" }}>
           {observation.title}
         </div>
-        <div className="d-flex align-items-center justify-content-between px-1 pt-1" style={{ borderTop: "1px solid #e0dbd2" }}>
+        <div className="d-flex align-items-center justify-content-between px-1 pt-1" style={{ borderTop: "1px solid #e0dbd2", height: "32px", flexShrink: 0 }}>
           <div className="d-flex align-items-center gap-3" style={{ fontSize: "0.75rem" }}>
             {!observation.is_owner && localStorage.getItem("token") ? (
               <button
@@ -220,12 +246,12 @@ function ObservationDetail() {
                 style={{ fontSize: "0.75rem" }}
               >
                 <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: observation.is_liked ? 1 : 0.4, filter: observation.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
-                <span className="text-muted">{observation.likes_count || 0}</span>
+                <span className="text-muted" style={{ display: "inline-block", minWidth: "2em", textAlign: "right" }}>{observation.likes_count || 0}</span>
               </button>
             ) : (
               <div className="d-flex align-items-center gap-1 text-muted">
                 <img src="/datumise-like.svg" alt="" width="14" height="14" style={{ opacity: 0.4 }} />
-                {observation.likes_count || 0}
+                <span style={{ display: "inline-block", minWidth: "2em", textAlign: "right" }}>{observation.likes_count || 0}</span>
               </div>
             )}
             <button
@@ -237,7 +263,7 @@ function ObservationDetail() {
               style={{ fontSize: "0.75rem" }}
             >
               <img src="/datumise-comment.svg" alt="" width="12" height="12" style={{ opacity: showCommentInput ? 1 : 0.5 }} />
-              {comments.length}
+              <span style={{ display: "inline-block", minWidth: "2em", textAlign: "right" }}>{comments.length}</span>
             </button>
             <button
               className="btn btn-sm d-flex align-items-center p-0 border-0 bg-transparent"
@@ -253,16 +279,8 @@ function ObservationDetail() {
               <img src="/share.svg" alt="Share" width="14" height="14" />
             </button>
           </div>
-          <div className="fst-italic text-muted" style={{ fontSize: "0.68rem", textAlign: "right" }}>
-            <div>
-              {new Date(observation.created_at).toLocaleString("en-GB", {
-                day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit",
-              })}
-              {observation.owner && ` \u00B7 ${observation.owner}`}
-            </div>
-            {observation.site_name && (
-              <div style={{ textAlign: "left" }}>{observation.site_name}</div>
-            )}
+          <div className="fst-italic text-muted" style={{ fontSize: "0.68rem", textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%" }}>
+            {[observation.site_name, observation.owner].filter(Boolean).join(" \u00B7 ")}
           </div>
         </div>
       </div>
@@ -426,57 +444,121 @@ function ObservationDetail() {
 
       </div>
 
+      </div>{/* end content container */}
+
       {/* ---- Image preview modal ---- */}
-      <Modal show={showImageModal} onHide={() => setShowImageModal(false)} centered size="lg">
-        <Modal.Header closeButton className="pb-2">
-          <Modal.Title>Image preview</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center p-0" style={{ background: "#2c3e50" }}>
-          {observation.image ? (
-            <img src={observation.image} alt={observation.title} className="img-fluid" style={{ maxHeight: "80vh", objectFit: "contain" }} />
-          ) : (
-            <p className="text-muted fst-italic">No image yet.</p>
-          )}
-        </Modal.Body>
-        <div className="survey-capture-actions">
-          <div className="capture-footer-grid" style={observation.can_edit && location.state?.fromSurvey ? {} : { gridTemplateColumns: "1fr" }}>
-            {observation.can_edit && location.state?.fromSurvey && (
-              <>
-                <button
-                  type="button"
-                  className="capture-footer-btn"
-                  aria-label={observation.image ? "Change Image" : "Add Image"}
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ background: "#db440a" }}
-                >
-                  <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-                </button>
-                <button
-                  type="button"
-                  className="capture-footer-btn"
-                  aria-label="Delete observation"
-                  onClick={handleDelete}
-                  style={{ background: "#dc3545" }}
-                >
-                  <img src="/datumise_delete.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-                </button>
-              </>
+      {(() => {
+        const d = new Date(observation.created_at);
+        const h = d.getHours();
+        const m = String(d.getMinutes()).padStart(2, "0");
+        const timeStr = `${h % 12 || 12}:${m}${h < 12 ? "am" : "pm"}`;
+        const dateStr = `${d.getDate()} ${d.toLocaleString("en-GB", { month: "short" })} '${String(d.getFullYear()).slice(2)}`;
+        const siteStr = [observation.site_name, observation.site_postcode].filter(Boolean).join(", ");
+        return (
+          <Modal show={showImageModal} onHide={() => setShowImageModal(false)} fullscreen={true}>
+            {obsIds.length > 0 && (
+              <div style={{ position: "relative", background: "#1a2332", color: "#faf6ef", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0.5rem 1rem", flexShrink: 0 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "1rem", lineHeight: 1.3, display: "flex", alignItems: "center", gap: "0.5em" }}>
+                    <span>{obsIdx + 1} of {obsIds.length}</span>
+                    {observation.is_draft && <span style={{ fontWeight: 700, fontSize: "0.65rem", color: "#db440a", letterSpacing: "0.08em" }}>DRAFT</span>}
+                  </div>
+                  <div style={{ fontSize: "0.68rem", fontStyle: "italic", lineHeight: 1.3 }}>{dateStr}&nbsp;&nbsp;{timeStr}</div>
+                </div>
+                <div style={{ textAlign: "left", fontSize: "0.78rem", fontStyle: "italic", lineHeight: 1.3 }}>
+                  {siteStr && <div>{siteStr}</div>}
+                  <div>{observation.owner}</div>
+                </div>
+              </div>
             )}
+            <Modal.Body className="text-center p-0" style={{ background: "#687374", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {observation.image ? (
+                <img src={observation.image} alt={observation.title} className="img-fluid" style={{ maxHeight: obsIds.length > 0 ? "calc(100vh - 128px)" : "calc(100vh - 80px)", objectFit: "contain", width: "100%" }} />
+              ) : (
+                <p className="text-muted fst-italic">No image yet.</p>
+              )}
+            </Modal.Body>
+            <div className="survey-capture-actions">
+              <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                <div />
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Previous observation"
+                  disabled={!prevObsId}
+                  onClick={() => prevObsId && goToObs(prevObsId, obsIdx - 1, true)}
+                  style={{ background: prevObsId ? "#1a5bc4" : "#2c3e50" }}
+                >
+                  <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: prevObsId ? "brightness(0) invert(1)" : "none" }} />
+                </button>
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Next observation"
+                  disabled={!nextObsId}
+                  onClick={() => nextObsId && goToObs(nextObsId, obsIdx + 1, true)}
+                  style={{ background: nextObsId ? "#1a5bc4" : "#2c3e50" }}
+                >
+                  <img src="/right.svg" alt="" width="47" height="47" style={{ filter: nextObsId ? "brightness(0) invert(1)" : "none" }} />
+                </button>
+                <button
+                  type="button"
+                  className="capture-footer-btn"
+                  aria-label="Close"
+                  onClick={() => setShowImageModal(false)}
+                  style={{ background: "#95a5a6" }}
+                >
+                  <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      {obsIds.length > 0 ? (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        <div className="survey-capture-actions">
+          <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            <div />
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Previous observation"
+              disabled={!prevObsId}
+              onClick={() => prevObsId && goToObs(prevObsId, obsIdx - 1)}
+              style={{ background: prevObsId ? "#1a5bc4" : "#2c3e50" }}
+            >
+              <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: prevObsId ? "brightness(0) invert(1)" : "none" }} />
+            </button>
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Next observation"
+              disabled={!nextObsId}
+              onClick={() => nextObsId && goToObs(nextObsId, obsIdx + 1)}
+              style={{ background: nextObsId ? "#1a5bc4" : "#2c3e50" }}
+            >
+              <img src="/right.svg" alt="" width="47" height="47" style={{ filter: nextObsId ? "brightness(0) invert(1)" : "none" }} />
+            </button>
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Close"
-              onClick={() => setShowImageModal(false)}
-              style={{ background: "#2c3e50" }}
+              onClick={() => navigate(returnTo.path, { state: returnTo.state })}
+              style={{ background: "#95a5a6" }}
             >
-              <img src="/datumise-return.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
             </button>
           </div>
         </div>
-      </Modal>
-
-      <ReturnButton to={location.state?.fromSurvey ? `/surveys/${location.state.surveyId}` : "/observations"} state={location.state?.fromSurvey ? { highlightObs: Number(id) } : undefined} />
-      <BackToTop />
+        </div>
+      ) : (
+        <>
+          <ReturnButton to={returnTo.path} state={returnTo.state} />
+          <BackToTop />
+        </>
+      )}
     </div>
   );
 }

@@ -251,15 +251,16 @@ function ObservationList() {
 
       <div style={{ opacity: scrollReady ? 1 : 0 }}>
         {!loading &&
-          [...observations]
-            .sort((a, b) => {
+          (() => {
+            const sorted = [...observations].sort((a, b) => {
               if (sortOrder === "most_liked") return (b.likes_count || 0) - (a.likes_count || 0);
               if (sortOrder === "most_commented") return (b.comment_count || 0) - (a.comment_count || 0);
               const dateA = new Date(a.created_at);
               const dateB = new Date(b.created_at);
               return sortOrder === "oldest" ? dateA - dateB : dateB - dateA;
-            })
-            .map((obs) => (
+            });
+            const obsIds = sorted.map((o) => o.id);
+            return sorted.map((obs) => (
             <div
               key={obs.id}
               id={`obs-${obs.id}`}
@@ -267,7 +268,7 @@ function ObservationList() {
               style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px" }}
               onMouseEnter={() => { if (highlightedObs && highlightedObs !== obs.id) setHighlightedObs(null); }}
               onClick={() =>
-                navigateWithCache(`/observations/${obs.id}`, {}, obs.id)
+                navigateWithCache(`/observations/${obs.id}`, { state: { observationIds: obsIds, observationIndex: obsIds.indexOf(obs.id), obsCreatedAt: obs.created_at, obsOwner: obs.owner } }, obs.id)
               }
             >
               {obs.image ? (
@@ -283,6 +284,9 @@ function ObservationList() {
               )}
               <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
                 <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                  {obs.is_draft && (
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 4px", marginRight: "5px", verticalAlign: "middle" }}>DRAFT</span>
+                  )}
                   {obs.title}
                 </div>
                 <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
@@ -314,7 +318,8 @@ function ObservationList() {
                 </div>
               </div>
             </div>
-          ))}
+          ));
+          })()}
       </div>
 
       {nextPage && (

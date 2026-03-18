@@ -137,7 +137,7 @@ textarea.edit-field {
   justify-content: space-between;
   padding: 0.45rem 0.75rem;
   border-bottom: none;
-  background: #db440a;
+  background: #1F0E05;
   position: sticky;
   top: 0;
   z-index: 1030;
@@ -170,12 +170,14 @@ textarea.edit-field {
   font-weight: 700;
   color: #ffffff;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   text-align: center;
   flex: 1;
   padding: 0 0.5rem;
-  line-height: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
 
 /* Menu dropdown */
@@ -272,6 +274,7 @@ textarea.edit-field {
   gap: 1rem;
   background: #db440a;
   color: #faf6ef;
+  position: relative;
 }
 
 .survey-capture-header * {
@@ -394,6 +397,37 @@ textarea.edit-field {
   }
 }
 
+
+/* --- Prior observation detail view --- */
+
+.prior-obs-container {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.prior-obs-image {
+  width: 100%;
+  height: 180px;
+}
+
+@media (min-width: 768px) {
+  .prior-obs-container {
+    max-width: 680px;
+  }
+  .prior-obs-image {
+    height: 340px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .prior-obs-container {
+    max-width: 900px;
+  }
+  .prior-obs-image {
+    height: 460px;
+  }
+}
 
 /* --- Per-field clear button --- */
 
@@ -728,7 +762,8 @@ textarea.edit-field {
 }
 
 /* ==========================================================
-   Bottom-sheet modals – thumb-friendly positioning
+   Bottom-sheet modals – thumb-friendly positioning on mobile,
+   centred on tablet and desktop
    ========================================================== */
 
 .modal-bottom {
@@ -759,6 +794,20 @@ textarea.edit-field {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .modal-bottom {
+    align-items: center !important;
+    margin: 1.75rem auto !important;
+    min-height: auto !important;
+    max-width: 500px !important;
+    width: auto !important;
+  }
+
+  .modal-bottom .modal-content {
+    border-radius: 8px !important;
+  }
 }
 
 /* ---- Dashboard grid ---- */

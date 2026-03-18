@@ -109,10 +109,8 @@ useLayoutEffect(() => {
     const startSurvey = async () => {
         if (!survey.assigned_to || !survey.is_surveyor) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, {
-            status: "live",
-            });
-            fetchSurvey();
+            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            navigate(`/surveys/${id}/capture`);
         } catch (err) {
             console.log(err);
         }
@@ -120,9 +118,7 @@ useLayoutEffect(() => {
 
     const pauseSurvey = async () => {
         try {
-            await api.patch(`/api/surveys/${id}/`, {
-            status: "paused",
-            });
+            await api.patch(`/api/surveys/${id}/`, { status: "paused" });
             fetchSurvey();
         } catch (err) {
             console.log(err);
@@ -130,17 +126,46 @@ useLayoutEffect(() => {
     };
 
     const resumeSurvey = async () => {
-  if (!survey.assigned_to || !survey.is_surveyor) return;
-  try {
-    const response = await api.patch(`/api/surveys/${id}/`, {
-      status: "live",
-    });
-    setSurvey(response.data);
-    navigate(`/surveys/${id}/capture`);
-  } catch (err) {
-    console.log(err);
-  }
-};
+        if (!survey.assigned_to || !survey.is_surveyor) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            navigate(`/surveys/${id}/capture`);
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    const startNewSession = async () => {
+        if (!survey.assigned_to || !survey.is_surveyor) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            navigate(`/surveys/${id}/capture`);
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    const completeSurvey = async () => {
+        const confirmed = window.confirm(
+            "Mark survey as complete?\n\nNo further observations can be added."
+        );
+        if (!confirmed) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "completed" });
+            fetchSurvey();
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    const reopenSurvey = async () => {
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "submitted" });
+            fetchSurvey();
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
     const assignSurvey = async () => {
         if (survey.status !== "planned" || survey.assigned_to) return;
@@ -152,19 +177,14 @@ useLayoutEffect(() => {
         }
     };
 
-    const submitSurvey = async () => {
+    const completeSession = async () => {
         const confirmed = window.confirm(
-            "Submit survey?\n\n" +
-            "The survey will be finalised and no further observations can be added."
+            "Complete this session?\n\nYou can start another session later, or mark the survey as complete."
         );
-
         if (!confirmed) return;
-
         try {
-            await api.patch(`/api/surveys/${id}/`, {
-                status: "submitted",
-            });
-            window.location.reload();
+            await api.patch(`/api/surveys/${id}/`, { status: "submitted" });
+            fetchSurvey();
         } catch (err) {
             console.log(err);
         }
@@ -242,13 +262,19 @@ const formatSurveyDuration = (startTime, _tick) => {
                   className={`badge ${
                     survey.status === "planned" ? "bg-secondary" :
                     survey.status === "live" ? "bg-success" :
-                    survey.status === "submitted" ? "bg-dark" :
+                    survey.status === "submitted" ? "bg-secondary" :
+                    survey.status === "completed" ? "bg-dark" :
                     survey.status === "missed" ? "bg-warning" :
                     survey.status === "cancelled" ? "bg-danger" : ""
                   }`}
                   style={{ fontSize: "0.7rem" }}
                 >
                   {survey.status_display}
+                </span>
+              )}
+              {survey.session_count > 0 && (
+                <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                  Session {survey.current_session_number ?? survey.session_count} of {survey.session_count}
                 </span>
               )}
               {survey.status === "live" && (
@@ -268,7 +294,7 @@ const formatSurveyDuration = (startTime, _tick) => {
               {survey.status === "live" && survey.is_surveyor && (
                 <>
                   <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
-                  <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
+                  <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
                   <button
                     className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
                     onClick={() => setShowObservationModal(true)}
@@ -286,8 +312,17 @@ const formatSurveyDuration = (startTime, _tick) => {
               {survey.status === "paused" && survey.is_surveyor && survey.assigned_to && (
                 <>
                   <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
-                  <button className="btn btn-dark btn-sm" onClick={submitSurvey}>Submit</button>
+                  <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
                 </>
+              )}
+              {survey.status === "submitted" && survey.is_surveyor && (
+                <>
+                  <button className="btn btn-success btn-sm" onClick={startNewSession}>Start New Session</button>
+                  <button className="btn btn-dark btn-sm" onClick={completeSurvey}>Complete Survey</button>
+                </>
+              )}
+              {survey.status === "completed" && survey.is_surveyor && (
+                <button className="btn btn-outline-secondary btn-sm" onClick={reopenSurvey}>Reopen</button>
               )}
               <Link
                 to={`/surveys/${id}/edit`}
@@ -418,7 +453,10 @@ const formatSurveyDuration = (startTime, _tick) => {
                 id={`obs-${observation.id}`}
                 className="text-decoration-none text-dark"
                 style={{ cursor: "pointer" }}
-                onClick={() => navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, returnHighlight: observation.id } })}
+                onClick={() => {
+                  const obsIds = survey.observations.map((o) => o.id);
+                  navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, returnHighlight: observation.id, observationIds: obsIds, observationIndex: obsIds.indexOf(observation.id), obsCreatedAt: observation.created_at, obsOwner: observation.owner } });
+                }}
               >
                 <div
                   className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
@@ -438,6 +476,9 @@ const formatSurveyDuration = (startTime, _tick) => {
                   )}
                   <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
                     <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
+                      {observation.is_draft && (
+                        <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 4px", marginRight: "5px", verticalAlign: "middle" }}>DRAFT</span>
+                      )}
                       {observation.title}
                     </div>
                     <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
