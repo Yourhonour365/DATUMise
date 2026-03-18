@@ -490,10 +490,10 @@ function SurveyCapture() {
               {/* Observation block */}
               {viewedObservation.title?.trim() ? (
                 <div style={{ width: "100%" }}>
-                  <div style={{ backgroundColor: "#dbd5ca", padding: "0 0.4rem 0.4rem 0.4rem", borderRadius: "2px", cursor: "pointer" }}
+                  <div style={{ backgroundColor: "#FAF8F3", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #cce8f5 calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ffd6d6 14px, #ffd6d6 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0", padding: "0 0.4rem 0.4rem 19px", borderRadius: "2px", cursor: "pointer" }}
                     onClick={() => { setEditingField("title"); setEditValue(viewedObservation.title || ""); }}
                   >
-                    <div style={{ lineHeight: "1.5", fontSize: "16px", fontWeight: 500, color: "#1A1D21", overflowWrap: "break-word", wordBreak: "normal", whiteSpace: "pre-line", maxHeight: "calc(6 * 1.5 * 16px)", overflow: "hidden" }}>
+                    <div style={{ lineHeight: "1.5", fontSize: "16px", fontWeight: 500, color: "#1A1D21", overflowWrap: "break-word", wordBreak: "normal", whiteSpace: "pre-line", height: "calc(6 * 1.5 * 16px)", overflow: "hidden" }}>
                       {viewedObservation.title}
                     </div>
                   </div>
@@ -667,6 +667,7 @@ function SurveyCapture() {
         fontWeight: 700,
         fontStyle: "italic",
         flexShrink: 0,
+        background: "#E2DDD3",
         visibility: (viewingIndex === null && ((draftHasTitle && !draftHasImage) || (!draftHasTitle && draftHasImage))) || (viewingIndex !== null && viewedObsIncomplete) ? "visible" : "hidden",
       }}>
         {viewingIndex !== null
@@ -854,7 +855,7 @@ function SurveyCapture() {
             }}
             maxLength={editingField === "title" ? 500 : 280}
             autoFocus
-            style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #b8d8ea calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ffaaaa 14px, #ffaaaa 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
+            style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #5a9fc0 calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ff6666 14px, #ff6666 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
           />
         </Modal.Body>
         {editingField === "title" && !editValue.trim() && (
@@ -941,11 +942,12 @@ function SurveyCapture() {
         }}
         centered
         size="lg"
+        contentClassName="rounded-1"
       >
         <Modal.Header closeButton>
           <Modal.Title style={{ fontSize: "1rem" }}>Observations ({observations.length})</Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem" }}>
+        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem", backgroundColor: "#E2DDD3" }}>
           {observations.length === 0 ? (
             <p className="text-muted text-center py-3">No observations yet.</p>
           ) : (
@@ -958,7 +960,7 @@ function SurveyCapture() {
                 key={obs.id}
                 id={`capture-obs-${idx}`}
                 className="observation-row"
-                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
+                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem", border: "none", borderRadius: "2px" }}
                 onClick={() => {
                   navStackRef.current.push({ viewingIndex, editingField, editValue, notesOpen: listOpenFromStateRef.current.notesOpen || false, previewImageOpen: listOpenFromStateRef.current.previewImageOpen || false, fromList: true });
                   resetEditState();
@@ -967,22 +969,24 @@ function SurveyCapture() {
                   setCopiedToDraft(false);
                 }}
               >
-                {imgSrc ? (
-                  <img src={imgSrc} alt="" style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }} />
-                ) : (
-                  <div style={{ width: "80px", minHeight: "100%", borderRadius: "8px 0 0 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
-                    <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
-                  </div>
-                )}
-                <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
-                  <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
-                    {obs.is_draft && (
-                      <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 4px", marginRight: "5px", verticalAlign: "middle" }}>DRAFT</span>
-                    )}
+                <div style={{ position: "relative", width: "80px", flexShrink: 0 }}>
+                  {imgSrc ? (
+                    <img src={imgSrc} alt="" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "2px 0 0 2px" }} />
+                  ) : (
+                    <div style={{ width: "80px", height: "80px", borderRadius: "2px 0 0 2px", display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                      <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
+                    </div>
+                  )}
+                  {obs.is_draft && (
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#db440a", color: "#fff", fontSize: "0.55rem", fontWeight: 700, textAlign: "center", borderRadius: "0 0 0 8px", padding: "1px 0", letterSpacing: "0.05em" }}>DRAFT</div>
+                  )}
+                </div>
+                <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.1rem 0.4rem 0.3rem 13px", overflow: "hidden", backgroundColor: "#FAF8F3", backgroundImage: "linear-gradient(90deg, transparent 8px, #ffd6d6 8px, #ffd6d6 9px, transparent 9px)", backgroundSize: "100% calc(100% - 16px)", backgroundPosition: "0 8px" }}>
+                  <div className="observation-row-title" style={{ height: "60px", lineHeight: "20px", marginLeft: "-13px", paddingLeft: "13px", backgroundImage: "linear-gradient(transparent 19px, #cce8f5 19px, #cce8f5 20px, transparent 20px, transparent 39px, #cce8f5 39px, #cce8f5 40px, transparent 40px, transparent 59px, #cce8f5 59px, #cce8f5 60px, transparent 60px)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
                     {obs.title || "Untitled"}
                   </div>
-                  <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
-                    <span>#{observations.length - idx} of {observations.length}</span>
+                  <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0, color: "#1A1D21" }}>
+                    <span style={{ marginRight: "auto", fontStyle: "normal" }}>{observations.length - idx} of {observations.length}</span>
                     <span>
                       {new Date(obs.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </span>

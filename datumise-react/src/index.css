@@ -68,7 +68,7 @@ fieldset {
 }
 
 .modal-bottom textarea.form-control:focus {
-  border: 1px solid #ffaaaa;
+  border: 1px solid #ff6666;
   box-shadow: none;
   outline: none;
 }
@@ -268,6 +268,7 @@ textarea.edit-field {
   max-width: 100%;
   box-sizing: border-box;
   z-index: 100;
+  background: #E2DDD3;
 }
 
 .survey-capture-header {
@@ -303,6 +304,7 @@ textarea.edit-field {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 0.75rem;
+  background: #E2DDD3;
   /* prevent iOS safari rubber-band exposing background */
   overscroll-behavior: contain;
 }
@@ -410,35 +412,19 @@ textarea.edit-field {
 }
 .obs-detail-img {
   width: 100%;
-  height: 300px;
+  height: calc(6 * 1.5 * 16px + 1rem);
   object-fit: cover;
   cursor: pointer;
   display: block;
 }
 .obs-detail-img-placeholder {
   width: 100%;
-  height: 300px;
+  height: calc(6 * 1.5 * 16px + 1rem);
   background-color: #ecf0f1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-@media (min-width: 768px) {
-  .obs-detail-img {
-    height: 500px;
-  }
-  .obs-detail-img-placeholder {
-    height: 500px;
-  }
-}
-@media (min-width: 1200px) {
-  .obs-detail-img {
-    height: 600px;
-  }
-  .obs-detail-img-placeholder {
-    height: 600px;
-  }
 }
 
 /* --- Observation detail description block --- */
@@ -449,7 +435,7 @@ textarea.edit-field {
   font-weight: 500;
   line-height: 1.5;
   white-space: pre-line;
-  max-height: calc(6 * 1.5 * 16px + 1rem);
+  height: calc(6 * 1.5 * 16px + 1rem);
   overflow: hidden;
   box-sizing: border-box;
   padding-top: 0.5rem;
@@ -466,7 +452,7 @@ textarea.edit-field {
 
 .prior-obs-image {
   width: 100%;
-  height: 180px;
+  height: calc(6 * 1.5 * 16px + 1rem);
 }
 
 @media (min-width: 768px) {
@@ -868,6 +854,15 @@ textarea.edit-field {
   .modal-bottom .modal-content {
     border-radius: 8px !important;
   }
+}
+
+.rounded-1.modal-content {
+  border-radius: 2px !important;
+}
+
+.rounded-1.modal-content .modal-header {
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
 }
 
 .modal-bottom textarea.form-control {

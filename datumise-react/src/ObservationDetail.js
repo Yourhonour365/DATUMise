@@ -196,7 +196,7 @@ function ObservationDetail() {
   };
 
   return (
-    <div style={{ overflow: "hidden", paddingBottom: obsIds.length > 0 ? "80px" : undefined }}>
+    <div style={{ overflow: "hidden", paddingBottom: obsIds.length > 0 ? "80px" : undefined, backgroundColor: "#E2DDD3", minHeight: "100vh" }}>
       <div className="container px-3 mt-3 mb-3 d-none d-md-block">
         {location.state?.fromSurvey ? (
           <Link to={`/surveys/${location.state.surveyId}`} state={{ highlightObs: Number(id) }} className="text-decoration-none">
@@ -245,7 +245,7 @@ function ObservationDetail() {
               }
             }}
           >
-            Resume Survey
+            Resume session
           </button>
         )}
       </div>
@@ -254,11 +254,11 @@ function ObservationDetail() {
       <div>
 
       {/* ---- Observation fieldset ---- */}
-      <div className="pt-0 pb-0 mb-0" style={{ background: "#dbd5ca" }}>
+      <div className="pt-0 pb-0 mb-0" style={{ background: "#FAF8F3" }}>
         <div className="obs-detail-desc" style={{ paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
           {observation.title}
         </div>
-        <div className="d-flex align-items-center justify-content-between" style={{ height: "24px", flexShrink: 0, background: "#faf6ef", paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
+        <div className="d-flex align-items-center justify-content-between" style={{ height: "24px", flexShrink: 0, background: "#FAF8F3", paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
           <div className="d-flex align-items-center gap-3" style={{ fontSize: "0.75rem" }}>
             {!observation.is_owner && localStorage.getItem("token") ? (
               <button
@@ -328,8 +328,8 @@ function ObservationDetail() {
       />
 
       {/* ---- Comments fieldset ---- */}
-      <div className="mb-3">
-        <div className="px-2 py-1 fs-6 fw-bold text-dark" style={{ background: "#faf6ef" }}>
+      <div className="mb-3" style={{ background: "#E2DDD3", paddingLeft: "0.5rem", paddingRight: "0.5rem" }}>
+        <div className="px-2 py-1 fs-6 fw-bold text-dark" style={{ background: "#E2DDD3" }}>
           Comments
         </div>
 
@@ -369,7 +369,7 @@ function ObservationDetail() {
           });
 
           const renderComment = (comment, isReply = false) => (
-            <div key={comment.id} className="px-2 py-2 mb-0" style={{ background: isReply ? "#faf6ef" : "#f5f0e8", marginLeft: isReply ? "1.5rem" : 0, overflow: "hidden", minWidth: 0 }}>
+            <div key={comment.id} style={{ background: isReply ? "#FEFDFD" : "#F7F4EE", marginLeft: isReply ? "1.5rem" : 0, marginBottom: "0.4rem", borderRadius: "6px", padding: "0.4rem 0.6rem", overflow: "hidden", minWidth: 0 }}>
               {editingCommentId === comment.id ? (
                 <>
                   <Form.Control
@@ -388,52 +388,51 @@ function ObservationDetail() {
               ) : (
                 <>
                   <div style={{ fontSize: isReply ? "0.8rem" : "0.85rem", overflowWrap: "anywhere", color: "#1a2332" }}>{comment.content}</div>
-                  <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap mt-1" style={{ fontSize: "0.72rem" }}>
-                      {!comment.is_owner && (
-                        <button
-                          className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
-                          style={{ fontSize: "0.72rem", textDecoration: "none" }}
-                          onClick={() => handleCommentLike(comment.id)}
-                        >
-                          <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: comment.is_liked ? 1 : 0.4, filter: comment.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
-                          {comment.likes_count || 0}
-                        </button>
-                      )}
+                  <div className="d-flex align-items-center justify-content-start gap-2 flex-wrap mt-1" style={{ fontSize: "0.6rem", color: "#95a5a6" }}>
+                      <span>{new Date(comment.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span>{new Date(comment.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                      <span style={{ fontStyle: "italic" }}>{comment.owner}</span>
                       {!isReply && (
                         <button
                           className="btn btn-link btn-sm p-0 text-muted"
-                          style={{ fontSize: "0.72rem", textDecoration: "none", fontWeight: replyToCommentId === comment.id ? 700 : 400 }}
+                          style={{ fontSize: "0.6rem", textDecoration: "none", fontWeight: replyToCommentId === comment.id ? 700 : 400 }}
                           onClick={() => { setReplyToCommentId(replyToCommentId === comment.id ? null : comment.id); setShowCommentInput(false); }}
                         >
                           Reply
                         </button>
                       )}
-                      {comment.is_owner && (
-                        <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleEditClick(comment)}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#0013de" opacity="0.45"><path d="M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z"/></svg>
-                        </button>
-                      )}
-                      {(comment.is_owner || comment.is_observation_owner) && (
-                        <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleDeleteComment(comment.id)}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#d3212f" opacity="0.45"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
-                        </button>
-                      )}
-                      <span style={{ fontSize: "0.6rem", color: "#95a5a6", fontStyle: "italic" }}>
-                        {comment.owner} &bull;{" "}
-                        {new Date(comment.created_at).toLocaleString("en-GB", {
-                          day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                        })}
-                      </span>
+                      <div className="d-flex align-items-center gap-2 ms-auto">
+                        {!comment.is_owner && (
+                          <button
+                            className="btn btn-link btn-sm p-0 text-muted d-inline-flex align-items-center gap-1"
+                            style={{ fontSize: "0.6rem", textDecoration: "none" }}
+                            onClick={() => handleCommentLike(comment.id)}
+                          >
+                            <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: comment.is_liked ? 1 : 0.4, filter: comment.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                            {comment.likes_count || 0}
+                          </button>
+                        )}
+                        {comment.is_owner && (
+                          <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleEditClick(comment)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#0013de" opacity="0.45"><path d="M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z"/></svg>
+                          </button>
+                        )}
+                        {(comment.is_owner || comment.is_observation_owner) && (
+                          <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center" style={{ textDecoration: "none" }} onClick={() => handleDeleteComment(comment.id)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#d3212f" opacity="0.45"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
+                          </button>
+                        )}
+                      </div>
                   </div>
                 </>
               )}
               {replyToCommentId === comment.id && localStorage.getItem("token") && (
-                <div className="d-flex gap-1 mt-2 mb-1">
+                <div className="d-flex gap-1 mt-2 mb-1" style={{ marginLeft: "1.5rem" }}>
                   <input
                     id="comment-input"
                     type="text"
                     className="form-control form-control-sm"
-                    style={{ fontSize: "0.78rem" }}
+                    style={{ fontSize: "0.78rem", backgroundColor: "#FEFDFD" }}
                     placeholder="Write a reply..."
                     value={commentContent}
                     onChange={(e) => setCommentContent(e.target.value)}

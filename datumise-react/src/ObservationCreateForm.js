@@ -369,7 +369,7 @@ function ObservationCreateForm(props) {
           <Form.Control ref={titleInputRef} className="d-none" as="textarea" name="title_hidden" value={title} onChange={handleChange} onBlur={handleTitleBlur} maxLength={150} autoComplete="off" />
 
           {title.trim() ? (
-            <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#f0ece4", border: "none", width: "336px", maxWidth: "100%", height: "168px", margin: "0 auto", overflow: "hidden" }}>
+            <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#FAF8F3", border: "none", width: "336px", maxWidth: "100%", height: "168px", margin: "0 auto", overflow: "hidden" }}>
               <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
                 Description
               </legend>
@@ -790,7 +790,7 @@ function ObservationCreateForm(props) {
           placeholder="Add description"
           maxLength={500}
           autoFocus
-          style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #b8d8ea calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ffaaaa 14px, #ffaaaa 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
+          style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #5a9fc0 calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ff6666 14px, #ff6666 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
         />
       </Modal.Body>
       <div className="survey-capture-actions">

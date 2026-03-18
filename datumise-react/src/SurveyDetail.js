@@ -50,6 +50,11 @@ const handleObsLike = async (e, obsId) => {
 };
 
 useEffect(() => {
+  document.body.style.backgroundColor = "#E2DDD3";
+  return () => { document.body.style.backgroundColor = ""; };
+}, []);
+
+useEffect(() => {
   if (!localStorage.getItem("token")) {
     setLoading(false);
     return;
@@ -241,7 +246,7 @@ const formatSurveyDuration = (startTime, _tick) => {
           {/* ---- Row 1: schedule + status + actions ---- */}
           <div className="d-flex align-items-center justify-content-between mb-1 gap-2 flex-wrap">
             <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
-              <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2 }}>
+              <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2, color: "#1A1D21" }}>
                 {(() => {
                   const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
                   const schedType = survey.schedule_type || "pending";
@@ -273,7 +278,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                 </span>
               )}
               {survey.session_count > 0 && (
-                <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                <span style={{ fontSize: "0.75rem", color: "#1A1D21" }}>
                   Session {survey.current_session_number ?? survey.session_count} of {survey.session_count}
                 </span>
               )}
@@ -311,7 +316,7 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
               {survey.status === "paused" && survey.is_surveyor && survey.assigned_to && (
                 <>
-                  <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume</button>
+                  <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume session</button>
                   <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
                 </>
               )}
@@ -338,20 +343,20 @@ const formatSurveyDuration = (startTime, _tick) => {
                 aria-label={showDetails ? "Hide survey details" : "Show survey details"}
                 style={{ opacity: 0.4 }}
               >
-                <img src="/datumise-down-chev.svg" alt="" width="16" height="16" style={{ transform: showDetails ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+                <img src="/datumise-down-chev.svg" alt="" width="16" height="16" style={{ transform: showDetails ? "rotate(180deg)" : "none", transition: "transform 0.2s ease", filter: "brightness(0) saturate(100%) invert(9%) sepia(10%) saturate(1000%) hue-rotate(180deg) brightness(95%)" }} />
               </button>
             </div>
           </div>
 
           {/* ---- Row 2: client / site ---- */}
-          <div className="text-muted mb-0" style={{ fontSize: "0.82rem", fontWeight: 500 }}>
+          <div className="mb-0" style={{ fontSize: "0.82rem", fontWeight: 500, color: "#1A1D21" }}>
             {survey.client && survey.site
               ? `${survey.client} \u2013 ${survey.site}`
               : survey.client || survey.site || "No client / site"}
           </div>
 
           {/* ---- Row 3: due + surveyor + client present + urgent ---- */}
-          <div className="d-flex align-items-center gap-2 text-muted mb-1 flex-wrap" style={{ fontSize: "0.78rem" }}>
+          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap" style={{ fontSize: "0.78rem", color: "#1A1D21" }}>
             {survey.due_by && (
               <>
                 <span>Due {new Date(survey.due_by).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -461,16 +466,16 @@ const formatSurveyDuration = (startTime, _tick) => {
                 <div
                   className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
                   onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
-                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px" }}
+                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", background: "#FAF8F3", borderRadius: "3px", border: "none" }}
                 >
                   {observation.image ? (
                     <img
                       src={observation.image}
                       alt=""
-                      style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }}
+                      style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "3px 0 0 3px", flexShrink: 0 }}
                     />
                   ) : (
-                    <div style={{ width: "80px", minHeight: "100%", borderRadius: "8px 0 0 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                    <div style={{ width: "80px", minHeight: "100%", borderRadius: "3px 0 0 3px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
                       <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
                     </div>
                   )}
@@ -481,8 +486,9 @@ const formatSurveyDuration = (startTime, _tick) => {
                       )}
                       {observation.title}
                     </div>
-                    <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0 }}>
-                  <span>#{survey.observations.length - index} of {survey.observations.length}</span>
+                    <div className="observation-row-meta d-flex align-items-center justify-content-start gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0, color: "#1A1D21" }}>
+                  <span style={{ fontStyle: "normal" }}>{new Date(observation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ fontStyle: "normal" }}>{survey.observations.length - index} of {survey.observations.length}</span>
                   <button
                     className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
                     style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
@@ -499,14 +505,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                     <img src="/datumise-comment.svg" alt="" width="11" height="11" style={{ opacity: 0.5 }} />
                     {observation.comment_count || 0}
                   </button>
-                  <span>
-                    {new Date(observation.created_at).toLocaleString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  <span>{new Date(observation.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                     </div>
                   </div>
                 </div>
