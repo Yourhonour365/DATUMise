@@ -230,7 +230,7 @@ class Observation(models.Model):
     blank=True,
     )
 
-    title = models.CharField(max_length=200, blank=True, default="")
+    title = models.CharField(max_length=500, blank=True, default="")
     description = models.TextField(blank=True)
     is_draft = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
