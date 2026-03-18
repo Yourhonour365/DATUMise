@@ -44,7 +44,11 @@ function ObservationCreateForm(props) {
   const pendingImageUrlRef = useRef(null);
   const isFirstPhotoModalRef = useRef(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
-  
+
+  useEffect(() => {
+    if (props.openNotesTrigger) setShowNotesModal(true);
+  }, [props.openNotesTrigger]);
+
   useEffect(() => {
     const restoreDraft = async () => {
     const savedDraft = localStorage.getItem("datumise-observation-draft");
@@ -721,7 +725,7 @@ function ObservationCreateForm(props) {
             type="button"
             className="capture-footer-btn"
             aria-label="Prior observations"
-            onClick={() => { setShowNotesModal(false); props.onShowObsList?.(); }}
+            onClick={() => { setShowNotesModal(false); props.onShowObsList?.({ notesOpen: true }); }}
             style={{ background: "#008080" }}
           >
             <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />

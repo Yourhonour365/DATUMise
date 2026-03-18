@@ -19,7 +19,9 @@ function SurveyCapture() {
   const [editingField, setEditingField] = useState(null); // "title" | "description" | null
   const [editValue, setEditValue] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const navStackRef = useRef([]); // navigation stack: each entry is {viewingIndex, editingField, editValue}
+  const navStackRef = useRef([]); // navigation stack: each entry is {viewingIndex, editingField, editValue, notesOpen}
+  const listOpenFromStateRef = useRef({});
+  const [openNotesTrigger, setOpenNotesTrigger] = useState(0);
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
@@ -194,7 +196,10 @@ function SurveyCapture() {
   // The list is a pure chooser overlay — opening/closing it does not change navigation state.
   // Picking an obs from the list pushes current state onto navStackRef.
   // The close button on an obs pops the stack to restore the previous state.
-  const openObsList = () => setShowObsListModal(true);
+  const openObsList = (fromState = {}) => {
+    listOpenFromStateRef.current = fromState;
+    setShowObsListModal(true);
+  };
   const closeObsList = () => setShowObsListModal(false);
 
   const handleStepBack = () => {
@@ -503,6 +508,7 @@ function SurveyCapture() {
                     setEditingField(prev.editingField);
                     setEditValue(prev.editValue);
                   }
+                  if (prev.notesOpen) setOpenNotesTrigger(t => t + 1);
                 } else {
                   setViewingIndex(null);
                 }
@@ -519,7 +525,8 @@ function SurveyCapture() {
               onReturn={goBack}
               onCaptureForPrevious={() => previewFileInputRef.current?.click()}
               observations={observations}
-              onShowObsList={() => openObsList()}
+              onShowObsList={(fromState) => openObsList(fromState)}
+              openNotesTrigger={openNotesTrigger}
               onCloseObsList={() => closeObsList()}
               obsListOpen={showObsListModal}
               onBecomeVisible={viewingIndex === null}
@@ -807,7 +814,8 @@ function SurveyCapture() {
                 className="observation-row"
                 style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem" }}
                 onClick={() => {
-                  navStackRef.current.push({ viewingIndex, editingField, editValue });
+                  navStackRef.current.push({ viewingIndex, editingField, editValue, notesOpen: listOpenFromStateRef.current.notesOpen || false });
+                  listOpenFromStateRef.current = {};
                   resetEditState();
                   setViewingIndex(idx);
                   setShowObsListModal(false);
