@@ -455,6 +455,11 @@ textarea.edit-field {
   height: calc(6 * 1.5 * 16px + 1rem);
 }
 
+/* Shared height for capture form image/description blocks */
+.obs-capture-block {
+  height: 168px;
+}
+
 @media (min-width: 768px) {
   .prior-obs-container {
     max-width: 680px;
@@ -470,6 +475,21 @@ textarea.edit-field {
   }
   .prior-obs-image {
     height: 460px;
+  }
+}
+
+/* Compact mode for very small screens (~320px wide) */
+@media (max-width: 359px) {
+  /* Issue 1: reduce action bar height */
+  .capture-footer-grid {
+    height: 60px;
+  }
+  /* Issue 2: reduce block heights so content fits without clipping */
+  .prior-obs-image {
+    height: 120px;
+  }
+  .obs-capture-block {
+    height: 120px;
   }
 }
 

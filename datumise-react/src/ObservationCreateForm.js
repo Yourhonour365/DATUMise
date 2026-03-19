@@ -315,6 +315,7 @@ function ObservationCreateForm(props) {
             />
 
             <div
+                  className="obs-capture-block"
                   onClick={() => {
                     if (imagePreview) {
                       isFirstPhotoModalRef.current = false;
@@ -332,7 +333,6 @@ function ObservationCreateForm(props) {
                   style={{
                     width: "336px",
                     maxWidth: "100%",
-                    height: "168px",
                     border: !imagePreview && title.trim() ? "4px solid #FF7518" : "none",
                     borderRadius: "8px",
                     display: "flex",
@@ -369,7 +369,7 @@ function ObservationCreateForm(props) {
           <Form.Control ref={titleInputRef} className="d-none" as="textarea" name="title_hidden" value={title} onChange={handleChange} onBlur={handleTitleBlur} maxLength={150} autoComplete="off" />
 
           {title.trim() ? (
-            <fieldset className="rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#FAF8F3", border: "none", width: "336px", maxWidth: "100%", height: "168px", margin: "0 auto", overflow: "hidden" }}>
+            <fieldset className="obs-capture-block rounded pt-0 pb-1 px-2 d-flex flex-column" style={{ backgroundColor: "#FAF8F3", border: "none", width: "336px", maxWidth: "100%", margin: "0 auto", overflow: "hidden" }}>
               <legend className="float-none w-auto px-2 fs-6 fw-bold text-dark mb-0 pt-0">
                 Description
               </legend>
@@ -383,11 +383,11 @@ function ObservationCreateForm(props) {
             </fieldset>
           ) : (
             <div
+              className="obs-capture-block"
               onClick={() => setShowNotesModal(true)}
               style={{
                 width: "336px",
                 maxWidth: "100%",
-                height: "168px",
                 borderRadius: "8px",
                 display: "flex",
                 alignItems: "center",

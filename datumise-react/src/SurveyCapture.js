@@ -550,11 +550,11 @@ function SurveyCapture() {
                 </div>
               ) : (
                 <div
+                  className="obs-capture-block"
                   onClick={() => { setEditingField("title"); setEditValue(""); }}
                   style={{
                     width: "336px",
                     maxWidth: "100%",
-                    height: "168px",
                     borderRadius: "8px",
                     display: "flex",
                     alignItems: "center",
