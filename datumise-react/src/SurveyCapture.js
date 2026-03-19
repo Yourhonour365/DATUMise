@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "react-bootstrap";
 import heic2any from "heic2any";
-import { thumbnailUrl, detailMobileUrl, previewUrl } from "./imageUtils";
+import { detailMobileUrl, previewUrl } from "./imageUtils";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
