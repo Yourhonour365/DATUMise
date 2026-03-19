@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import api from "./api/api";
+import { thumbnailUrl } from "./imageUtils";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
 import { useFilters } from "./FilterContext";
@@ -273,8 +274,9 @@ function ObservationList() {
             >
               {obs.image ? (
                 <img
-                  src={obs.image}
+                  src={thumbnailUrl(obs)}
                   alt=""
+                  loading="lazy"
                   style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "8px 0 0 8px", flexShrink: 0 }}
                 />
               ) : (

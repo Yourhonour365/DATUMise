@@ -1,7 +1,36 @@
+import re
 from rest_framework import serializers
 from .models import Observation, Comment, Survey, Client, ClientSite, Profile
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from django.contrib.auth.models import User
+
+
+CLOUDINARY_UPLOAD_RE = re.compile(
+    r"(https://res\.cloudinary\.com/[^/]+/image/upload/)(.*)"
+)
+
+
+def cloudinary_transform(url, transformation):
+    """Insert transformation into a Cloudinary upload URL.
+    Returns the original URL unchanged for non-Cloudinary URLs."""
+    if not url:
+        return None
+    url_str = str(url)
+    match = CLOUDINARY_UPLOAD_RE.match(url_str)
+    if not match:
+        return url_str
+    prefix, rest = match.groups()
+    return f"{prefix}{transformation}/{rest}"
+
+
+def _image_url(obj):
+    """Return URL string for an Observation image field, or None."""
+    if not obj.image:
+        return None
+    try:
+        return obj.image.url
+    except Exception:
+        return None
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
@@ -112,6 +141,10 @@ class ObservationSerializer(serializers.ModelSerializer):
     site_name = serializers.SerializerMethodField()
     site_postcode = serializers.SerializerMethodField()
     survey_status = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
+    detail_mobile_url = serializers.SerializerMethodField()
+    detail_desktop_url = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
 
     def get_survey_name(self, obj):
         return str(obj.survey) if obj.survey else None
@@ -156,7 +189,25 @@ class ObservationSerializer(serializers.ModelSerializer):
             "can_edit",
             "comment_likes_count",
             "survey_status",
+            "thumbnail_url",
+            "detail_mobile_url",
+            "detail_desktop_url",
+            "preview_url",
         ]
+
+    def get_thumbnail_url(self, obj):
+        return cloudinary_transform(_image_url(obj), "w_320,f_auto,q_auto")
+
+    def get_detail_mobile_url(self, obj):
+        return cloudinary_transform(_image_url(obj), "w_900,f_auto,q_auto")
+
+    def get_detail_desktop_url(self, obj):
+        return cloudinary_transform(
+            _image_url(obj), "w_1400,f_auto,q_auto"
+        )
+
+    def get_preview_url(self, obj):
+        return cloudinary_transform(_image_url(obj), "w_2000,f_auto,q_auto")
 
     def get_is_owner(self, obj):
         request = self.context.get("request")

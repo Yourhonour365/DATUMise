@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "react-bootstrap";
 import heic2any from "heic2any";
+import { thumbnailUrl, detailMobileUrl, previewUrl } from "./imageUtils";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
@@ -252,7 +253,7 @@ function SurveyCapture() {
     if (saved.previewImageOpen && saved.viewingIndex !== undefined) {
       const obs = observations[saved.viewingIndex];
       if (obs?.image) {
-        setPreviewImageUrl(obs.image);
+        setPreviewImageUrl(previewUrl(obs));
         setPreviewImageChanged(false);
         setHasPendingPreview(false);
         setShowPreviewImageModal(true);
@@ -456,11 +457,11 @@ function SurveyCapture() {
                 className="prior-obs-image"
                 onClick={() => {
                   if (viewedObservation.image) {
-                    originalPreviewUrlRef.current = viewedObservation.image;
+                    originalPreviewUrlRef.current = previewUrl(viewedObservation);
                     pendingPreviewFileRef.current = null;
                     pendingPreviewUrlRef.current = null;
                     setHasPendingPreview(false);
-                    setPreviewImageUrl(viewedObservation.image);
+                    setPreviewImageUrl(previewUrl(viewedObservation));
                     setPreviewImageChanged(false);
                     setShowPreviewImageModal(true);
                   } else {
@@ -478,7 +479,7 @@ function SurveyCapture() {
                 }}
               >
                 {viewedObservation.image ? (
-                  <img src={viewedObservation.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={detailMobileUrl(viewedObservation)} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <div className="d-flex flex-column align-items-center gap-2">
                     <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>Awaiting image</span>
@@ -767,7 +768,7 @@ function SurveyCapture() {
                     setViewingIndex(newIdx);
                     const newObs = observations[newIdx];
                     if (newObs?.image) {
-                      setPreviewImageUrl(newObs.image);
+                      setPreviewImageUrl(previewUrl(newObs));
                       setPreviewImageChanged(false);
                     } else {
                       setShowPreviewImageModal(false);
@@ -794,7 +795,7 @@ function SurveyCapture() {
                     setViewingIndex(newIdx);
                     const newObs = observations[newIdx];
                     if (newObs?.image) {
-                      setPreviewImageUrl(newObs.image);
+                      setPreviewImageUrl(previewUrl(newObs));
                       setPreviewImageChanged(false);
                     } else {
                       setShowPreviewImageModal(false);
@@ -952,9 +953,10 @@ function SurveyCapture() {
             <p className="text-muted text-center py-3">No observations yet.</p>
           ) : (
             observations.map((obs, idx) => {
-              const imgSrc = obs.image && obs.image.startsWith("/")
-                ? `${process.env.REACT_APP_API_URL || "http://127.0.0.1:8000"}${obs.image}`
-                : obs.image;
+              const imgSrc = obs.thumbnail_url
+                || (obs.image && obs.image.startsWith("/")
+                  ? `${process.env.REACT_APP_API_URL || "http://127.0.0.1:8000"}${obs.image}`
+                  : obs.image);
               return (
               <div
                 key={obs.id}
@@ -971,7 +973,7 @@ function SurveyCapture() {
               >
                 <div style={{ position: "relative", width: "80px", flexShrink: 0 }}>
                   {imgSrc ? (
-                    <img src={imgSrc} alt="" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "2px 0 0 2px" }} />
+                    <img src={imgSrc} alt="" loading="lazy" style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "2px 0 0 2px" }} />
                   ) : (
                     <div style={{ width: "80px", height: "80px", borderRadius: "2px 0 0 2px", display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
                       <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>

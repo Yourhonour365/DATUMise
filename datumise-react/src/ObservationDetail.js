@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Form, Alert, Modal } from "react-bootstrap";
 import api from "./api/api";
+import { thumbnailUrl, previewUrl } from "./imageUtils";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
 
@@ -216,7 +217,7 @@ function ObservationDetail() {
       <div style={{ position: "relative" }}>
         {observation.image ? (
           <img
-            src={observation.image}
+            src={thumbnailUrl(observation)}
             alt={observation.title}
             className="obs-detail-img"
             onClick={() => setShowImageModal(true)}
@@ -495,7 +496,7 @@ function ObservationDetail() {
             )}
             <Modal.Body className="text-center p-0" style={{ background: "#687374", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {observation.image ? (
-                <img src={observation.image} alt={observation.title} className="img-fluid" style={{ maxHeight: obsIds.length > 0 ? "calc(100vh - 128px)" : "calc(100vh - 80px)", objectFit: "contain", width: "100%" }} />
+                <img src={previewUrl(observation)} alt={observation.title} className="img-fluid" style={{ maxHeight: obsIds.length > 0 ? "calc(100vh - 128px)" : "calc(100vh - 80px)", objectFit: "contain", width: "100%" }} />
               ) : (
                 <p className="text-muted fst-italic">No image yet.</p>
               )}

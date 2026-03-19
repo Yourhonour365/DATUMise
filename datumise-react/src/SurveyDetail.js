@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import api from "./api/api";
+import { thumbnailUrl } from "./imageUtils";
 import ObservationCreateForm from "./ObservationCreateForm";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
@@ -470,8 +471,9 @@ const formatSurveyDuration = (startTime, _tick) => {
                 >
                   {observation.image ? (
                     <img
-                      src={observation.image}
+                      src={thumbnailUrl(observation)}
                       alt=""
+                      loading="lazy"
                       style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "3px 0 0 3px", flexShrink: 0 }}
                     />
                   ) : (
