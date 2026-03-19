@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "react-bootstrap";
 import heic2any from "heic2any";
-import { detailMobileUrl, previewUrl } from "./imageUtils";
+import { detailMobileUrl, lightboxUrl } from "./imageUtils";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
@@ -253,7 +253,7 @@ function SurveyCapture() {
     if (saved.previewImageOpen && saved.viewingIndex !== undefined) {
       const obs = observations[saved.viewingIndex];
       if (obs?.image) {
-        setPreviewImageUrl(previewUrl(obs));
+        setPreviewImageUrl(lightboxUrl(obs));
         setPreviewImageChanged(false);
         setHasPendingPreview(false);
         setShowPreviewImageModal(true);
@@ -457,11 +457,11 @@ function SurveyCapture() {
                 className="prior-obs-image"
                 onClick={() => {
                   if (viewedObservation.image) {
-                    originalPreviewUrlRef.current = previewUrl(viewedObservation);
+                    originalPreviewUrlRef.current = lightboxUrl(viewedObservation);
                     pendingPreviewFileRef.current = null;
                     pendingPreviewUrlRef.current = null;
                     setHasPendingPreview(false);
-                    setPreviewImageUrl(previewUrl(viewedObservation));
+                    setPreviewImageUrl(lightboxUrl(viewedObservation));
                     setPreviewImageChanged(false);
                     setShowPreviewImageModal(true);
                   } else {
@@ -768,7 +768,7 @@ function SurveyCapture() {
                     setViewingIndex(newIdx);
                     const newObs = observations[newIdx];
                     if (newObs?.image) {
-                      setPreviewImageUrl(previewUrl(newObs));
+                      setPreviewImageUrl(lightboxUrl(newObs));
                       setPreviewImageChanged(false);
                     } else {
                       setShowPreviewImageModal(false);
@@ -795,7 +795,7 @@ function SurveyCapture() {
                     setViewingIndex(newIdx);
                     const newObs = observations[newIdx];
                     if (newObs?.image) {
-                      setPreviewImageUrl(previewUrl(newObs));
+                      setPreviewImageUrl(lightboxUrl(newObs));
                       setPreviewImageChanged(false);
                     } else {
                       setShowPreviewImageModal(false);

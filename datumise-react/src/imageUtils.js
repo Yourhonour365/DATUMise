@@ -17,3 +17,10 @@ export function detailDesktopUrl(obs) {
 export function previewUrl(obs) {
   return obs?.preview_url || obs?.image || null;
 }
+
+export function lightboxUrl(obs) {
+  const w = window.innerWidth;
+  if (w < 768) return obs?.detail_mobile_url || obs?.image || null;
+  if (w < 1200) return obs?.detail_desktop_url || obs?.image || null;
+  return obs?.preview_url || obs?.image || null;
+}
