@@ -387,6 +387,9 @@ function SurveyList() {
           </button>
         </div>
       )}
+      <div className="d-md-none">
+        <AddButton to="/surveys/create" />
+      </div>
       <ReturnButton to={clientFilter ? `/clients/${clientFilter}` : "/"} />
       <BackToTop />
     </div>
