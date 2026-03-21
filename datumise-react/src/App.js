@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import api from "./api/api";
 import ObservationDetail from "./ObservationDetail";
 import ObservationList from "./ObservationList";
@@ -203,27 +203,13 @@ function AppLayout() {
         </Link>
         {isLoggedIn && (
           <>
-            <Link className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>
-              Clients
-            </Link>
-            <Link className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>
-              Filters
-            </Link>
-            <Link className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>
-              Observations
-            </Link>
-            <Link className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>
-              Settings
-            </Link>
-            <Link className="nav-link ms-3" to="/sites" style={{ color: "#faf6ef" }}>
-              Sites
-            </Link>
-            <Link className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>
-              Surveys
-            </Link>
-            <Link className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>
-              Team
-            </Link>
+            <NavLink className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>Clients</NavLink>
+            <NavLink className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>Filters</NavLink>
+            <NavLink className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>Observations</NavLink>
+            <NavLink className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>Settings</NavLink>
+            <NavLink className="nav-link ms-3" to="/sites" style={{ color: "#faf6ef" }}>Sites</NavLink>
+            <NavLink className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>Surveys</NavLink>
+            <NavLink className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>Team</NavLink>
           </>
         )}
         <div className="ms-auto">
@@ -274,27 +260,13 @@ function AppLayout() {
 
           {menuOpen && (
             <div className="app-nav-dropdown">
-              <Link to="/clients" className="app-nav-dropdown-item">
-                Clients
-              </Link>
-              <Link to="/filters" className="app-nav-dropdown-item">
-                Filters
-              </Link>
-              <Link to="/observations" className="app-nav-dropdown-item">
-                Observations
-              </Link>
-              <Link to="/settings" className="app-nav-dropdown-item">
-                Settings
-              </Link>
-              <Link to="/sites" className="app-nav-dropdown-item">
-                Sites
-              </Link>
-              <Link to="/surveys" className="app-nav-dropdown-item">
-                Surveys
-              </Link>
-              <Link to="/team" className="app-nav-dropdown-item">
-                Team
-              </Link>
+              <NavLink to="/clients" className="app-nav-dropdown-item">Clients</NavLink>
+              <NavLink to="/filters" className="app-nav-dropdown-item">Filters</NavLink>
+              <NavLink to="/observations" className="app-nav-dropdown-item">Observations</NavLink>
+              <NavLink to="/settings" className="app-nav-dropdown-item">Settings</NavLink>
+              <NavLink to="/sites" className="app-nav-dropdown-item">Sites</NavLink>
+              <NavLink to="/surveys" className="app-nav-dropdown-item">Surveys</NavLink>
+              <NavLink to="/team" className="app-nav-dropdown-item">Team</NavLink>
               <div className="app-nav-dropdown-divider" />
               {isLoggedIn ? (
                 <button

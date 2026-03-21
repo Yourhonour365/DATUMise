@@ -7,6 +7,17 @@ import { detailMobileUrl, lightboxUrl } from "./imageUtils";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
 
+// Statuses in which a survey session is actively in progress.
+// "live" is the legacy/compat value; "assigned" is the stored DB value
+// returned once the backend compatibility layer is removed.
+const ACTIVE_SESSION_STATUSES = ["live", "assigned"];
+
+// Session-lifecycle PATCH value for pausing.
+// "paused" is a legacy string required because views.py perform_update
+// triggers session pause only for requested_status == "paused".
+// PHASE 6B: Replace with PATCH /api/sessions/:id/ { status: "paused" }.
+const PATCH_PAUSE_SESSION = "paused";
+
 function SurveyCapture() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -34,6 +45,8 @@ function SurveyCapture() {
   const previewFileInputRef = useRef(null);
   const modalClosedAtRef = useRef(0);
   const [showObsListModal, setShowObsListModal] = useState(false);
+  const [listSelectMode, setListSelectMode] = useState(false);
+  const [listSelectedObs, setListSelectedObs] = useState(new Set());
   const [copiedToDraft, setCopiedToDraft] = useState(false);
   const [draftHasTitle, setDraftHasTitle] = useState(false);
   const [draftHasImage, setDraftHasImage] = useState(false);
@@ -53,6 +66,11 @@ function SurveyCapture() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    document.body.style.backgroundColor = "#E2DDD3";
+    return () => { document.body.style.backgroundColor = ""; };
+  }, []);
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -91,11 +109,11 @@ function SurveyCapture() {
   // Auto-save draft and auto-pause when user backgrounds or closes the app
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && survey?.status === "live") {
+      if (document.visibilityState === "hidden" && ACTIVE_SESSION_STATUSES.includes(survey?.status)) {
         if (!observationsRef.current.some((o) => o.is_draft)) {
           autoSaveDraftRef.current?.(); // fire and forget
         }
-        api.patch(`/api/surveys/${id}/`, { status: "paused" }).catch(() => {});
+        api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION }).catch(() => {});
       }
     };
     const handleBeforeUnload = () => {
@@ -158,7 +176,7 @@ function SurveyCapture() {
       localStorage.removeItem(`datumise-capture-pos-${id}`);
     }
     try {
-      await api.patch(`/api/surveys/${id}/`, { status: "paused" });
+      await api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION });
     } catch (err) {
       console.log(err);
     }
@@ -180,7 +198,7 @@ function SurveyCapture() {
   };
 
   const closeSurvey = () => {
-    if (survey?.status === "live") {
+    if (ACTIVE_SESSION_STATUSES.includes(survey?.status)) {
       executePause();
     } else {
       goBack();
@@ -946,7 +964,64 @@ function SurveyCapture() {
         contentClassName="rounded-1"
       >
         <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem" }}>Observations ({observations.length})</Modal.Title>
+          <Modal.Title style={{ fontSize: "1rem" }}>
+            <div className="d-flex align-items-center gap-2">
+              <span>Observations ({observations.length})</span>
+              <div className="d-flex align-items-center gap-2" style={{ marginLeft: 8 }}>
+                {listSelectMode && listSelectedObs.size > 0 && (
+                  <>
+                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                      onClick={async () => {
+                        const obsTexts = observations.filter(o => listSelectedObs.has(o.id)).map(o => o.title);
+                        try {
+                          await Promise.all(obsTexts.map(title => api.post("/api/observations/", { survey: survey.id, title, is_draft: true })));
+                          setListSelectMode(false); setListSelectedObs(new Set());
+                          const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
+                          alert(`${obsTexts.length} draft${obsTexts.length !== 1 ? "s" : ""} created.`);
+                        } catch (err) { console.error(err); alert("Failed."); }
+                      }}>
+                      <img src="/draft.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
+                      Drafts ({listSelectedObs.size})
+                    </button>
+                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                      onClick={async () => {
+                        const withImages = observations.filter(o => listSelectedObs.has(o.id) && o.image);
+                        if (!withImages.length) { alert("No images."); return; }
+                        try {
+                          await Promise.all(withImages.map(o => api.post("/api/observations/", { survey: survey.id, title: "", image: o.image, is_draft: true })));
+                          setListSelectMode(false); setListSelectedObs(new Set());
+                          const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
+                          alert(`${withImages.length} photo draft${withImages.length !== 1 ? "s" : ""} created.`);
+                        } catch (err) { console.error(err); alert("Failed."); }
+                      }}>
+                      <img src="/clipboard.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
+                      Photo ({observations.filter(o => listSelectedObs.has(o.id) && o.image).length})
+                    </button>
+                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#c0392b", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                      onClick={async () => {
+                        if (!window.confirm(`Delete ${listSelectedObs.size} observation${listSelectedObs.size !== 1 ? "s" : ""}?`)) return;
+                        try {
+                          await Promise.all([...listSelectedObs].map(id => api.delete(`/api/observations/${id}/`)));
+                          setListSelectMode(false); setListSelectedObs(new Set());
+                          const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
+                        } catch (err) { console.error(err); alert("Failed."); }
+                      }}>
+                      Delete ({listSelectedObs.size})
+                    </button>
+                  </>
+                )}
+                <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                  style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: listSelectMode ? "#0006b1" : "#db440a", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                  onClick={() => { setListSelectMode(!listSelectMode); if (listSelectMode) setListSelectedObs(new Set()); }}>
+                  <img src="/use.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
+                  {listSelectMode ? `Select (${listSelectedObs.size})` : "Select"}
+                </button>
+              </div>
+            </div>
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem", backgroundColor: "#E2DDD3" }}>
           {observations.length === 0 ? (
@@ -962,8 +1037,15 @@ function SurveyCapture() {
                 key={obs.id}
                 id={`capture-obs-${idx}`}
                 className="observation-row"
-                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem", border: "none", borderRadius: "2px" }}
-                onClick={() => {
+                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem", border: "none", borderRadius: "2px", position: "relative" }}
+                onClick={(e) => {
+                  if (listSelectMode) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    if (e.clientX - rect.left > rect.width * 0.8) {
+                      setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else next.add(obs.id); return next; });
+                      return;
+                    }
+                  }
                   navStackRef.current.push({ viewingIndex, editingField, editValue, notesOpen: listOpenFromStateRef.current.notesOpen || false, previewImageOpen: listOpenFromStateRef.current.previewImageOpen || false, fromList: true });
                   resetEditState();
                   setViewingIndex(idx);
@@ -994,6 +1076,12 @@ function SurveyCapture() {
                     </span>
                   </div>
                 </div>
+                {listSelectMode && (
+                  <div onClick={(e) => { e.stopPropagation(); setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else next.add(obs.id); return next; }); }}
+                    style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0006b1", backgroundColor: listSelectedObs.has(obs.id) ? "#0006b1" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                    {listSelectedObs.has(obs.id) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
+                  </div>
+                )}
               </div>
               );
             }))

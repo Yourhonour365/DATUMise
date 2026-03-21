@@ -10,11 +10,20 @@ function ClientEditForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [siteCount, setSiteCount] = useState(null);
+  const [sitePrompt, setSitePrompt] = useState(false);
+  const [openSections, setOpenSections] = useState({ details: true, address: true, contact: true, status: true });
+  const toggle = (key) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     const fetchClient = async () => {
       try {
-        const response = await api.get(`/api/clients/${id}/`);
+        const [response, sitesRes] = await Promise.all([
+          api.get(`/api/clients/${id}/`),
+          api.get(`/api/sites/?client=${id}`),
+        ]);
+        const sites = sitesRes.data.results || sitesRes.data;
+        setSiteCount(Array.isArray(sites) ? sites.length : 0);
         const c = response.data;
         setForm({
           name: c.name || "",
@@ -23,7 +32,11 @@ function ClientEditForm() {
           contact_name: c.contact_name || "",
           contact_email: c.contact_email || "",
           contact_phone: c.contact_phone || "",
-          billing_address: c.billing_address || "",
+          billing_line_1: (c.billing_address || "").split("\n")[0] || "",
+          billing_line_2: (c.billing_address || "").split("\n")[1] || "",
+          billing_city: (c.billing_address || "").split("\n")[2] || "",
+          billing_county: (c.billing_address || "").split("\n")[3] || "",
+          billing_postcode: (c.billing_address || "").split("\n")[4] || "",
           status: c.status || "active",
         });
       } catch (err) {
@@ -41,7 +54,14 @@ function ClientEditForm() {
     setSaving(true);
     setError("");
     try {
-      await api.put(`/api/clients/${id}/`, form);
+      const { billing_line_1, billing_line_2, billing_city, billing_county, billing_postcode, ...rest } = form;
+      const billing_address = [billing_line_1, billing_line_2, billing_city, billing_county, billing_postcode].filter(Boolean).join("\n");
+      await api.put(`/api/clients/${id}/`, { ...rest, billing_address });
+      if (siteCount === 0) {
+        setSitePrompt(true);
+        setSaving(false);
+        return;
+      }
       navigate(`/clients/${id}`);
     } catch (err) {
       console.error("Failed to update client:", err);
@@ -74,53 +94,115 @@ function ClientEditForm() {
           &larr; Back to Clients
         </Link>
       </div>
-      <h5 className="fw-bold mb-3 d-none d-md-block">Edit Client</h5>
+      <div className="d-flex justify-content-between align-items-center mb-3 d-none d-md-flex">
+        <h5 className="fw-bold mb-0">Edit Client</h5>
+        <div className="d-flex gap-2">
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setOpenSections({ details: true, address: true, contact: true, status: true })}>Open all</button>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setOpenSections({ details: false, address: false, contact: false, status: false })}>Close all</button>
+        </div>
+      </div>
 
       {error && <p className="text-danger" style={{ fontSize: "0.85rem" }}>{error}</p>}
 
       <form onSubmit={handleSubmit}>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.name.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Name</legend>
-          <input type="text" className="edit-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.client_type ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Client type</legend>
-          <select className="edit-field" value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })}>
-            <option value="">-- Select --</option>
-            <option value="commercial">Commercial</option>
-            <option value="local_authority">Local authority</option>
-            <option value="education">Education</option>
-            <option value="retail">Retail</option>
-            <option value="residential">Residential portfolio</option>
-          </select>
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.account_manager.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Account manager</legend>
-          <input type="text" className="edit-field" value={form.account_manager} onChange={(e) => setForm({ ...form, account_manager: e.target.value })} />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_name.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Contact name</legend>
-          <input type="text" className="edit-field" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_email.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Contact email</legend>
-          <input type="email" className="edit-field" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.contact_phone.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Contact phone</legend>
-          <input type="text" className="edit-field" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-2" style={{ backgroundColor: form.billing_address.trim() ? "#f0ece4" : "#ecf0f1" }}>
-          <legend className="edit-legend">Billing address</legend>
-          <textarea className="edit-field" rows="3" value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} />
-        </fieldset>
-        <fieldset className="edit-fieldset mb-3" style={{ backgroundColor: "#f0ece4" }}>
-          <legend className="edit-legend">Status</legend>
-          <select className="edit-field" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-          </select>
-        </fieldset>
+        {/* ---- Client Details ---- */}
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("details")}>
+            <span className={`section-chevron${openSections.details ? " section-chevron--open" : ""}`}></span>
+            Client Details
+          </p>
+          {openSections.details && <div className="card-stack">
+            <div className="field-block" style={{ backgroundColor: form.name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div className="field-label">Name</div>
+              <input type="text" className="edit-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="field-block" style={{ backgroundColor: form.client_type ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div className="field-label">Client type</div>
+              <div className="edit-field d-flex gap-4 flex-wrap">
+                {[{ value: "commercial", label: "Commercial" }, { value: "local_authority", label: "Local authority" }, { value: "education", label: "Education" }, { value: "retail", label: "Retail" }, { value: "residential", label: "Residential portfolio" }].map(({ value, label }) => (
+                  <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
+                    <input type="radio" name="client_type" value={value} checked={form.client_type === value} onChange={() => setForm({ ...form, client_type: value })} />
+                    <span style={{ fontSize: "0.9rem" }}>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>}
+        </div>
+
+        {/* ---- Client Address ---- */}
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("address")}>
+            <span className={`section-chevron${openSections.address ? " section-chevron--open" : ""}`}></span>
+            Client Address
+          </p>
+          {openSections.address && <div className="card-stack">
+            <div className="field-block" style={{ backgroundColor: (form.billing_line_1 || form.billing_city || form.billing_postcode) ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                <div className="field-label" style={{ minWidth: "4.5rem" }}>Line 1</div>
+                <input type="text" className="edit-field" value={form.billing_line_1} onChange={(e) => setForm({ ...form, billing_line_1: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                <div className="field-label" style={{ minWidth: "4.5rem" }}>Line 2</div>
+                <input type="text" className="edit-field" value={form.billing_line_2} onChange={(e) => setForm({ ...form, billing_line_2: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                <div className="field-label" style={{ minWidth: "4.5rem" }}>City</div>
+                <input type="text" className="edit-field" value={form.billing_city} onChange={(e) => setForm({ ...form, billing_city: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+                <div className="field-label" style={{ minWidth: "4.5rem" }}>County</div>
+                <input type="text" className="edit-field" value={form.billing_county} onChange={(e) => setForm({ ...form, billing_county: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="field-label" style={{ minWidth: "4.5rem" }}>Post code</div>
+                <input type="text" className="edit-field" value={form.billing_postcode} onChange={(e) => setForm({ ...form, billing_postcode: e.target.value })} />
+              </div>
+            </div>
+          </div>}
+        </div>
+
+        {/* ---- Client Contact ---- */}
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("contact")}>
+            <span className={`section-chevron${openSections.contact ? " section-chevron--open" : ""}`}></span>
+            Client Contact
+          </p>
+          {openSections.contact && <div className="card-stack">
+            <div className="field-block" style={{ backgroundColor: form.contact_name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div className="field-label">Name</div>
+              <input type="text" className="edit-field" value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
+            </div>
+            <div className="field-block" style={{ backgroundColor: form.contact_email.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div className="field-label">Email</div>
+              <input type="email" className="edit-field" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
+            </div>
+            <div className="field-block" style={{ backgroundColor: form.contact_phone.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+              <div className="field-label">Phone</div>
+              <input type="text" className="edit-field" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
+            </div>
+          </div>}
+        </div>
+
+        {/* ---- Client Status ---- */}
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("status")}>
+            <span className={`section-chevron${openSections.status ? " section-chevron--open" : ""}`}></span>
+            Client Status
+          </p>
+          {openSections.status && <div className="card-stack">
+            <div className="field-block" style={{ backgroundColor: "#f0ece4", width: "fit-content" }}>
+              <div className="edit-field d-flex gap-4">
+                {[{ value: "active", label: "Active" }, { value: "archived", label: "Archived" }].map(({ value, label }) => (
+                  <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
+                    <input type="radio" name="status" value={value} checked={form.status === value} onChange={() => setForm({ ...form, status: value })} />
+                    <span style={{ fontSize: "0.9rem" }}>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>}
+        </div>
 
         <div className="d-flex justify-content-center gap-4 mt-3">
           <button
@@ -134,7 +216,7 @@ function ClientEditForm() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/clients/${id}`)}
+            onClick={() => { if (siteCount === 0) { setSitePrompt(true); } else { navigate(`/clients/${id}`); } }}
             className="capture-action-btn"
             aria-label="Cancel"
             style={{ background: "#dce7fa", border: "none" }}
@@ -144,6 +226,22 @@ function ClientEditForm() {
         </div>
       </form>
 
+      {sitePrompt && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: "1.5rem 2rem", maxWidth: 400, textAlign: "center" }}>
+            <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>No sites added</p>
+            <p style={{ fontSize: "0.88rem", color: "#555", marginBottom: "1.25rem" }}>Please add at least one site to this client's portfolio.</p>
+            <div className="d-flex justify-content-center gap-3">
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/clients/${id}`)}>
+                Save without site
+              </button>
+              <button type="button" className="btn btn-success btn-sm" onClick={() => navigate(`/clients/${id}/sites/new`)}>
+                Add site
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

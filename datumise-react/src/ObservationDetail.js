@@ -6,6 +6,12 @@ import { thumbnailUrl, lightboxUrl } from "./imageUtils";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
 
+// Session-lifecycle PATCH value for resuming from observation detail.
+// "live" is a legacy string required because views.py perform_update
+// triggers session resume only for requested_status == "live".
+// PHASE 6B: Replace with dedicated session resume endpoint.
+const PATCH_START_SESSION = "live";
+
 function ObservationDetail() {
   const { id } = useParams();
   const location = useLocation();
@@ -232,14 +238,14 @@ function ObservationDetail() {
             </span>
           </div>
         )}
-        {location.state?.fromSurvey && observation.survey_status === "paused" && observation.is_owner && (
+        {location.state?.fromSurvey && observation.survey_current_session_status === "paused" && observation.is_owner && (
           <button
             type="button"
             className="w-100"
             style={{ position: "absolute", bottom: 0, left: 0, background: "rgba(219, 68, 10, 0.9)", color: "#faf6ef", border: "none", padding: "0.6rem", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
             onClick={async () => {
               try {
-                await api.patch(`/api/surveys/${location.state.surveyId}/`, { status: "live" });
+                await api.patch(`/api/surveys/${location.state.surveyId}/`, { status: PATCH_START_SESSION });
                 navigate(`/surveys/${location.state.surveyId}/capture`);
               } catch (err) {
                 console.error("Failed to resume survey:", err);

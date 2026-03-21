@@ -7,6 +7,25 @@ import { useFilters } from "./FilterContext";
 import FilterAppliedCard from "./FilterAppliedCard";
 import AddButton from "./AddButton";
 
+// Session-lifecycle PATCH value for starting/resuming.
+// "live" is a legacy string required because views.py perform_update
+// triggers session create/resume only for requested_status == "live".
+// PHASE 6B: Replace with dedicated session endpoints.
+const PATCH_START_SESSION = "live";
+
+/* ------------------------------------------------------------------ */
+/*  Status filter translation: maps legacy filter ids to stored DB    */
+/*  values. Handles saved filters that pre-date the Phase 3 migration.*/
+/* ------------------------------------------------------------------ */
+const STATUS_FILTER_TRANSLATION = {
+  planned: "open",
+  live: "assigned",
+  paused: "assigned",
+  submitted: "assigned",
+  missed: "archived",
+  cancelled: "archived",
+};
+
 /* ------------------------------------------------------------------ */
 /*  Helper: build LINE 1 (schedule / due / urgency / client presence) */
 /* ------------------------------------------------------------------ */
@@ -15,66 +34,47 @@ function formatScheduleLine(survey) {
 
   const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
   const due = survey.due_by ? new Date(survey.due_by) : null;
-  const schedType = survey.schedule_type || "pending";
+  const visitReq = survey.visit_requirement;
+  const schedStatus = survey.schedule_status;
 
-  const isFinished = ["submitted"].includes(survey.status);
+  const isFinished = (
+    ["submitted", "completed", "missed", "cancelled", "archived"].includes(survey.status) ||
+    (survey.status === "assigned" && survey.current_session_status === null)
+  );
   const isOverdue = due && due < now && !isFinished;
-
-  const today = now.toDateString();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const isDueToday = due && due.toDateString() === today;
-  const isDueTomorrow = due && due.toDateString() === tomorrow.toDateString();
 
   let date = "\u2014";
   let time = "";
-  let scheduleLabel = "";
 
   if (isOverdue) {
     date = "Overdue";
-  } else if (schedType === "scheduled" && scheduled) {
-    const d = scheduled.getDate();
-    const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
-    const y = String(scheduled.getFullYear()).slice(2);
-    date = `${d} ${m} '${y}`;
-    const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
-    if (hasTime) {
-      time = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    }
-  } else if (schedType === "provisional" && scheduled) {
-    const d = scheduled.getDate();
-    const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
-    const y = String(scheduled.getFullYear()).slice(2);
-    date = `${d} ${m} '${y}`;
-    const hasTime2 = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
-    if (hasTime2) {
-      time = scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    }
-    scheduleLabel = "Provisional";
-  } else if (schedType === "self_scheduling") {
-    scheduleLabel = "Self-scheduled";
   } else if (scheduled) {
     const d = scheduled.getDate();
     const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
     const y = String(scheduled.getFullYear()).slice(2);
     date = `${d} ${m} '${y}`;
-    scheduleLabel = "Pending";
-  } else {
-    scheduleLabel = "Pending";
-  }
-
-  let dueText = "";
-  if (!isOverdue) {
-    if (isDueToday) dueText = "Due today";
-    else if (isDueTomorrow) dueText = "Due tomorrow";
-    else if (due) {
-      dueText = `Due ${due.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+    const h = scheduled.getHours();
+    const min = scheduled.getMinutes();
+    if (h !== 0 || min !== 0) {
+      const period = h >= 12 ? "pm" : "am";
+      const h12 = h % 12 || 12;
+      time = `${h12}:${min.toString().padStart(2, "0")}${period}`;
     }
   }
 
-  const clientAttending = !!survey.client_present;
+  let scheduleLabel = "";
+  if (visitReq === "unrestricted") {
+    scheduleLabel = "Self-scheduled";
+  } else if (visitReq === "prearranged") {
+    if (schedStatus === "provisional") scheduleLabel = "Provisional";
+    else if (schedStatus === "booked") scheduleLabel = "Booked";
+    else scheduleLabel = "Pre-arranged";
+  }
 
-  return { date, time, scheduleLabel, urgent: !!survey.urgent, overdue: isOverdue, clientAttending, dueText };
+  // Prefer is_urgent (new alias); fall back to urgent for compatibility.
+  const urgent = !!(survey.is_urgent ?? survey.urgent);
+
+  return { date, time, scheduleLabel, urgent, overdue: isOverdue };
 }
 
 /* ------------------------------------------------------------------ */
@@ -91,14 +91,28 @@ function SurveyList() {
   const [previousPage, setPreviousPage] = useState(null);
   const [error, setError] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const { filters, setFilters, clearFilters } = useFilters();
+
+  useEffect(() => {
+    document.body.style.backgroundColor = "#E2DDD3";
+    return () => { document.body.style.backgroundColor = ""; };
+  }, []);
 
   useEffect(() => {
     const fetchSurveys = async () => {
       try {
         let url = `/api/surveys/?search=${searchTerm}`;
         if (filters.statuses.length) {
-          url += `&status=${filters.statuses.map((s) => s.id).join(",")}`;
+          // Translate legacy filter ids (planned, live, etc.) to current DB
+          // values (open, assigned, archived). Deduplicates after translation
+          // so "missed" + "cancelled" → a single "archived" param.
+          const dbStatuses = [
+            ...new Set(
+              filters.statuses.map((s) => STATUS_FILTER_TRANSLATION[s.id] || s.id)
+            ),
+          ];
+          url += `&status=${dbStatuses.join(",")}`;
         }
         if (clientFilter) {
           url += `&client=${clientFilter}`;
@@ -107,7 +121,7 @@ function SurveyList() {
         }
         if (filters.sites.length) url += `&site=${filters.sites.map((s) => s.id).join(",")}`;
         if (filters.surveyors.length) url += `&assigned_to=${filters.surveyors.map((s) => s.id).join(",")}`;
-        if (filters.schedule_types.length) url += `&schedule_type=${filters.schedule_types.map((s) => s.id).join(",")}`;
+        if (filters.schedule_types.length) url += `&visit_requirement=${filters.schedule_types.map((s) => s.id).join(",")}`;
         if (filters.site_types.length) url += `&site_type=${filters.site_types.map((s) => s.id).join(",")}`;
         const response = await api.get(url);
         setSurveys(response.data.results);
@@ -135,91 +149,75 @@ function SurveyList() {
         <h5 className="mb-0 fw-bold">Surveys</h5>
         <AddButton to="/surveys/create" />
       </div>
-      {/* ---- Search & filter toolbar ---- */}
-      <div className="d-flex gap-2 mb-2 align-items-center flex-wrap">
-        <input
-          type="text"
-          className="form-control form-control-sm"
-          placeholder="Search surveys..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ maxWidth: "220px" }}
-        />
-        {searchTerm && (
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => setSearchTerm("")}
-          >
-            Clear
-          </button>
-        )}
-        <Link
-          to="/filters"
-          style={{ fontSize: "0.85rem", color: "#0d6efd", textDecoration: "underline" }}
-        >
-          Filters{filters.clients.length || filters.sites.length || filters.surveyors.length || filters.statuses.length || filters.schedule_types.length || filters.site_types.length ? ` (${filters.clients.length + filters.sites.length + filters.surveyors.length + filters.statuses.length + filters.schedule_types.length + filters.site_types.length})` : ""}
-        </Link>
-        <AddButton to="/surveys/create" />
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          className="form-select form-select-sm"
-          style={{ maxWidth: "130px", fontSize: "0.78rem" }}
-        >
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-          <option value="most_liked">Most liked</option>
-          <option value="most_commented">Most commented</option>
-        </select>
-      </div>
-
-      {/* ---- Active filter chips ---- */}
-      {(() => {
-        const totalChips = filters.statuses.length + filters.schedule_types.length + filters.site_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
-        if (totalChips === 0) return null;
-        return (
-          <FilterAppliedCard totalChips={totalChips} onClear={clearFilters}>
-            <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
-              {filters.statuses.map((st) => (
-                <span key={`st-${st.id}`} className={`filter-chip ${st.id === "cancelled" || st.id === "missed" ? "filter-chip-status-cancelled" : "filter-chip-status"}`}>
-                  {st.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ statuses: filters.statuses.filter((x) => x.id !== st.id) })}>&times;</button>
-                </span>
-              ))}
-              {filters.schedule_types.map((sc) => (
-                <span key={`sc-${sc.id}`} className="filter-chip filter-chip-schedule">
-                  {sc.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
-                </span>
-              ))}
-              {filters.site_types.map((st) => (
-                <span key={`st-${st.id}`} className="filter-chip filter-chip-site">
-                  {st.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
-                </span>
-              ))}
-              {filters.clients.map((c) => (
-                <span key={`c-${c.id}`} className="filter-chip filter-chip-client">
-                  {c.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ clients: filters.clients.filter((x) => x.id !== c.id) })}>&times;</button>
-                </span>
-              ))}
-              {filters.sites.map((s) => (
-                <span key={`s-${s.id}`} className="filter-chip filter-chip-site">
-                  {s.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ sites: filters.sites.filter((x) => x.id !== s.id) })}>&times;</button>
-                </span>
-              ))}
-              {filters.surveyors.map((sv) => (
-                <span key={`sv-${sv.id}`} className="filter-chip filter-chip-surveyor">
-                  {sv.name}
-                  <button type="button" className="filter-chip-x" onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
-                </span>
-              ))}
+      {/* ---- Filters container ---- */}
+      <div className="edit-fieldset mb-4" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
+        <p className="edit-legend section-toggle" onClick={() => setFiltersOpen(!filtersOpen)} style={{ color: "#fefdfc" }}>
+          <span className={`section-chevron section-chevron--light${filtersOpen ? " section-chevron--open" : ""}`}></span>
+          Filters
+        </p>
+        {filtersOpen && <>
+        <div className="d-flex gap-2 flex-wrap" style={{ alignItems: "flex-start", marginLeft: "var(--section-gap, 16px)" }}>
+          <Link to="/filters" className="btn btn-sm"
+            style={{ fontSize: "0.75rem", padding: "3px 16px", minWidth: "5.5rem", color: "#f5f5f7", borderColor: "#f5f5f7", backgroundColor: "transparent", textDecoration: "none" }}>
+            Advanced
+          </Link>
+          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}
+            style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#f5f5f7", outline: "none" }}>
+            <option value="newest" style={{ color: "#1f2a33" }}>Newest first</option>
+            <option value="oldest" style={{ color: "#1f2a33" }}>Oldest first</option>
+            <option value="most_liked" style={{ color: "#1f2a33" }}>Most liked</option>
+            <option value="most_commented" style={{ color: "#1f2a33" }}>Most commented</option>
+          </select>
+        </div>
+        <div style={{ marginLeft: "var(--section-gap, 16px)", marginTop: 8 }}>
+          <input type="text" className="filter-search" placeholder="Search surveys..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#f5f5f7", outline: "none", width: "100%", maxWidth: 220 }} />
+        </div>
+        </>}
+        {/* Applied chips */}
+        {(() => {
+          const totalChips = filters.statuses.length + filters.schedule_types.length + filters.site_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
+          if (totalChips === 0) return null;
+          return (
+            <div style={{ backgroundColor: "#2e5e3e", borderRadius: 2, padding: "8px 0 8px 0", marginTop: 8, marginLeft: "var(--section-gap, 16px)" }}>
+              <div className="d-flex gap-2 flex-wrap align-items-center">
+                {filters.statuses.map((st) => (
+                  <span key={`st-${st.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#2e7d32", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {st.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#2e7d32" }} onClick={() => setFilters({ statuses: filters.statuses.filter((x) => x.id !== st.id) })}>&times;</button>
+                  </span>
+                ))}
+                {filters.schedule_types.map((sc) => (
+                  <span key={`sc-${sc.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#1565c0", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {sc.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#1565c0" }} onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
+                  </span>
+                ))}
+                {filters.site_types.map((st) => (
+                  <span key={`st2-${st.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#7b1fa2", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {st.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#7b1fa2" }} onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
+                  </span>
+                ))}
+                {filters.clients.map((c) => (
+                  <span key={`c-${c.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#f57f17", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {c.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#f57f17" }} onClick={() => setFilters({ clients: filters.clients.filter((x) => x.id !== c.id) })}>&times;</button>
+                  </span>
+                ))}
+                {filters.sites.map((s) => (
+                  <span key={`s-${s.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#c62828", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {s.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#c62828" }} onClick={() => setFilters({ sites: filters.sites.filter((x) => x.id !== s.id) })}>&times;</button>
+                  </span>
+                ))}
+                {filters.surveyors.map((sv) => (
+                  <span key={`sv-${sv.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#00695c", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {sv.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#00695c" }} onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
+                  </span>
+                ))}
+                <button type="button" style={{ border: "none", background: "#fcfaf7", padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem", color: "#c0392b", borderRadius: 4 }}
+                  onClick={clearFilters}>Clear all</button>
+              </div>
             </div>
-          </FilterAppliedCard>
-        );
-      })()}
+          );
+        })()}
+      </div>
 
       <h6 className="mb-2 d-none d-md-block">
         Surveys
@@ -240,7 +238,10 @@ function SurveyList() {
             .sort((a, b) => {
               if (sortOrder === "most_liked") return (b.total_likes_count || 0) - (a.total_likes_count || 0);
               if (sortOrder === "most_commented") return (b.total_comments_count || 0) - (a.total_comments_count || 0);
-              if (b.urgent !== a.urgent) return b.urgent - a.urgent;
+              // Prefer is_urgent (new alias); fall back to urgent.
+              const aUrgent = !!(a.is_urgent ?? a.urgent);
+              const bUrgent = !!(b.is_urgent ?? b.urgent);
+              if (bUrgent !== aUrgent) return (bUrgent ? 1 : 0) - (aUrgent ? 1 : 0);
               const dateA = new Date(a.scheduled_for || a.created_at);
               const dateB = new Date(b.scheduled_for || b.created_at);
               return sortOrder === "oldest" ? dateA - dateB : dateB - dateA;
@@ -255,81 +256,77 @@ function SurveyList() {
                   onClick={() => navigate(`/surveys/${survey.id}`)}
                 >
                   <div className="survey-queue-grid">
-                    {/* Row 1: date + time | schedule label + surveyor | flags */}
-                    <span>{schedule.date}{schedule.time ? ` ${schedule.time}` : ""}</span>
-                    <span>{[schedule.scheduleLabel, survey.assigned_to || "Unassigned", schedule.clientAttending ? "Client attending" : ""].filter(Boolean).join(" \u00B7 ")}</span>
-                    <span className="survey-queue-flags">
-                      {survey.total_likes_count > 0 && (
-                        <span className="d-inline-flex align-items-center gap-1" style={{ fontSize: "0.75rem", color: "#6c757d" }}>
-                          <img src="/datumise-like.svg" alt="" width="12" height="12" style={{ opacity: 0.5 }} />
-                          {survey.total_likes_count}
+                    {/* Row 1: date | site name (20 chars)... postcode | (empty) */}
+                    <span className="d-flex align-items-center gap-1">
+                      {schedule.urgent && <img src="/datumise_urgent.svg" alt="" width="12" height="12" style={{ filter: "invert(56%) sepia(81%) saturate(552%) hue-rotate(347deg) brightness(97%) contrast(87%)", flexShrink: 0 }} />}
+                      <span style={{ color: schedule.overdue ? "#d3212f" : undefined }}>{schedule.date}</span>
+                    </span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {survey.site_name ? survey.site_name.slice(0, 20) : "No site"}...{survey.site_postcode ? ` ${survey.site_postcode}` : ""}
+                    </span>
+                    <span />
+
+                    {/* Row 2: time | surveyor · scheduleLabel | status + edit */}
+                    <span style={{ color: "#6c757d" }}>{schedule.time}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {[survey.assigned_to || "Unassigned", schedule.scheduleLabel].filter(Boolean).join(" \u00B7 ")}
+                    </span>
+                    <span style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{survey.status_display}</span>
+                      <Link to={`/surveys/${survey.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
+                        <img className="team-edit-icon" src="/view.svg" alt="View" width="12" height="12" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+                      </Link>
+                      <Link to={`/surveys/${survey.id}/edit`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
+                        <img className="team-edit-icon" src="/datumise-edit.svg" alt="Edit" width="12" height="12" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+                      </Link>
+                    </span>
+
+                    {/* Row 3: action buttons (only when applicable) */}
+                    {(() => {
+                      const canStart = (survey.status === "planned" || survey.status === "open" || survey.current_session_status === "paused") && survey.is_surveyor && survey.assigned_to;
+                      const canAssign = (survey.status === "planned" || survey.status === "open") && !survey.assigned_to;
+                      if (!canStart && !canAssign) return null;
+                      return (
+                        <span style={{ gridColumn: "1 / -1", justifySelf: "end" }}>
+                          {canStart && (
+                            <a
+                              href="#"
+                              style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try {
+                                  await api.patch(`/api/surveys/${survey.id}/`, { status: PATCH_START_SESSION });
+                                  navigate(`/surveys/${survey.id}/capture`);
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                            >
+                              {survey.current_session_status === "paused" ? "Resume" : "Start"}
+                            </a>
+                          )}
+                          {canAssign && (
+                            <a
+                              href="#"
+                              style={{ fontWeight: 600, color: "#0d6efd", textDecoration: "none", fontSize: "0.75rem" }}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try {
+                                  const res = await api.post(`/api/surveys/${survey.id}/assign/`);
+                                  setSurveys((prev) => prev.map((s) => s.id === survey.id ? res.data : s));
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                            >
+                              Assign to me
+                            </a>
+                          )}
                         </span>
-                      )}
-                      <strong style={{ fontSize: "0.88rem" }}>{survey.observation_count > 0 ? `(${survey.observation_count})` : ""}</strong>
-                      {schedule.urgent ? <img src="/datumise_urgent.svg" alt="Urgent" width="16" height="16" style={{ filter: "invert(56%) sepia(81%) saturate(552%) hue-rotate(347deg) brightness(97%) contrast(87%)" }} /> : <span style={{ display: "inline-block", width: "16px" }} />}
-                      {schedule.overdue && "\u23F0"}
-                    </span>
-
-                    {/* Row 2: due date | client attending | edit */}
-                    <span>{schedule.dueText}</span>
-                    <span></span>
-                    <Link
-                      to={`/surveys/${survey.id}/edit`}
-                      className="text-decoration-none edit-icon-circle"
-                      style={{ justifySelf: "end" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                    </Link>
-
-                    {/* Row 3: client, site | _ | resume/status */}
-                    <span className="survey-queue-clientsite">{survey.site_address && survey.site_address.length > 30 ? survey.site_address.slice(0, 30) + "..." : (survey.site_address || "No site")}</span>
-                    <span style={{ justifySelf: "end" }}>
-                      {(survey.status === "planned" || survey.status === "paused") && survey.is_surveyor && survey.assigned_to && (
-                        <a
-                          href="#"
-                          style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!survey.assigned_to || !survey.is_surveyor) return;
-                            try {
-                              await api.patch(`/api/surveys/${survey.id}/`, { status: "live" });
-                              navigate(`/surveys/${survey.id}/capture`);
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                        >
-                          {survey.status === "paused" ? "Resume" : "Start"}
-                        </a>
-                      )}
-                      {survey.status === "planned" && !survey.assigned_to && (
-                        <a
-                          href="#"
-                          style={{ fontWeight: 600, color: "#0d6efd", textDecoration: "none", fontSize: "0.75rem" }}
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (survey.status !== "planned" || survey.assigned_to) return;
-                            try {
-                              const res = await api.post(`/api/surveys/${survey.id}/assign/`);
-                              setSurveys((prev) => prev.map((s) => s.id === survey.id ? res.data : s));
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                        >
-                          Assign to me
-                        </a>
-                      )}
-                      {survey.status === "live" && (
-                        <span style={{ color: "#198754", fontWeight: 600 }}>Live</span>
-                      )}
-                      {survey.status === "submitted" && <span style={{ color: "#1a5bc4" }}>Submitted</span>}
-                      {survey.status === "missed" && <span style={{ color: "#d3212f" }}>Missed</span>}
-                      {survey.status === "cancelled" && "Cancelled"}
-                    </span>
+                      );
+                    })()}
                   </div>
 
                 </div>

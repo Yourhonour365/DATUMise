@@ -6,11 +6,10 @@ import ReturnButton from "./ReturnButton";
 import FilterAppliedCard from "./FilterAppliedCard";
 
 /* ------------------------------------------------------------------ */
-/*  Reusable checkbox multi-select with collapsible list               */
+/*  Reusable checkbox multi-select                                     */
 /* ------------------------------------------------------------------ */
 function MultiSelect({ label, options, selected, onChange, labelKey = "name", columns = 1, isOpen, onToggle }) {
   const [search, setSearch] = useState("");
-  const open = isOpen;
   const selectedIds = new Set(selected.map((s) => s.id));
 
   const toggle = (item) => {
@@ -26,69 +25,46 @@ function MultiSelect({ label, options, selected, onChange, labelKey = "name", co
     : options;
 
   return (
-    <div className="survey-queue-card" style={{ cursor: "default" }}>
-      <div
-        className="d-flex align-items-center justify-content-between"
-        style={{ cursor: "pointer" }}
-        onClick={() => onToggle()}
-      >
-        <div className="d-flex align-items-center gap-1">
-          <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>
-            {label}
-            {selected.length > 0 && ` (${selected.length})`}
-          </span>
-          <img src="/datumise-down-chev.svg" alt="" width="14" height="14" style={{ opacity: 0.4, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
-        </div>
-        <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            className="filter-chip filter-chip-action"
-            onClick={() => onChange(options.map((item) => ({ id: item.id, name: item[labelKey] })))}
-          >
-            Select all
-          </button>
-          {selected.length > 0 && (
-            <button
-              type="button"
-              className="filter-chip filter-chip-clear"
-              onClick={() => onChange([])}
-            >
-              Clear &times;
+    <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+      <p className="edit-legend section-toggle" onClick={() => onToggle()}>
+        <span className={`section-chevron${isOpen ? " section-chevron--open" : ""}`}></span>
+        {label}{selected.length > 0 ? ` (${selected.length})` : ""}
+      </p>
+      {isOpen && <div className="card-stack">
+        <div className="field-block" style={{ backgroundColor: "#f5f5f7" }}>
+          <div className="d-flex gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="btn btn-outline-secondary" style={{ fontSize: "0.65rem", padding: "2px 8px", lineHeight: 1.2 }}
+              onClick={() => onChange(options.map((item) => ({ id: item.id, name: item[labelKey] })))}>
+              Select all
             </button>
-          )}
-        </div>
-      </div>
-      {open && (
-        <div style={{ marginTop: "0.4rem" }}>
+            {selected.length > 0 && (
+              <button type="button" className="btn btn-outline-secondary" style={{ fontSize: "0.65rem", padding: "2px 8px", lineHeight: 1.2 }}
+                onClick={() => onChange([])}>
+                Clear
+              </button>
+            )}
+          </div>
           <input
             type="text"
-            className="form-control form-control-sm mb-1"
+            className="edit-field mb-2"
             placeholder={`Search ${label.toLowerCase()}...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ fontSize: "0.8rem", backgroundColor: "#fff" }}
+            style={{ fontSize: "0.8rem" }}
           />
           <div style={{ maxHeight: "160px", overflowY: "auto", display: columns > 1 ? "grid" : "block", gridTemplateColumns: columns > 1 ? `repeat(${columns}, 1fr)` : undefined }}>
             {filtered.length === 0 && (
               <div className="text-muted" style={{ fontSize: "0.8rem" }}>No matches</div>
             )}
             {filtered.map((item) => (
-              <label
-                key={item.id}
-                className="d-flex align-items-center gap-2"
-                style={{ fontSize: "0.82rem", cursor: "pointer", padding: "3px 0" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(item.id)}
-                  onChange={() => toggle(item)}
-                />
+              <label key={item.id} className="d-flex align-items-center gap-2" style={{ fontSize: "0.82rem", cursor: "pointer", padding: "3px 0" }}>
+                <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggle(item)} />
                 {item[labelKey]}
               </label>
             ))}
           </div>
         </div>
-      )}
+      </div>}
     </div>
   );
 }
@@ -146,7 +122,7 @@ function Filters() {
               </span>
             )}
             {filters.statuses.map((st) => (
-              <span key={`st-${st.id}`} className={`filter-chip ${st.id === "cancelled" || st.id === "missed" ? "filter-chip-status-cancelled" : "filter-chip-status"}`}>
+              <span key={`st-${st.id}`} className={`filter-chip ${["cancelled", "missed", "archived"].includes(st.id) ? "filter-chip-status-cancelled" : "filter-chip-status"}`}>
                 {st.name}
                 <button type="button" className="filter-chip-x" onClick={() => setFilters({ statuses: filters.statuses.filter((x) => x.id !== st.id) })}>&times;</button>
               </span>
@@ -195,86 +171,53 @@ function Filters() {
       })()}
 
       {/* ---- Scope ---- */}
-      <div className="mb-3">
-        <label className="form-label fw-semibold" style={{ fontSize: "0.82rem" }}>
-          Apply to
-        </label>
-        <div className="d-flex gap-3">
+      <div className="field-block mb-2" style={{ backgroundColor: "#f0ece4", width: "fit-content", marginLeft: 0 }}>
+        <div className="field-label">Apply to</div>
+        <div className="edit-field d-flex gap-4">
           {["surveys", "observations", "both"].map((s) => (
-            <label
-              key={s}
-              className="d-flex align-items-center gap-2"
-              style={{ fontSize: "0.82rem", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={filters.scope === s}
-                onChange={() => setFilters({ scope: s })}
-              />
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+            <label key={s} className="d-flex align-items-center gap-2" style={{ fontSize: "0.82rem", cursor: "pointer" }}>
+              <input type="radio" name="scope" checked={filters.scope === s} onChange={() => setFilters({ scope: s })} />
+              <span style={{ fontSize: "0.9rem" }}>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
             </label>
           ))}
         </div>
       </div>
 
       {/* ---- Time period ---- */}
-      <div className="survey-queue-card" style={{ cursor: "default" }}>
-        <div
-          className="d-flex align-items-center justify-content-between"
-          style={{ cursor: "pointer" }}
-          onClick={() => toggleSection("time")}
-        >
-          <div className="d-flex align-items-center gap-1">
-            <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>
-              Time{filters.timePeriod ? " (1)" : ""}
-            </span>
-            <img src="/datumise-down-chev.svg" alt="" width="14" height="14" style={{ opacity: 0.4, transform: openSection === "time" ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+      <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
+        <p className="edit-legend section-toggle" onClick={() => toggleSection("time")}>
+          <span className={`section-chevron${openSection === "time" ? " section-chevron--open" : ""}`}></span>
+          Time{filters.timePeriod ? " (1)" : ""}
+        </p>
+        {openSection === "time" && <div className="card-stack">
+          <div className="field-block" style={{ backgroundColor: "#f5f5f7" }}>
+            <div className="d-flex gap-1 mb-2">
+              {filters.timePeriod && (
+                <button type="button" className="btn btn-outline-secondary" style={{ fontSize: "0.65rem", padding: "2px 8px", lineHeight: 1.2 }}
+                  onClick={() => setFilters({ timePeriod: "" })}>
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="d-flex gap-3 flex-wrap">
+              {[
+                { id: "today", name: "Today" },
+                { id: "this_week", name: "This week" },
+                { id: "last_week", name: "Last week" },
+                { id: "next_week", name: "Next week" },
+                { id: "this_month", name: "This month" },
+                { id: "last_month", name: "Last month" },
+                { id: "next_month", name: "Next month" },
+              ].map((opt) => (
+                <label key={opt.id} className="d-flex align-items-center gap-2" style={{ fontSize: "0.82rem", cursor: "pointer", padding: "3px 0" }}>
+                  <input type="radio" name="timePeriod" checked={filters.timePeriod === opt.id}
+                    onChange={() => setFilters({ timePeriod: filters.timePeriod === opt.id ? "" : opt.id })} />
+                  {opt.name}
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="filter-chip filter-chip-action"
-              onClick={() => setFilters({ timePeriod: "today" })}
-            >
-              Select all
-            </button>
-            {filters.timePeriod && (
-              <button
-                type="button"
-                className="filter-chip filter-chip-clear"
-                onClick={() => setFilters({ timePeriod: "" })}
-              >
-                Clear &times;
-              </button>
-            )}
-          </div>
-        </div>
-        {openSection === "time" && (
-          <div className="d-flex gap-1 flex-wrap" style={{ marginTop: "0.4rem" }}>
-            {[
-              { id: "today", name: "Today" },
-              { id: "this_week", name: "This week" },
-              { id: "last_week", name: "Last week" },
-              { id: "next_week", name: "Next week" },
-              { id: "this_month", name: "This month" },
-              { id: "last_month", name: "Last month" },
-              { id: "next_month", name: "Next month" },
-            ].map((opt) => (
-              <label
-                key={opt.id}
-                className="d-flex align-items-center gap-2"
-                style={{ fontSize: "0.82rem", cursor: "pointer", padding: "3px 0" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={filters.timePeriod === opt.id}
-                  onChange={() => setFilters({ timePeriod: filters.timePeriod === opt.id ? "" : opt.id })}
-                />
-                {opt.name}
-              </label>
-            ))}
-          </div>
-        )}
+        </div>}
       </div>
 
       {/* ---- Survey-specific filters ---- */}
@@ -314,7 +257,7 @@ function Filters() {
         </>
       )}
 
-      {/* ---- Site Type (multi-select) ---- */}
+      {/* ---- Site Type ---- */}
       <MultiSelect
         label="Site Type"
         options={[
@@ -331,7 +274,7 @@ function Filters() {
         onToggle={() => toggleSection("site_types")}
       />
 
-      {/* ---- Clients (multi-select) ---- */}
+      {/* ---- Clients ---- */}
       <MultiSelect
         label="Clients"
         options={clients}
@@ -351,7 +294,7 @@ function Filters() {
         onToggle={() => toggleSection("clients")}
       />
 
-      {/* ---- Sites (multi-select) ---- */}
+      {/* ---- Sites ---- */}
       <MultiSelect
         label="Sites"
         options={filteredSites}
@@ -361,7 +304,7 @@ function Filters() {
         onToggle={() => toggleSection("sites")}
       />
 
-      {/* ---- Surveyors (multi-select) ---- */}
+      {/* ---- Surveyors ---- */}
       <MultiSelect
         label="Surveyors"
         options={team}

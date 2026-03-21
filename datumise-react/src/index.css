@@ -74,27 +74,345 @@ fieldset {
 }
 
 /* Edit form fieldset/legend pattern (matches observation form) */
+/* ---- Outer container (Client details, Visit controls, etc.) ---- */
 .edit-fieldset {
+  --section-gap: 16px;
   border: none;
   border-radius: 8px;
-  padding: 0 0.5rem 0.35rem;
+  padding: var(--section-gap) 8px var(--section-gap) var(--section-gap);
 }
 
 .edit-legend {
   float: none;
   width: auto;
-  padding: 0 0.5rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #2c3e50;
+  padding: 0;
+  margin: 0 0 var(--section-gap) 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #1F2A33;
+}
+
+.section-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-toggle:only-child {
   margin-bottom: 0;
 }
 
-.edit-field {
+.section-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.section-chevron::after {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #1F2A33;
+}
+
+.section-chevron--open {
+  transform: rotate(90deg);
+}
+
+/* ---- Card wrapper (holds inner blocks, controls gap) ---- */
+.card-stack {
+  --card-gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+/* ---- Inner block (Client, Site, etc.) ---- */
+.field-block {
+  --card-pad-y: 18px;
+  --card-pad-x: 16px;
+  --label-gap: 18px;
+  --content-indent: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  padding: var(--card-pad-y) var(--card-pad-x);
+  gap: var(--label-gap);
+  margin-left: 1rem;
+  width: calc(100% - 1rem);
+}
+
+.field-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #1F2A33;
+}
+
+/* Indent content below the label */
+.field-block > *:not(.field-label):not(.card-toggle) {
+  margin-left: var(--content-indent);
+}
+
+.field-block--unset {
+  border: 1px dashed #E2DDD3;
+}
+
+/* ---- Card toggle button (inner block accordion) ---- */
+.card-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.toggle-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  line-height: 0;
+}
+
+.toggle-caret::after {
+  content: "";
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #1F2A33;
+}
+
+.section-chevron--light::after {
+  border-left-color: #fefdfc;
+}
+
+.toggle-caret--open {
+  transform: rotate(90deg);
+}
+
+.toggle-title {
+  display: block;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #1F2A33;
+}
+
+.field-block--closed > *:not(.card-toggle):not(.field-label) {
+  display: none !important;
+}
+
+.field-block--closed {
+  gap: 0;
+  padding: 12px var(--card-pad-x) 14px;
+  min-height: 0;
+  width: fit-content;
+}
+
+.field-block--closed > .card-toggle {
+  min-height: 0;
+}
+
+/* ---- List card hover ---- */
+.list-card-hover {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  border: 2px solid transparent;
+}
+
+.list-card-hover:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border-color: #9a8255;
+}
+
+.list-card-hover:has(.team-role-hover:hover) {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.filter-search::placeholder {
+  color: #fefdfc;
+  opacity: 0.6;
+}
+
+.team-edit-icon {
+  transition: transform 0.15s ease;
+}
+
+/* ---- Profile header ---- */
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-bottom: 16px;
+}
+
+.profile-header__name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-header__name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1A1D21;
+}
+
+.profile-header__role {
+  font-size: 0.82rem;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.2;
+  color: #888;
+}
+
+.profile-header__meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.profile-header__username {
+  font-style: italic;
+  color: #999;
+}
+
+.profile-header__status--active {
+  font-style: italic;
+  color: #27ae60;
+}
+
+.profile-header__status--archived {
+  font-style: italic;
+  color: #c0392b;
+}
+
+.profile-header__contact-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  font-size: 0.88rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #1A1D21;
+}
+
+.profile-header__contact-row a:hover {
+  color: #0d6efd !important;
+  text-decoration: underline !important;
+}
+
+.profile-header__separator {
+  margin: 0 12px;
+  color: #ccc;
+}
+
+.team-edit-icon:hover {
+  transform: scale(1.5);
+  filter: invert(15%) sepia(90%) saturate(2000%) hue-rotate(213deg) brightness(80%) contrast(95%) !important;
+}
+
+.team-name-hover:hover {
+  text-decoration: underline;
+}
+
+
+input[type="text"].edit-field,
+input[type="email"].edit-field,
+textarea.edit-field {
+  border: 1px solid #c8c2b8;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background-color: #fff;
+}
+
+/* ---- Date picker button ---- */
+.date-btn {
+  position: relative;
+  cursor: pointer;
+  width: 5.4rem;
+  height: 28px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+  border: 1px solid #c8c2b8;
+  border-radius: 6px;
+  background-color: #fff;
+  transition: box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.date-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* ---- Time picker button ---- */
+.time-btn {
+  font-size: 0.78rem;
+  height: 28px;
+  padding: 0 6px;
+  margin-bottom: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #c8c2b8;
+  border-radius: 6px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+  width: 5.4rem;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.time-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.date-btn input[type="date"] {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+
+.edit-field {
   border: none;
   background: transparent;
-  padding: 0.25rem 0.5rem;
+  padding: 0;
   font-size: 0.88rem;
   line-height: 1.3;
   color: #2c3e50;
@@ -115,6 +433,11 @@ select.edit-field {
 
 textarea.edit-field {
   resize: none;
+}
+
+.edit-field--unset {
+  font-style: italic;
+  color: #b0a898;
 }
 
 
@@ -220,6 +543,19 @@ textarea.edit-field {
 
 .app-nav-dropdown-item:active {
   background: #f8f9fa;
+}
+
+.app-nav-dropdown-item.active {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-nav-desktop .nav-link.active {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: #faf6ef;
 }
 
 .app-nav-dropdown-danger {
@@ -638,9 +974,10 @@ textarea.edit-field {
   padding: 0.5rem;
   border: 1px solid transparent;
   align-items: flex-start;
-  background: #f0ece4;
-  border-radius: 8px;
-  margin-bottom: 0.35rem;
+  background: #fefdfc;
+  border-radius: 2px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #e2ddd3;
 }
 
 .observation-row:hover {
@@ -677,9 +1014,10 @@ textarea.edit-field {
 .observation-row-title {
   font-size: 0.85rem;
   font-weight: 500;
+  color: #000;
   line-height: 1.25;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
@@ -703,7 +1041,7 @@ textarea.edit-field {
   display: flex;
   gap: 0.75rem;
   font-size: 0.6rem;
-  color: #95a5a6;
+  color: #000;
   font-style: italic;
   margin-top: 0.15rem;
 }
@@ -727,31 +1065,18 @@ textarea.edit-field {
   border-color: #9a8255;
 }
 
-/* Survey card grid: 3 columns */
+/* Survey card grid: date/time | site/surveyor | postcode/status */
 .survey-queue-grid {
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: 0.15rem 0.5rem;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.15rem 0.6rem;
   font-size: 0.78rem;
   color: #2c3e50;
   line-height: 1.4;
   align-items: center;
 }
 
-.survey-queue-flags {
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
 
-.survey-queue-clientsite {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  grid-column: 1 / 3;
-}
 
 
 /* Time filter chips */

@@ -8,6 +8,15 @@ import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
 
 
+// Session-lifecycle PATCH values sent to views.py perform_update.
+// These legacy strings are required because the backend session lifecycle
+// branches on requested_status for exactly these values.
+// PHASE 6B: Replace with dedicated session endpoints once the backend
+//           exposes PATCH /api/sessions/:id/ for start/pause/end.
+const PATCH_START_SESSION = "live";    // creates a new session, or resumes a paused one
+const PATCH_PAUSE_SESSION = "paused";  // pauses the currently active session
+const PATCH_END_SESSION = "submitted"; // ends session; survey stays in assigned state
+
 function SurveyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,6 +24,8 @@ function SurveyDetail() {
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showObservationModal, setShowObservationModal] = useState(false);
+  const [useMode, setUseMode] = useState(false);
+  const [selectedObs, setSelectedObs] = useState(new Set());
   const [observationSuccess, setObservationSuccess] = useState(false);
   const [observationFading, setObservationFading] = useState(false);
   const [observationCount, setObservationCount] = useState(0);
@@ -115,7 +126,7 @@ useLayoutEffect(() => {
     const startSurvey = async () => {
         if (!survey.assigned_to || !survey.is_surveyor) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            await api.patch(`/api/surveys/${id}/`, { status: PATCH_START_SESSION });
             navigate(`/surveys/${id}/capture`);
         } catch (err) {
             console.log(err);
@@ -124,7 +135,7 @@ useLayoutEffect(() => {
 
     const pauseSurvey = async () => {
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "paused" });
+            await api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION });
             fetchSurvey();
         } catch (err) {
             console.log(err);
@@ -134,7 +145,7 @@ useLayoutEffect(() => {
     const resumeSurvey = async () => {
         if (!survey.assigned_to || !survey.is_surveyor) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            await api.patch(`/api/surveys/${id}/`, { status: PATCH_START_SESSION });
             navigate(`/surveys/${id}/capture`);
         } catch (err) {
             console.log(err);
@@ -144,7 +155,7 @@ useLayoutEffect(() => {
     const startNewSession = async () => {
         if (!survey.assigned_to || !survey.is_surveyor) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "live" });
+            await api.patch(`/api/surveys/${id}/`, { status: PATCH_START_SESSION });
             navigate(`/surveys/${id}/capture`);
         } catch (err) {
             console.log(err);
@@ -164,9 +175,42 @@ useLayoutEffect(() => {
         }
     };
 
-    const reopenSurvey = async () => {
+    const deleteSurvey = async () => {
+        const confirmed = window.confirm(
+            "Permanently delete this survey?\n\nThis cannot be undone."
+        );
+        if (!confirmed) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "submitted" });
+            await api.delete(`/api/surveys/${id}/`);
+            navigate("/surveys");
+        } catch (err) {
+            const msg = err.response?.data?.detail || "Failed to delete survey.";
+            window.alert(msg);
+        }
+    };
+
+    const archiveSurvey = async () => {
+        const confirmed = window.confirm(
+            "Archive this survey?\n\nAll history will be preserved but the survey will be closed."
+        );
+        if (!confirmed) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, {
+                status: "archived",
+                closure_reason: "cancelled",
+            });
+            fetchSurvey();
+        } catch (err) {
+            const msg = err.response?.data?.detail || "Failed to archive survey.";
+            window.alert(msg);
+        }
+    };
+
+    const reopenSurvey = async () => {
+        // New-domain write: "assigned" moves the survey from completed back to
+        // in-progress (no active session). No session lifecycle involved.
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "assigned" });
             fetchSurvey();
         } catch (err) {
             console.log(err);
@@ -174,12 +218,42 @@ useLayoutEffect(() => {
     };
 
     const assignSurvey = async () => {
-        if (survey.status !== "planned" || survey.assigned_to) return;
+        if ((survey.status !== "planned" && survey.status !== "open") || survey.assigned_to) return;
         try {
             await api.post(`/api/surveys/${id}/assign/`);
             fetchSurvey();
         } catch (err) {
             console.log(err);
+        }
+    };
+
+    const openSurvey = async () => {
+        const missing = [];
+        if (!survey.site) missing.push("Site");
+        if (!survey.client) missing.push("Client");
+        if (!survey.visit_requirement) missing.push("Visit requirement");
+        if (survey.notify_required === null || survey.notify_required === undefined) missing.push("Notify required (confirm yes or no)");
+        if (!survey.arrival_action) missing.push("Arrival action");
+        if (!survey.departure_action) missing.push("Departure action");
+        if (missing.length > 0) {
+            window.alert(
+                `Cannot open survey. Missing required fields:\n\n${missing.map((f) => `\u2022 ${f}`).join("\n")}\n\nPlease edit the survey to complete these fields.`
+            );
+            return;
+        }
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "open" });
+            fetchSurvey();
+        } catch (err) {
+            const errors = err.response?.data;
+            if (errors && typeof errors === "object") {
+                const msgs = Object.entries(errors)
+                    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+                    .join("\n");
+                window.alert(`Failed to open survey:\n\n${msgs}`);
+            } else {
+                window.alert("Failed to open survey.");
+            }
         }
     };
 
@@ -189,7 +263,7 @@ useLayoutEffect(() => {
         );
         if (!confirmed) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "submitted" });
+            await api.patch(`/api/surveys/${id}/`, { status: PATCH_END_SESSION });
             fetchSurvey();
         } catch (err) {
             console.log(err);
@@ -250,12 +324,13 @@ const formatSurveyDuration = (startTime, _tick) => {
               <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2, color: "#1A1D21" }}>
                 {(() => {
                   const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
-                  const schedType = survey.schedule_type || "pending";
-                  if (schedType === "pending") return "Pending";
-                  if (schedType === "self_scheduling") return "Self-scheduled";
-                  if (!scheduled) return survey.schedule_type_display || "Pending";
+                  const visitReq = survey.visit_requirement;
+                  const schedStatus = survey.schedule_status;
+                  if (!visitReq) return scheduled ? scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "\u2014";
+                  if (visitReq === "unrestricted") return "Self-scheduling";
+                  if (!scheduled) return "Pre-arranged";
                   const dateStr = scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                  if (schedType === "provisional") return `${dateStr} \u00B7 Provisional`;
+                  if (schedStatus === "provisional") return `${dateStr} \u00B7 Provisional`;
                   const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
                   const timeStr = hasTime
                     ? scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
@@ -263,15 +338,16 @@ const formatSurveyDuration = (startTime, _tick) => {
                   return timeStr ? `${dateStr} \u00B7 ${timeStr}` : dateStr;
                 })()}
               </span>
-              {survey.status !== "paused" && (
+              {survey.current_session_status !== "paused" && (
                 <span
                   className={`badge ${
-                    survey.status === "planned" ? "bg-secondary" :
-                    survey.status === "live" ? "bg-success" :
-                    survey.status === "submitted" ? "bg-secondary" :
+                    (survey.status === "planned" || survey.status === "open") ? "bg-secondary" :
+                    survey.current_session_status === "active" ? "bg-success" :
+                    (survey.status === "submitted" || (survey.status === "assigned" && survey.current_session_status === null)) ? "bg-secondary" :
                     survey.status === "completed" ? "bg-dark" :
-                    survey.status === "missed" ? "bg-warning" :
-                    survey.status === "cancelled" ? "bg-danger" : ""
+                    (survey.status === "missed" || (survey.status === "archived" && survey.closure_reason === "missed")) ? "bg-warning" :
+                    (survey.status === "cancelled" || (survey.status === "archived" && survey.closure_reason !== "missed")) ? "bg-danger" :
+                    "bg-secondary"
                   }`}
                   style={{ fontSize: "0.7rem" }}
                 >
@@ -283,7 +359,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                   Session {survey.current_session_number ?? survey.session_count} of {survey.session_count}
                 </span>
               )}
-              {survey.status === "live" && (
+              {survey.current_session_status === "active" && (
                 <span className="d-inline-flex align-items-center gap-1 text-muted" style={{ fontSize: "0.78rem" }}>
                   <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
                   {formatSurveyDuration(survey.created_at, durationTick)}
@@ -291,13 +367,16 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
             </div>
             <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
-              {!survey.assigned_to && survey.status === "planned" && (
+              {survey.status === "draft" && survey.is_admin && (
+                <button className="btn btn-success btn-sm" onClick={openSurvey}>Open Survey</button>
+              )}
+              {!survey.assigned_to && (survey.status === "planned" || survey.status === "open") && (
                 <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign to me</button>
               )}
-              {survey.status === "planned" && survey.is_surveyor && survey.assigned_to && (
+              {(survey.status === "planned" || survey.status === "open") && survey.is_surveyor && survey.assigned_to && (
                 <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
               )}
-              {survey.status === "live" && survey.is_surveyor && (
+              {survey.current_session_status === "active" && survey.is_surveyor && (
                 <>
                   <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
                   <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
@@ -315,13 +394,13 @@ const formatSurveyDuration = (startTime, _tick) => {
                   </Link>
                 </>
               )}
-              {survey.status === "paused" && survey.is_surveyor && survey.assigned_to && (
+              {survey.current_session_status === "paused" && survey.is_surveyor && survey.assigned_to && (
                 <>
                   <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume session</button>
                   <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
                 </>
               )}
-              {survey.status === "submitted" && survey.is_surveyor && (
+              {(survey.status === "submitted" || (survey.status === "assigned" && survey.current_session_status === null)) && survey.is_surveyor && (
                 <>
                   <button className="btn btn-success btn-sm" onClick={startNewSession}>Start New Session</button>
                   <button className="btn btn-dark btn-sm" onClick={completeSurvey}>Complete Survey</button>
@@ -329,6 +408,14 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
               {survey.status === "completed" && survey.is_surveyor && (
                 <button className="btn btn-outline-secondary btn-sm" onClick={reopenSurvey}>Reopen</button>
+              )}
+              {survey.is_admin && survey.status !== "archived" && (
+                <>
+                  {survey.session_count === 0 && (survey.observations?.length ?? 0) === 0 && (
+                    <button className="btn btn-outline-danger btn-sm" onClick={deleteSurvey}>Delete</button>
+                  )}
+                  <button className="btn btn-outline-secondary btn-sm" onClick={archiveSurvey}>Archive</button>
+                </>
               )}
               <Link
                 to={`/surveys/${id}/edit`}
@@ -367,7 +454,7 @@ const formatSurveyDuration = (startTime, _tick) => {
             <span>{survey.assigned_to || "Unassigned"}</span>
             <span>{"\u00B7"}</span>
             <span>{survey.client_present ? "Client attending" : "Client not attending"}</span>
-            {survey.urgent && (
+            {!!(survey.is_urgent ?? survey.urgent) && (
               <>
                 <span>{"\u00B7"}</span>
                 <span className="badge bg-danger" style={{ fontSize: "0.65rem" }}>URGENT</span>
@@ -420,6 +507,30 @@ const formatSurveyDuration = (startTime, _tick) => {
                     <span className="survey-detail-label">Site contact email</span>
                     <span>{survey.site_contact_email || "Not set"}</span>
                   </div>
+                  {survey.visit_requirement && (
+                    <div className="survey-detail-item">
+                      <span className="survey-detail-label">Visit requirement</span>
+                      <span>{{ unrestricted: "Unrestricted", prearranged: "Pre-arranged" }[survey.visit_requirement] || survey.visit_requirement}</span>
+                    </div>
+                  )}
+                  {survey.schedule_status && (
+                    <div className="survey-detail-item">
+                      <span className="survey-detail-label">Schedule status</span>
+                      <span>{{ self_scheduled: "Self-scheduled", provisional: "Provisional", booked: "Booked" }[survey.schedule_status] || survey.schedule_status}</span>
+                    </div>
+                  )}
+                  {survey.visit_time && (
+                    <div className="survey-detail-item">
+                      <span className="survey-detail-label">Visit time</span>
+                      <span>{{ anytime: "Anytime", window: "Time window", appointment: "Appointment" }[survey.visit_time] || survey.visit_time}</span>
+                    </div>
+                  )}
+                  {survey.closure_reason && (
+                    <div className="survey-detail-item">
+                      <span className="survey-detail-label">Closure</span>
+                      <span style={{ textTransform: "capitalize" }}>{survey.closure_reason}</span>
+                    </div>
+                  )}
                   {survey.notes && (
                     <div className="survey-detail-item" style={{ gridColumn: "1 / -1" }}>
                       <span className="survey-detail-label">Notes</span>
@@ -438,12 +549,83 @@ const formatSurveyDuration = (startTime, _tick) => {
           </div>
 
           {/* ---- Observations toolbar ---- */}
-          <h6 className="mb-2">
-            Observations
-            <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
-              ({survey.observations?.length || 0})
-            </span>
-          </h6>
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <h6 className="mb-0">
+              Observations
+              <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
+                ({survey.observations?.length || 0})
+              </span>
+            </h6>
+            <div className="d-flex align-items-center gap-2">
+              {useMode && selectedObs.size > 0 && (
+                <>
+                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    onClick={async () => {
+                      try {
+                        const obsTexts = (survey.observations || []).filter(o => selectedObs.has(o.id)).map(o => o.title);
+                        await Promise.all(obsTexts.map(title => api.post("/api/observations/", { survey: survey.id, title, is_draft: true })));
+                        setUseMode(false);
+                        setSelectedObs(new Set());
+                        fetchSurvey();
+                        alert(`${obsTexts.length} draft observation${obsTexts.length !== 1 ? "s" : ""} created.`);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to create draft observations.");
+                      }
+                    }}>
+                    <img src="/draft.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
+                    Create drafts ({selectedObs.size})
+                  </button>
+                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    onClick={async () => {
+                      const withImages = (survey.observations || []).filter(o => selectedObs.has(o.id) && o.image);
+                      if (withImages.length === 0) {
+                        alert("No selected observations have images.");
+                        return;
+                      }
+                      try {
+                        await Promise.all(withImages.map(o => api.post("/api/observations/", { survey: survey.id, title: "", image: o.image, is_draft: true })));
+                        setUseMode(false);
+                        setSelectedObs(new Set());
+                        fetchSurvey();
+                        alert(`${withImages.length} photo draft${withImages.length !== 1 ? "s" : ""} created.`);
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to create photo drafts.");
+                      }
+                    }}>
+                    <img src="/clipboard.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
+                    Copy photo ({(survey.observations || []).filter(o => selectedObs.has(o.id) && o.image).length})
+                  </button>
+                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#c0392b", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    onClick={async () => {
+                      const confirmed = window.confirm(`Delete ${selectedObs.size} observation${selectedObs.size !== 1 ? "s" : ""}? This cannot be undone.`);
+                      if (!confirmed) return;
+                      try {
+                        await Promise.all([...selectedObs].map(obsId => api.delete(`/api/observations/${obsId}/`)));
+                        setUseMode(false);
+                        setSelectedObs(new Set());
+                        fetchSurvey();
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to delete observations.");
+                      }
+                    }}>
+                    Delete ({selectedObs.size})
+                  </button>
+                </>
+              )}
+              <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
+                style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: useMode ? "#0006b1" : "#db440a", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                onClick={() => { setUseMode(!useMode); if (useMode) setSelectedObs(new Set()); }}>
+                <img src="/use.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
+                {useMode ? `Select (${selectedObs.size})` : "Select"}
+              </button>
+            </div>
+          </div>
 
           {/* ---- Observation list ---- */}
           {survey.observations?.length === 0 && (
@@ -459,7 +641,15 @@ const formatSurveyDuration = (startTime, _tick) => {
                 id={`obs-${observation.id}`}
                 className="text-decoration-none text-dark"
                 style={{ cursor: "pointer" }}
-                onClick={() => {
+                onClick={(e) => {
+                  if (useMode) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    if (clickX > rect.width * 0.8) {
+                      setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else next.add(observation.id); return next; });
+                      return;
+                    }
+                  }
                   const obsIds = survey.observations.map((o) => o.id);
                   navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, returnHighlight: observation.id, observationIds: obsIds, observationIndex: obsIds.indexOf(observation.id), obsCreatedAt: observation.created_at, obsOwner: observation.owner } });
                 }}
@@ -467,7 +657,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                 <div
                   className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
                   onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
-                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", background: "#FAF8F3", borderRadius: "3px", border: "none" }}
+                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", background: "#FAF8F3", borderRadius: "3px", border: "1px solid transparent", borderBottom: "1px solid #e2ddd3", position: "relative" }}
                 >
                   {observation.image ? (
                     <img
@@ -510,6 +700,12 @@ const formatSurveyDuration = (startTime, _tick) => {
                   <span>{new Date(observation.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                     </div>
                   </div>
+                  {useMode && (
+                    <div onClick={(e) => { e.stopPropagation(); setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else next.add(observation.id); return next; }); }}
+                      style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0006b1", backgroundColor: selectedObs.has(observation.id) ? "#0006b1" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      {selectedObs.has(observation.id) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
