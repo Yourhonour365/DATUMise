@@ -459,7 +459,7 @@ function SurveyEditForm() {
                       <span style={{ fontSize: "0.7rem", color: "#888", minWidth: "2.5rem" }}>Date</span>
                       <div className="date-btn" onClick={(e) => { const inp = e.currentTarget.querySelector("input"); if (!inp) return; const now = Date.now(); const last = parseInt(inp.dataset.lastOpen || "0"); if (now - last < 500) { inp.blur(); inp.dataset.lastOpen = "0"; } else { inp.showPicker(); inp.dataset.lastOpen = String(now); } }}>
                         <span style={{ fontSize: "0.78rem" }}>{formatDate(dateVal)}</span>
-                        <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: -1 }}
+                        <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: 1 }}
                           value={dateVal} min={minDate || undefined} onChange={(e) => onDate(e.target.value)} />
                       </div>
                     </div>
@@ -619,7 +619,7 @@ function SurveyEditForm() {
                   <span style={{ fontSize: "0.7rem", color: "#888", minWidth: "2.5rem" }}>Date</span>
                   <div className="date-btn" onClick={(e) => { const inp = e.currentTarget.querySelector("input"); if (!inp) return; const now = Date.now(); const last = parseInt(inp.dataset.lastOpen || "0"); if (now - last < 500) { inp.blur(); inp.dataset.lastOpen = "0"; } else { inp.showPicker(); inp.dataset.lastOpen = String(now); } }}>
                     <span style={{ fontSize: "0.78rem" }}>{formatDate(form.survey_date)}</span>
-                    <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: -1 }}
+                    <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: 1 }}
                       value={form.survey_date}
                       onChange={(e) => setForm({ ...form, survey_date: e.target.value })} />
                   </div>
@@ -699,7 +699,7 @@ function SurveyEditForm() {
                   <span style={{ fontSize: "0.7rem", color: "#888", minWidth: "2.5rem" }}>Date</span>
                   <div className="date-btn" onClick={(e) => { const inp = e.currentTarget.querySelector("input"); if (!inp) return; const now = Date.now(); const last = parseInt(inp.dataset.lastOpen || "0"); if (now - last < 500) { inp.blur(); inp.dataset.lastOpen = "0"; } else { inp.showPicker(); inp.dataset.lastOpen = String(now); } }}>
                     <span style={{ fontSize: "0.78rem" }}>{formatDate(form.due_by)}</span>
-                    <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: -1 }}
+                    <input type="date" style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", zIndex: 1 }}
                       value={form.due_by} min={form.survey_date || undefined} onChange={(e) => setForm({ ...form, due_by: e.target.value })} />
                   </div>
                 </div>
