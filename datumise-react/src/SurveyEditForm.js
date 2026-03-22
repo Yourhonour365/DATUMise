@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
+import SearchPickerModal from "./SearchPickerModal";
 
 const TIME_OPTIONS = Array.from({ length: 24 * 12 }, (_, i) => {
   const h = Math.floor(i / 12);
@@ -145,6 +146,7 @@ function SurveyEditForm() {
   });
 
   const [windowDays, setWindowDays] = useState({ ...EMPTY_WINDOW_DAYS });
+  const [pickerOpen, setPickerOpen] = useState(null); // "client" | "site" | "surveyor" | null
   const [openSections, setOpenSections] = useState({
     client: true, visit: true, procedures: true, schedule: true, attendees: true, requirements: true, notes: true,
   });
@@ -185,7 +187,7 @@ function SurveyEditForm() {
           notes: s.notes || "",
           site: s.site_id || "",
           assigned_to: s.assigned_to_id || "",
-          visit_requirement: (s.visit_requirement === "prearranged" && s.visit_time === "window") ? "scheduled" : (s.visit_requirement || ""),
+          visit_requirement: s.visit_requirement || "",
           scheduled_for: s.scheduled_for ? s.scheduled_for.slice(0, 16) : "",
           survey_date: s.survey_date || "",
           survey_time: s.survey_time || "",
@@ -213,11 +215,11 @@ function SurveyEditForm() {
 
   // Derived state for conditional reveal
   const vr = form.visit_requirement;
-  const isUnrestricted = vr === "unrestricted";
+  const isUnrestricted = vr === "unrestricted" || vr === "unrestricted_notify";
   const isPrearranged = vr === "prearranged";
   const showScheduling = isUnrestricted || isPrearranged;
   const showBookingStatus = isPrearranged && !!form.scheduled_for;
-  const isWindow = vr === "scheduled";
+  const isWindow = vr === "prearranged";
   const isDraft = surveyStatus === "draft";
 
   const visitTimeOptions = [
@@ -229,7 +231,6 @@ function SurveyEditForm() {
     form.visit_requirement &&
     form.visit_time &&
     form.arrival_action &&
-    form.departure_action &&
     form.urgent !== "" &&
     (vr !== "scheduled" || form.scheduled_for)
   );
@@ -252,7 +253,7 @@ function SurveyEditForm() {
     if (!form.site) payload.site = null;
     else payload.site = parseInt(form.site);
     payload.assigned_to = form.assigned_to ? parseInt(form.assigned_to) : null;
-    payload.visit_requirement = form.visit_requirement === "scheduled" ? "prearranged" : (form.visit_requirement || null);
+    payload.visit_requirement = form.visit_requirement || null;
     payload.scheduled_for = form.scheduled_for || null;
     payload.window_end_date = form.window_end_date || null;
     payload.window_end_time = form.window_end_time || null;
@@ -359,40 +360,53 @@ function SurveyEditForm() {
           {openSections.client && <div className="card-stack">
             <div className="field-block" style={{ backgroundColor: clientFilter ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               <div className="field-label">Client</div>
-              <select
-                className="edit-field"
-                value={clientFilter}
-                onChange={(e) => { setClientFilter(e.target.value); setForm({ ...form, site: "" }); }}
-              >
-                <option value="">All clients</option>
-                {clients.map((c) => {
-                  const selectable = isClientSelectable(c);
-                  return (
-                    <option key={c.id} value={c.id} disabled={!selectable}
-                      style={{ color: selectable ? undefined : "#c0392b", fontStyle: selectable ? undefined : "italic" }}>
-                      {c.name}{c.status !== "active" ? " (archived)" : !clientHasActiveSite(c.id) ? " (no sites)" : ""}
-                    </option>
-                  );
-                })}
-              </select>
+              <button type="button" className="edit-field" onClick={() => setPickerOpen("client")}
+                style={{ textAlign: "left", cursor: "pointer", background: "transparent", border: "1px solid #c8c2b8", borderRadius: 6, padding: "6px 12px" }}>
+                {clientFilter ? (clients.find(c => String(c.id) === clientFilter)?.name || "All clients") : "All clients"}
+              </button>
+              {pickerOpen === "client" && (
+                <SearchPickerModal
+                  title="Select Client"
+                  value={clientFilter}
+                  onClose={() => setPickerOpen(null)}
+                  onChange={(val) => { setClientFilter(val); setForm({ ...form, site: "" }); }}
+                  options={[
+                    { value: "", label: "All clients" },
+                    ...clients.map((c) => {
+                      const selectable = isClientSelectable(c);
+                      return {
+                        value: String(c.id), label: c.name + (c.status !== "active" ? " (archived)" : !clientHasActiveSite(c.id) ? " (no sites)" : ""),
+                        disabled: !selectable, subtitle: !selectable ? (c.status !== "active" ? "Archived" : "No active sites") : undefined,
+                      };
+                    }),
+                  ]}
+                />
+              )}
             </div>
             <div className="field-block" style={{ backgroundColor: form.site ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               <div className="field-label">Site</div>
-              <select
-                className="edit-field"
-                value={form.site}
-                onChange={(e) => {
-                  const newSiteId = e.target.value;
-                  const newSite = sites.find((s) => s.id === parseInt(newSiteId));
-                  if (newSite) setClientFilter(String(newSite.client));
-                  setForm({ ...form, site: newSiteId });
-                }}
-              >
-                <option value="">-- Select --</option>
-                {siteOptions.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}{s.status !== "active" ? " (archived)" : ""}</option>
-                ))}
-              </select>
+              <button type="button" className="edit-field" onClick={() => setPickerOpen("site")}
+                style={{ textAlign: "left", cursor: "pointer", background: "transparent", border: "1px solid #c8c2b8", borderRadius: 6, padding: "6px 12px" }}>
+                {form.site ? (siteOptions.find(s => String(s.id) === String(form.site))?.name || "-- Select --") : "-- Select --"}
+              </button>
+              {pickerOpen === "site" && (
+                <SearchPickerModal
+                  title="Select Site"
+                  value={form.site}
+                  onClose={() => setPickerOpen(null)}
+                  onChange={(val) => {
+                    const newSite = sites.find((s) => s.id === parseInt(val));
+                    if (newSite) setClientFilter(String(newSite.client));
+                    setForm({ ...form, site: val });
+                  }}
+                  options={[
+                    { value: "", label: "-- Select --" },
+                    ...siteOptions.map((s) => ({
+                      value: String(s.id), label: s.name + (s.status !== "active" ? " (archived)" : ""),
+                    })),
+                  ]}
+                />
+              )}
             </div>
           </div>}
         </div>
@@ -407,14 +421,14 @@ function SurveyEditForm() {
             <div className={cardClass("sched_proto", !vr ? " field-block--unset" : "")} style={{ backgroundColor: vr ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               {cardLabel("sched_proto", "Scheduling protocols")}
               <div className="edit-field d-flex gap-4">
-                {[{ value: "unrestricted", label: "Open" }, { value: "prearranged", label: "Scheduled" }, { value: "scheduled", label: "Window" }].map(({ value, label }) => (
+                {[{ value: "unrestricted_notify", label: "Unrestricted - notify in advance" }, { value: "unrestricted", label: "Unrestricted - no notification" }, { value: "prearranged", label: "Pre-arrange" }].map(({ value, label }) => (
                   <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
                     <input type="radio" name="visit_requirement" value={value}
                       checked={vr === value}
                       onChange={() => {
                         const newVr = value;
-                        const newSs = newVr === "unrestricted" ? "self_scheduled" : "";
-                        const newVt = newVr === "scheduled" ? "window" : (form.visit_time === "window" ? "" : form.visit_time);
+                        const newSs = (newVr === "unrestricted" || newVr === "unrestricted_notify") ? "self_scheduled" : "";
+                        const newVt = newVr === "prearranged" ? "window" : (form.visit_time === "window" ? "" : form.visit_time);
                         setForm({ ...form, visit_requirement: newVr, schedule_status: newSs, visit_time: newVt });
                       }}
                     />
@@ -534,20 +548,6 @@ function SurveyEditForm() {
               </div>
             </div>
 
-            <div className={cardClass("notify", form.notify_required === "" ? " field-block--unset" : "")} style={{ backgroundColor: form.notify_required !== "" ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
-              {cardLabel("notify", "Visit Notifications")}
-              <div className="edit-field d-flex gap-4">
-                {[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }].map(({ value, label }) => (
-                  <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
-                    <input type="radio" name="notify_required" value={value}
-                      checked={form.notify_required === value}
-                      onChange={() => setForm({ ...form, notify_required: value })}
-                    />
-                    <span style={{ fontSize: "0.9rem" }}>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
             <div className={cardClass("site_req", !form.site_requirements ? " field-block--unset" : "")} style={{ backgroundColor: form.site_requirements ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               {cardLabel("site_req", "Site Requirements")}
               <div className="edit-field d-flex gap-4 flex-wrap">
@@ -562,37 +562,40 @@ function SurveyEditForm() {
                 ))}
               </div>
             </div>
-            <div className={cardClass("procedures")} style={{ backgroundColor: (form.arrival_action || form.departure_action) ? "#f0ece4" : "#f5f5f7", width: "fit-content", gap: 8 }}>
+            <div className={cardClass("procedures")} style={{ backgroundColor: (form.arrival_action && form.arrival_action !== "none") ? "#f0ece4" : "#f5f5f7", width: "fit-content", gap: 8 }}>
               {cardLabel("procedures", "Site procedures")}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div className={`field-block${!form.arrival_action ? " field-block--unset" : ""}`} style={{ backgroundColor: form.arrival_action ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
-                  <div className="field-label">Arrival</div>
-                  <div className="edit-field d-flex gap-4">
-                    {["reception", "security", "none"].map((val) => (
-                      <label key={val} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
-                        <input type="radio" name="arrival_action" value={val}
-                          checked={form.arrival_action === val}
-                          onChange={() => setForm({ ...form, arrival_action: val })}
-                        />
-                        <span style={{ textTransform: "capitalize" }}>{val}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className={`field-block${!form.departure_action ? " field-block--unset" : ""}`} style={{ backgroundColor: form.departure_action ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
-                  <div className="field-label">Departure</div>
-                  <div className="edit-field d-flex gap-4">
-                    {["reception", "security", "none"].map((val) => (
-                      <label key={val} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
-                        <input type="radio" name="departure_action" value={val}
-                          checked={form.departure_action === val}
-                          onChange={() => setForm({ ...form, departure_action: val })}
-                        />
-                        <span style={{ textTransform: "capitalize" }}>{val}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+              <div className="edit-field d-flex gap-4">
+                {[
+                  { value: "reception", label: "Arrival - reception" },
+                  { value: "security", label: "Arrival - security" },
+                  { value: "none", label: "None" },
+                ].map(({ value, label }) => {
+                  const selected = value === "none"
+                    ? form.arrival_action === "none" || !form.arrival_action
+                    : (form.arrival_action || "").split(",").includes(value);
+                  return (
+                    <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
+                      <input
+                        type={value === "none" ? "radio" : "checkbox"}
+                        name="site_procedures"
+                        checked={selected}
+                        onChange={() => {
+                          if (value === "none") {
+                            setForm({ ...form, arrival_action: "none", departure_action: "" });
+                          } else {
+                            const current = (form.arrival_action && form.arrival_action !== "none") ? form.arrival_action.split(",") : [];
+                            const updated = current.includes(value)
+                              ? current.filter(v => v !== value)
+                              : [...current, value];
+                            setForm({ ...form, arrival_action: updated.length > 0 ? updated.join(",") : "none", departure_action: "" });
+                          }
+                        }}
+                        style={value !== "none" ? { appearance: "none", width: 16, height: 16, borderRadius: "50%", border: "2px solid #888", backgroundColor: selected ? "#0d6efd" : "#fff", cursor: "pointer", position: "relative" } : {}}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>}
@@ -647,16 +650,24 @@ function SurveyEditForm() {
           {openSections.attendees && <div className="card-stack">
             <div className={cardClass("surveyor")} style={{ backgroundColor: form.assigned_to ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               {cardLabel("surveyor", "Surveyor")}
-              <select
-                className="edit-field"
-                value={form.assigned_to}
-                onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
-              >
-                <option value="">Unassigned</option>
-                {team.filter((m) => m.role === "surveyor").map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
+              <button type="button" className="edit-field" onClick={() => setPickerOpen("surveyor")}
+                style={{ textAlign: "left", cursor: "pointer", background: "transparent", border: "1px solid #c8c2b8", borderRadius: 6, padding: "6px 12px" }}>
+                {form.assigned_to ? (team.find(m => String(m.id) === String(form.assigned_to))?.name || "Unassigned") : "Unassigned"}
+              </button>
+              {pickerOpen === "surveyor" && (
+                <SearchPickerModal
+                  title="Select Surveyor"
+                  value={form.assigned_to}
+                  onClose={() => setPickerOpen(null)}
+                  onChange={(val) => setForm({ ...form, assigned_to: val })}
+                  options={[
+                    { value: "", label: "Unassigned" },
+                    ...team.filter((m) => m.role === "surveyor").map((m) => ({
+                      value: String(m.id), label: m.name,
+                    })),
+                  ]}
+                />
+              )}
             </div>
             <div className={cardClass("attendees_other")} style={{ backgroundColor: form.client_present ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               {cardLabel("attendees_other", "Other attendees")}

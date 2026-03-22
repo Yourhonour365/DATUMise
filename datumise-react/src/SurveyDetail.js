@@ -516,7 +516,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                   {survey.schedule_status && (
                     <div className="survey-detail-item">
                       <span className="survey-detail-label">Schedule status</span>
-                      <span>{{ self_scheduled: "Self-scheduled", provisional: "Provisional", booked: "Booked" }[survey.schedule_status] || survey.schedule_status}</span>
+                      <span>{{ self_scheduled: "Self-scheduled", provisional: "Provisional", booked: "Confirmed" }[survey.schedule_status] || survey.schedule_status}</span>
                     </div>
                   )}
                   {survey.visit_time && (

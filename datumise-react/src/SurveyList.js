@@ -67,7 +67,7 @@ function formatScheduleLine(survey) {
     scheduleLabel = "Self-scheduled";
   } else if (visitReq === "prearranged") {
     if (schedStatus === "provisional") scheduleLabel = "Provisional";
-    else if (schedStatus === "booked") scheduleLabel = "Booked";
+    else if (schedStatus === "booked") scheduleLabel = "Confirmed";
     else scheduleLabel = "Pre-arranged";
   }
 

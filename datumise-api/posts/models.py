@@ -145,7 +145,8 @@ class Survey(models.Model):
     ]
 
     VISIT_REQUIREMENT_CHOICES = [
-        ("unrestricted", "Unrestricted"),
+        ("unrestricted_notify", "Unrestricted - notify in advance"),
+        ("unrestricted", "Unrestricted - no notification"),
         ("prearranged", "Pre-arranged"),
     ]
 
