@@ -17,7 +17,7 @@ function TeamDetail() {
 
   useEffect(() => {
     setSurveysOpen(false);
-    setSurveysListOpen(false);
+    setSurveysListOpen(true);
     setSurveyFilter("assigned");
     const fetchMember = async () => {
       try {
