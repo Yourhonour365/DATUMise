@@ -95,6 +95,11 @@ class SurveyList(generics.ListCreateAPIView):
         observation_count=Count("observations", distinct=True),
         total_likes_count=Count("observations__likes", distinct=True),
         total_comments_count=Count("observations__comments", distinct=True),
+        real_observation_count=Count(
+            "observations",
+            filter=Q(observations__is_draft=False, observations__image__isnull=False) & ~Q(observations__image=""),
+            distinct=True,
+        ),
     ).order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -359,7 +364,9 @@ class ClientSiteDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class TeamList(generics.ListCreateAPIView):
-    queryset = User.objects.select_related("profile").order_by(
+    queryset = User.objects.select_related("profile").annotate(
+        survey_count=Count("assigned_surveys"),
+    ).order_by(
         "first_name", "last_name", "username"
     )
     permission_classes = [permissions.IsAuthenticated]

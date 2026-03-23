@@ -10,7 +10,7 @@ function TeamList() {
   const navigate = useNavigate();
   const [openMembers, setOpenMembers] = useState({});
   const [listOpen, setListOpen] = useState(true);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filter, setFilter] = useState("active");
   const [search, setSearch] = useState("");
   const [selectedRoles, setSelectedRoles] = useState([]);
@@ -47,12 +47,10 @@ function TeamList() {
           &larr; Back to Home
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
-        <h5 className="mb-0 fw-bold">Team</h5>
-        <AddButton to="/team/create" />
+      <h5 className="mb-2 fw-bold d-none d-md-block">Team</h5>
+      <div className="d-none d-md-flex gap-2 mb-3">
+        <Link to="/team/create" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Team Member</Link>
       </div>
-
-      <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }}>
       {/* Applied filters */}
       <div className="edit-fieldset mb-4" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
         <p className="edit-legend section-toggle" onClick={() => setFiltersOpen(!filtersOpen)} style={{ color: "#fefdfc" }}>
@@ -144,6 +142,7 @@ function TeamList() {
                 <span style={{ display: "inline-flex", alignItems: "baseline" }}>
                   <span className="team-name-hover" style={{ minWidth: "12rem", marginRight: 8, whiteSpace: "nowrap", lineHeight: 1 }}>{member.name}</span>
                   <span className="team-role-hover" onClick={(e) => { e.stopPropagation(); navigate(`/team/${member.id}`); }} style={{ fontStyle: "italic", fontWeight: 400, fontSize: "0.82rem", color: member.status === "archived" ? "#c0392b" : "#888", marginRight: "1.5rem", lineHeight: 1, cursor: "pointer" }}>{member.status === "archived" ? "Archived" : member.role_display}</span>
+                  {member.survey_count > 0 && <span style={{ fontSize: "0.75rem", color: "#6c757d", lineHeight: 1 }}>{member.survey_count} survey{member.survey_count !== 1 ? "s" : ""}</span>}
                 </span>
               </p>
               <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16 }}>
@@ -185,7 +184,6 @@ function TeamList() {
         ))}
         </>
       ) : null}
-      </div>
 
       <div className="d-md-none">
         <AddButton to="/team/create" />

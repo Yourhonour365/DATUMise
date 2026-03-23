@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 
@@ -15,20 +15,41 @@ function TeamCreateForm() {
     last_name: "",
     email: "",
     phone: "",
-    role: "surveyor",
+    role: "",
     status: "active",
   });
 
+  useEffect(() => {
+    document.body.style.backgroundColor = "#f5f5f7";
+    return () => { document.body.style.backgroundColor = ""; };
+  }, []);
+
+  // Mandatory fields
+  const fieldComplete = {
+    username: !!form.username.trim(),
+    first_name: !!form.first_name.trim(),
+    last_name: !!form.last_name.trim(),
+    email: !!form.email.trim(),
+  };
+  const canSave = fieldComplete.username && fieldComplete.first_name && fieldComplete.last_name && fieldComplete.email;
+  const incompleteBorder = { borderLeft: "4px solid #db440a" };
+  const fieldBorder = (complete) => complete ? {} : incompleteBorder;
+
+  const sectionBorder = (key) => {
+    if (key === "name") return (fieldComplete.username && fieldComplete.first_name && fieldComplete.last_name) ? {} : incompleteBorder;
+    if (key === "contact") return fieldComplete.email ? {} : incompleteBorder;
+    return {};
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSave) return;
     setSaving(true);
     setError("");
     try {
       const payload = { ...form };
-      if (!payload.first_name) delete payload.first_name;
-      if (!payload.last_name) delete payload.last_name;
-      if (!payload.email) delete payload.email;
       if (!payload.phone) delete payload.phone;
+      if (!payload.role) delete payload.role;
       const response = await api.post("/api/team/", payload);
       navigate(`/team/${response.data.id}`);
     } catch (err) {
@@ -65,25 +86,30 @@ function TeamCreateForm() {
 
       <form onSubmit={handleSubmit}>
         {/* ---- Name ---- */}
-        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-          <p className="edit-legend section-toggle" onClick={() => toggle("name")}>
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb", ...sectionBorder("name") }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("name")} style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
             <span className={`section-chevron${openSections.name ? " section-chevron--open" : ""}`}></span>
-            Name
+            <span>Name</span>
+            {!openSections.name && (form.first_name || form.last_name) && (
+              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "#6c757d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                {[form.first_name, form.last_name].filter(Boolean).join(" ")}
+              </span>
+            )}
           </p>
           {openSections.name && <div className="card-stack">
-            <div className="field-block" style={{ backgroundColor: form.username.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+            <div className="field-block" style={{ backgroundColor: form.username.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content", ...fieldBorder(fieldComplete.username) }}>
               <div className="field-label">Username</div>
-              <input type="text" className="edit-field" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+              <input type="text" className="edit-field" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
             </div>
-            <div className="field-block" style={{ backgroundColor: form.first_name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+            <div className="field-block" style={{ backgroundColor: form.first_name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content", ...fieldBorder(fieldComplete.first_name) }}>
               <div className="field-label">First name</div>
               <input type="text" className="edit-field" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
             </div>
-            <div className="field-block" style={{ backgroundColor: form.last_name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+            <div className="field-block" style={{ backgroundColor: form.last_name.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content", ...fieldBorder(fieldComplete.last_name) }}>
               <div className="field-label">Last name</div>
               <input type="text" className="edit-field" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
             </div>
-            <div className="field-block" style={{ backgroundColor: "#f0ece4", width: "fit-content" }}>
+            <div className="field-block" style={{ backgroundColor: form.role ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               <div className="field-label">Role</div>
               <div className="edit-field d-flex gap-4">
                 {[{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "surveyor", label: "Surveyor" }].map(({ value, label }) => (
@@ -98,17 +124,22 @@ function TeamCreateForm() {
         </div>
 
         {/* ---- Contact Details ---- */}
-        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-          <p className="edit-legend section-toggle" onClick={() => toggle("contact")}>
+        <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb", ...sectionBorder("contact") }}>
+          <p className="edit-legend section-toggle" onClick={() => toggle("contact")} style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
             <span className={`section-chevron${openSections.contact ? " section-chevron--open" : ""}`}></span>
-            Contact Details
+            <span>Contact Details</span>
+            {!openSections.contact && form.email && (
+              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "#6c757d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                {form.email}
+              </span>
+            )}
           </p>
           {openSections.contact && <div className="card-stack">
             <div className="field-block" style={{ backgroundColor: form.phone.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
               <div className="field-label">Phone</div>
               <input type="text" className="edit-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
-            <div className="field-block" style={{ backgroundColor: form.email.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content" }}>
+            <div className="field-block" style={{ backgroundColor: form.email.trim() ? "#f0ece4" : "#f5f5f7", width: "fit-content", ...fieldBorder(fieldComplete.email) }}>
               <div className="field-label">Email</div>
               <input type="email" className="edit-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
@@ -135,28 +166,18 @@ function TeamCreateForm() {
           </div>}
         </div>
 
-        <div className="d-flex justify-content-center gap-4 mt-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="capture-action-btn"
-            aria-label="Save"
-            style={{ background: "#008000", border: "none" }}
-          >
-            <img src="/datumise-confirm.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+        {/* ---- Actions ---- */}
+        <div className="d-flex justify-content-center gap-3 mt-3 flex-wrap">
+          <button type="submit" disabled={saving || !canSave}
+            className="btn btn-outline-secondary btn-sm px-3" style={{ opacity: canSave ? 1 : 0.45 }}>
+            Save
           </button>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="capture-action-btn"
-            aria-label="Cancel"
-            style={{ background: "#dce7fa", border: "none" }}
-          >
-            <img src="/datumise-return.svg" alt="" width="22" height="22" style={{ filter: "invert(27%) sepia(96%) saturate(1752%) hue-rotate(213deg) brightness(92%) contrast(88%)" }} />
+          <button type="button" onClick={() => navigate(-1)}
+            className="btn btn-outline-secondary btn-sm px-3">
+            Cancel
           </button>
         </div>
       </form>
-
     </div>
   );
 }

@@ -10,11 +10,17 @@ function ObservationCreateForm(props) {
     title: "",
     description: "",
   });
-  const [image, setImage] = useState(null);
- 
- 
+  const [image, setImageRaw] = useState(null);
+  const setImage = (file) => {
+    setImageRaw(file);
+    if (file) props.onPhotoTaken?.();
+  };
+
+
   const clearForm = () => {
     imageWriteCancelledRef.current = true;
+    if (draftTextTimerRef.current) clearTimeout(draftTextTimerRef.current);
+    liveDraftIdRef.current = null;
     setFormData({
       title: "",
       description: "",
@@ -44,54 +50,94 @@ function ObservationCreateForm(props) {
   const pendingImageUrlRef = useRef(null);
   const isFirstPhotoModalRef = useRef(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
-  const autoSaveFnRef = useRef(null);
+  const liveDraftIdRef = useRef(null);       // API-side draft observation ID
+  const draftSavingRef = useRef(false);      // prevent concurrent saves
+  const draftTextTimerRef = useRef(null);    // debounce timer for text updates
 
   useEffect(() => {
     if (props.openNotesTrigger) setShowNotesModal(true);
   }, [props.openNotesTrigger]);
 
-  // Keep auto-save function up to date with latest state
-  autoSaveFnRef.current = async () => {
-    if (!title.trim() && !imagePreview) return;
-    const data = new FormData();
-    data.append("title", title || "");
-    data.append("description", description || "");
-    data.append("is_draft", "true");
-    if (surveyId) data.append("survey", surveyId);
-    let imageFile = image;
-    if (!imageFile && imagePreview) {
-      try {
-        const res = await fetch(imagePreview);
-        const blob = await res.blob();
-        imageFile = new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" });
-      } catch (e) { /* silent */ }
+  // Save draft to API immediately (creates or updates)
+  const saveDraftToApi = async (imageFile, currentTitle, currentDescription) => {
+    if (draftSavingRef.current) return;
+    draftSavingRef.current = true;
+    try {
+      if (liveDraftIdRef.current) {
+        // Update existing draft
+        const patchData = { title: currentTitle || "", description: currentDescription || "" };
+        await api.patch(`/api/observations/${liveDraftIdRef.current}/`, patchData);
+      } else {
+        // Create new draft
+        const data = new FormData();
+        data.append("title", currentTitle || "");
+        data.append("description", currentDescription || "");
+        data.append("is_draft", "true");
+        if (surveyId) data.append("survey", surveyId);
+        if (imageFile) data.append("image", imageFile);
+        const response = await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+        liveDraftIdRef.current = response.data.id;
+        props.onDraftSaved?.(response.data);
+      }
+    } catch (e) {
+      console.error("Draft save failed:", e);
+    } finally {
+      draftSavingRef.current = false;
     }
-    if (!imageFile) {
-      const saved = localStorage.getItem("datumise-observation-image");
-      if (saved) {
-        try {
-          const res = await fetch(saved);
-          const blob = await res.blob();
-          imageFile = new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" });
-        } catch (e) { /* silent */ }
+  };
+
+  // Debounced text update to API
+  const scheduleDraftTextUpdate = (currentTitle, currentDescription) => {
+    if (draftTextTimerRef.current) clearTimeout(draftTextTimerRef.current);
+    draftTextTimerRef.current = setTimeout(() => {
+      if (liveDraftIdRef.current) {
+        saveDraftToApi(null, currentTitle, currentDescription);
+      }
+    }, 1500);
+  };
+
+  // Clean up debounce timer on unmount; flush pending text update
+  useEffect(() => {
+    return () => {
+      if (draftTextTimerRef.current) clearTimeout(draftTextTimerRef.current);
+    };
+  }, []);
+
+  // Auto-save draft to API after image preview modal is closed with image confirmed
+  // If text already exists, promote to real observation immediately
+  useEffect(() => {
+    if (!showImagePreviewModal && image && !draftSavingRef.current) {
+      if (!liveDraftIdRef.current) {
+        saveDraftToApi(image, title, description).then(() => {
+          if (liveDraftIdRef.current && title.trim()) {
+            promoteDraftIfComplete();
+          }
+        });
+      } else if (title.trim()) {
+        promoteDraftIfComplete();
       }
     }
-    if (imageFile) data.append("image", imageFile);
+  }, [showImagePreviewModal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-promote draft to real observation when both image and text are present
+  const promoteDraftIfComplete = async () => {
+    if (!liveDraftIdRef.current || !imagePreview || !title.trim()) return;
     try {
-      const response = await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+      const response = await api.patch(`/api/observations/${liveDraftIdRef.current}/`, { is_draft: false, title: title.trim(), description });
       clearForm();
-      props.onDraftSaved?.(response.data);
+      props.onSuccess?.(response.data);
     } catch (e) {
-      console.error("Auto-save draft failed:", e);
+      console.error("Failed to promote draft:", e);
     }
   };
 
   useEffect(() => {
-    props.onRegisterAutoSave?.(() => autoSaveFnRef.current?.());
-    return () => props.onRegisterAutoSave?.(null);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // If an API-side draft already exists for this survey, adopt it
+    const existingDraft = (props.observations || []).find((o) => o.is_draft);
+    if (existingDraft) {
+      liveDraftIdRef.current = existingDraft.id;
+    }
 
-  useEffect(() => {
     const restoreDraft = async () => {
     const savedDraft = localStorage.getItem("datumise-observation-draft");
 
@@ -186,6 +232,11 @@ function ObservationCreateForm(props) {
       "datumise-observation-draft",
       JSON.stringify({ ...updatedData, surveyId })
     );
+
+    // If a draft already exists on the API, schedule a debounced update
+    if (liveDraftIdRef.current) {
+      scheduleDraftTextUpdate(updatedData.title, updatedData.description);
+    }
   };
 
   const handleTitleBlur = () => {
@@ -242,7 +293,18 @@ function ObservationCreateForm(props) {
     }
 
     try {
-      const response = await api.post("/api/observations/", submissionData);
+      let response;
+      if (liveDraftIdRef.current) {
+        // Promote existing draft to real observation
+        const patchData = new FormData();
+        patchData.append("title", title);
+        patchData.append("description", description);
+        patchData.append("is_draft", "false");
+        if (imageFile) patchData.append("image", imageFile);
+        response = await api.patch(`/api/observations/${liveDraftIdRef.current}/`, patchData, { headers: { "Content-Type": "multipart/form-data" } });
+      } else {
+        response = await api.post("/api/observations/", submissionData);
+      }
 
       if (props.onSuccess) {
         props.onSuccess(response.data);
@@ -250,15 +312,10 @@ function ObservationCreateForm(props) {
 
       clearForm();
 
-      
-
-
     } catch (err) {
       console.error("Add observation failed:", err);
-    }
-
-      finally {
-        setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -317,6 +374,7 @@ function ObservationCreateForm(props) {
             <div
                   className="obs-capture-block"
                   onClick={() => {
+                    if (!props.isSurveyor) return;
                     if (imagePreview) {
                       isFirstPhotoModalRef.current = false;
                       setHasPendingImage(false);
@@ -356,10 +414,10 @@ function ObservationCreateForm(props) {
                 />
               ) : (
                 <div className="d-flex flex-column align-items-center gap-2">
-                  <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>
-                    {title.trim() ? "ADD PHOTO TO PROCEED" : "Start by adding a photo"}
+                  <span className="text-center" style={{ color: "#faf6ef", fontSize: props.isSurveyor === false ? "0.85rem" : "1.1rem", fontWeight: 600 }}>
+                    {props.isSurveyor === false ? "Only the surveyor or observation owner can edit or update this observation" : title.trim() ? "ADD PHOTO TO PROCEED" : "Start by adding a photo"}
                   </span>
-                  <img src="/datumise-add.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
+                  {props.isSurveyor !== false && <img src="/datumise-add.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />}
                 </div>
               )}
             </div>
@@ -398,10 +456,10 @@ function ObservationCreateForm(props) {
               }}
             >
               <div className="d-flex flex-column align-items-center gap-2">
-                <span className="text-center" style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 600 }}>
-                  Add description
+                <span className="text-center" style={{ color: "#faf6ef", fontSize: props.isSurveyor === false ? "0.85rem" : "1.1rem", fontWeight: 600 }}>
+                  {props.isSurveyor === false ? "Only the surveyor or observation owner can edit or update this observation" : "Add description"}
                 </span>
-                <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />
+                {props.isSurveyor !== false && <img src="/datumise-edit.svg" alt="" width="28" height="28" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)", opacity: 0.8 }} />}
               </div>
             </div>
           )}
@@ -474,161 +532,178 @@ function ObservationCreateForm(props) {
 
     {props.captureMode && props.actionBarTarget && createPortal(
       <>
-        <div className="capture-footer-grid">
-          {props.isViewingPrevious && props.isDraftObs ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Observations list"
-              style={{ background: props.obsListOpen ? "#2c3e50" : "#008080" }}
-              onClick={() => props.onShowObsList?.()}
-              disabled={props.obsListOpen}
-            >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          ) : props.isViewingPrevious ? (
-            <div />
-          ) : (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Observations list"
-              style={{ background: props.copiedToDraft || props.obsListOpen ? "#2c3e50" : (!props.isViewingPrevious && title.trim() && !imagePreview ? "#336666" : "#008080") }}
-              onClick={() => props.onShowObsList?.()}
-              disabled={props.copiedToDraft || props.obsListOpen}
-            >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: props.copiedToDraft || props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          )}
-          {props.copiedToDraft && props.isViewingPrevious ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Confirm copy"
-              disabled={props.obsListOpen}
-              onClick={() => props.onConfirmCopy?.()}
-              style={{ background: props.obsListOpen ? "#2c3e50" : "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          ) : props.isViewingPrevious && !props.isDraftObs ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Newer observation"
-              disabled={props.obsListOpen || !props.onStepForward}
-              onClick={() => props.onStepForward?.()}
-              style={{ background: props.obsListOpen || !props.onStepForward ? "#2c3e50" : "#1a5bc4" }}
-            >
-              <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepForward ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Edit observation"
-              disabled={props.obsListOpen}
-              onClick={() => props.isViewingPrevious ? props.onEditPrevious?.() : setShowNotesModal(true)}
-              style={{ background: props.obsListOpen ? "#2c3e50" : (!props.isViewingPrevious && title.trim() && !imagePreview ? "#3d6b9e" : !props.isViewingPrevious && !title.trim() && !imagePreview ? "#2d4a7a" : "#1a5bc4") }}
-            >
-              <img src="/text.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          )}
-          {props.isViewingPrevious && props.isDraftObs ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Complete draft"
-              disabled={props.obsListOpen || props.previousObsIncomplete}
-              onClick={() => props.onCompleteDraft?.()}
-              style={{ background: props.obsListOpen || props.previousObsIncomplete ? "#2c3e50" : "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || props.previousObsIncomplete ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          ) : props.isViewingPrevious ? (
-            props.copiedToDraft ? (
-              <button
-                type="button"
-                className="capture-footer-btn"
-                aria-label="Cancel copy"
-                disabled={props.obsListOpen}
-                onClick={() => props.onCancelCopy?.()}
-                style={{ background: props.obsListOpen ? "#2c3e50" : "#95a5a6" }}
-              >
-                <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="capture-footer-btn"
-                aria-label="Older observation"
-                disabled={props.obsListOpen || !props.onStepBack}
-                onClick={() => props.onStepBack?.()}
-                style={{ background: props.obsListOpen || !props.onStepBack ? "#2c3e50" : "#1a5bc4" }}
-              >
-                <img src="/right.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepBack ? "none" : "brightness(0) invert(1)" }} />
-              </button>
-            )
-          ) : imagePreview && title.trim() ? (
-            <button
-              type="submit"
-              form="observation-create-form"
-              className="capture-footer-btn"
-              aria-label="Save and New"
-              disabled={isSubmitting || props.obsListOpen}
-              style={{ background: props.obsListOpen ? "#2c3e50" : "#006400" }}
-            >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Take Photo"
-              disabled={props.obsListOpen}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ background: props.obsListOpen ? "#2c3e50" : "#db440a" }}
-            >
-              <img src="/camera.svg" alt="" width={title.trim() && !imagePreview ? 62 : !title.trim() && !imagePreview ? 58 : 47} height={title.trim() && !imagePreview ? 62 : !title.trim() && !imagePreview ? 58 : 47} style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          )}
-          {props.obsListOpen ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Close list"
-              onClick={() => props.onCloseObsList?.()}
-              style={{ background: "#95a5a6" }}
-            >
-              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-            </button>
-          ) : props.isViewingPrevious ? (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Return to draft"
-              disabled={props.isDraftObs}
-              onClick={() => props.onReturnToCurrent?.()}
-              style={{ background: props.isDraftObs ? "#2c3e50" : "#95a5a6" }}
-            >
-              <img src="/x.svg" alt="" width="75" height="75" style={{ filter: props.isDraftObs ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="capture-footer-btn"
-              aria-label="Pause Survey"
-              disabled={props.copiedToDraft || props.obsListOpen}
-              onClick={() => {
-                props.onPauseSurvey?.();
-                props.onClose?.();
-              }}
-              style={{ background: (props.copiedToDraft || props.obsListOpen) ? "#2c3e50" : undefined }}
-            >
-              <img src="/datumise_pause.svg" alt="" width="47" height="47" style={{ filter: (props.copiedToDraft || props.obsListOpen) ? "none" : "brightness(0) invert(1)" }} />
-            </button>
-          )}
+        {props.isViewingPrevious && props.isDraftObs ? (
+        <div className="capture-footer-grid" style={{ gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr)" }}>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Use draft"
+            style={{ background: props.obsListOpen || !props.isSurveyor ? "#2c3e50" : "#0006b1" }}
+            onClick={() => props.onUseDraft?.()}
+            disabled={props.obsListOpen || !props.isSurveyor}
+          >
+            <img src="/draft.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen || !props.isSurveyor ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Back"
+            disabled={props.obsListOpen}
+            onClick={() => props.onStepBack?.()}
+            style={{ background: props.obsListOpen ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Add photo to draft"
+            disabled={props.obsListOpen || !props.isSurveyor}
+            onClick={() => props.onCaptureDraftPhoto?.()}
+            style={{ background: props.obsListOpen || !props.isSurveyor ? "#2c3e50" : "#db440a" }}
+          >
+            <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.isSurveyor ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Forward"
+            disabled={props.obsListOpen}
+            onClick={() => props.onStepForward?.()}
+            style={{ background: props.obsListOpen ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/right.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Observations list"
+            style={{ background: props.obsListOpen ? "#2c3e50" : "#008080" }}
+            onClick={() => props.onShowObsList?.()}
+            disabled={props.obsListOpen}
+          >
+            <img src="/datumise-observations.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+          </button>
         </div>
+        ) : props.isViewingPrevious ? (
+        <div className="capture-footer-grid" style={{ gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr)" }}>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Use draft"
+            style={{ background: props.obsListOpen || !props.isSurveyor ? "#2c3e50" : "#0006b1" }}
+            onClick={() => props.onUseDraft?.()}
+            disabled={props.obsListOpen || !props.isSurveyor}
+          >
+            <img src="/draft.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen || !props.isSurveyor ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Back"
+            disabled={props.obsListOpen}
+            onClick={() => props.onStepBack?.()}
+            style={{ background: props.obsListOpen || !props.onStepBack ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepBack ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Take Photo"
+            disabled={props.obsListOpen || !props.isSurveyor}
+            onClick={() => props.onCaptureDraftPhoto?.()}
+            style={{ background: props.obsListOpen || !props.isSurveyor ? "#2c3e50" : "#db440a" }}
+          >
+            <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.isSurveyor ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Forward"
+            disabled={props.obsListOpen}
+            onClick={() => props.onStepForward?.()}
+            style={{ background: props.obsListOpen || !props.onStepForward ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/right.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepForward ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Observations list"
+            style={{ background: props.obsListOpen ? "#2c3e50" : "#008080" }}
+            onClick={() => props.onShowObsList?.()}
+            disabled={props.obsListOpen}
+          >
+            <img src="/datumise-observations.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+        </div>
+        ) : (
+        <div className="capture-footer-grid" style={{ gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr)" }}>
+          {(imagePreview || title.trim()) ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Delete draft"
+              disabled={props.obsListOpen}
+              onClick={() => {
+                const confirmed = window.confirm("Delete current observation?");
+                if (!confirmed) return;
+                if (liveDraftIdRef.current) {
+                  api.delete(`/api/observations/${liveDraftIdRef.current}/`).catch(console.error);
+                }
+                clearForm();
+                props.onDraftDeleted?.();
+              }}
+              style={{ background: props.obsListOpen ? "#2c3e50" : "#c0392b" }}
+            >
+              <img src="/datumise_delete.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+            </button>
+          ) : (
+            <div />
+          )}
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Back"
+            disabled={props.obsListOpen}
+            onClick={() => props.onStepBack?.()}
+            style={{ background: props.obsListOpen || !props.onStepBack ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepBack ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Take Photo"
+            disabled={props.obsListOpen || !props.isSurveyor}
+            onClick={() => fileInputRef.current?.click()}
+            style={{ background: props.obsListOpen || !props.isSurveyor ? "#2c3e50" : "#db440a" }}
+          >
+            <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.isSurveyor ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Forward"
+            disabled={props.obsListOpen || !props.onStepForward}
+            onClick={() => props.onStepForward?.()}
+            style={{ background: props.obsListOpen || !props.onStepForward ? "#2c3e50" : "#1a5bc4" }}
+          >
+            <img src="/right.svg" alt="" width="47" height="47" style={{ filter: props.obsListOpen || !props.onStepForward ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+          <button
+            type="button"
+            className="capture-footer-btn"
+            aria-label="Observations list"
+            style={{ background: props.obsListOpen ? "#2c3e50" : "#008080" }}
+            onClick={() => props.onShowObsList?.()}
+            disabled={props.obsListOpen}
+          >
+            <img src="/datumise-observations.svg" alt="" width="40" height="40" style={{ filter: props.obsListOpen ? "none" : "brightness(0) invert(1)" }} />
+          </button>
+        </div>
+        )}
       </>,
       props.actionBarTarget
     )}
@@ -642,12 +717,8 @@ function ObservationCreateForm(props) {
           setShowingOriginal(false);
           pendingImageFileRef.current = null;
           pendingImageUrlRef.current = null;
-        } else if (isFirstPhotoModalRef.current) {
-          imageWriteCancelledRef.current = true;
-          setImage(null);
-          setImagePreview("");
-          localStorage.removeItem("datumise-observation-image");
         }
+        // Never clear image on modal dismiss — use the delete button to remove
         setShowImagePreviewModal(false);
       }}
       fullscreen={true}
@@ -682,17 +753,17 @@ function ObservationCreateForm(props) {
               onClick={() => setShowingOriginal(prev => !prev)}
               style={{ background: "#1a5bc4" }}
             >
-              <img src="/shift.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise_end_right.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
           ) : (
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Prior observations"
-              onClick={() => { setShowImagePreviewModal(false); props.onShowObsList?.(); }}
-              style={{ background: "#008080" }}
+              aria-label="Use draft"
+              onClick={() => { setShowImagePreviewModal(false); props.onUseDraft?.(); }}
+              style={{ background: "#0006b1" }}
             >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
           )}
           <button
@@ -707,34 +778,55 @@ function ObservationCreateForm(props) {
           >
             <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
           </button>
-          <button
-            type="button"
-            className="capture-footer-btn"
-            aria-label="Confirm image"
-            onClick={() => {
-              if (hasPendingImage) {
-                // Accept pending: write to state and localStorage
-                imageWriteCancelledRef.current = false;
-                setImage(pendingImageFileRef.current);
-                setImagePreview(pendingImageUrlRef.current);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  if (reader.result && !imageWriteCancelledRef.current) {
-                    localStorage.setItem("datumise-observation-image", reader.result);
-                  }
-                };
-                reader.readAsDataURL(pendingImageFileRef.current);
-                setHasPendingImage(false);
-                setShowingOriginal(false);
-                pendingImageFileRef.current = null;
-                pendingImageUrlRef.current = null;
-              }
-              setShowImagePreviewModal(false);
-            }}
-            style={{ background: "#006400" }}
-          >
-            <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
-          </button>
+          {imagePreview && !hasPendingImage && !isFirstPhotoModalRef.current ? (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Delete image"
+              onClick={() => {
+                imageWriteCancelledRef.current = true;
+                setImage(null);
+                setImagePreview("");
+                localStorage.removeItem("datumise-observation-image");
+                if (liveDraftIdRef.current) {
+                  api.patch(`/api/observations/${liveDraftIdRef.current}/`, { image: "" }).catch(console.error);
+                }
+                setShowImagePreviewModal(false);
+              }}
+              style={{ background: "#95a5a6" }}
+            >
+              <img src="/datumise_delete.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Confirm image"
+              onClick={() => {
+                if (hasPendingImage) {
+                  imageWriteCancelledRef.current = false;
+                  setImage(pendingImageFileRef.current);
+                  setImagePreview(pendingImageUrlRef.current);
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    if (reader.result && !imageWriteCancelledRef.current) {
+                      localStorage.setItem("datumise-observation-image", reader.result);
+                    }
+                  };
+                  reader.readAsDataURL(pendingImageFileRef.current);
+                  setHasPendingImage(false);
+                  setShowingOriginal(false);
+                  pendingImageFileRef.current = null;
+                  pendingImageUrlRef.current = null;
+                }
+                isFirstPhotoModalRef.current = false;
+                setShowImagePreviewModal(false);
+              }}
+              style={{ background: "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+          )}
           <button
             type="button"
             className="capture-footer-btn"
@@ -745,12 +837,8 @@ function ObservationCreateForm(props) {
                 setShowingOriginal(false);
                 pendingImageFileRef.current = null;
                 pendingImageUrlRef.current = null;
-              } else if (isFirstPhotoModalRef.current) {
-                imageWriteCancelledRef.current = true;
-                setImage(null);
-                setImagePreview("");
-                localStorage.removeItem("datumise-observation-image");
               }
+              // Never clear image on close — use the delete button to remove
               setShowImagePreviewModal(false);
             }}
             style={{ background: "#95a5a6" }}
@@ -825,7 +913,16 @@ function ObservationCreateForm(props) {
             type="button"
             className="capture-footer-btn"
             aria-label="Save"
-            onClick={() => setShowNotesModal(false)}
+            onClick={() => {
+              setShowNotesModal(false);
+              // If draft has both image and text, promote to real observation
+              if (liveDraftIdRef.current && imagePreview && title.trim()) {
+                promoteDraftIfComplete();
+              } else if (liveDraftIdRef.current && title.trim()) {
+                // Update text on existing draft
+                scheduleDraftTextUpdate(title, description);
+              }
+            }}
             style={{ background: "#006400" }}
           >
             <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />

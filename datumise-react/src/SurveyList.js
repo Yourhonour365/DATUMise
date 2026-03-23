@@ -6,6 +6,7 @@ import ReturnButton from "./ReturnButton";
 import { useFilters } from "./FilterContext";
 import FilterAppliedCard from "./FilterAppliedCard";
 import AddButton from "./AddButton";
+import FilterMultiSelect from "./FilterMultiSelect";
 
 // Session-lifecycle PATCH value for starting/resuming.
 // "live" is a legacy string required because views.py perform_update
@@ -37,13 +38,16 @@ function formatScheduleLine(survey) {
   const visitReq = survey.visit_requirement;
   const schedStatus = survey.schedule_status;
 
+  const ss = survey.survey_status || survey.status;
   const isFinished = (
+    ["completed", "cancelled", "abandoned"].includes(ss) ||
+    survey.survey_record_status === "archived" ||
     ["submitted", "completed", "missed", "cancelled", "archived"].includes(survey.status) ||
     (survey.status === "assigned" && survey.current_session_status === null)
   );
   const isOverdue = due && due < now && !isFinished;
 
-  let date = "\u2014";
+  let date = "-";
   let time = "";
 
   if (isOverdue) {
@@ -63,12 +67,15 @@ function formatScheduleLine(survey) {
   }
 
   let scheduleLabel = "";
-  if (visitReq === "unrestricted") {
-    scheduleLabel = "Self-scheduled";
+  const sched = survey.scheduled_status || schedStatus;
+  if (sched === "self_scheduled") {
+    scheduleLabel = "Self-set";
+  } else if (sched === "provisional") {
+    scheduleLabel = "Provisional";
+  } else if (sched === "confirmed" || sched === "booked") {
+    scheduleLabel = "Confirmed";
   } else if (visitReq === "prearranged") {
-    if (schedStatus === "provisional") scheduleLabel = "Provisional";
-    else if (schedStatus === "booked") scheduleLabel = "Confirmed";
-    else scheduleLabel = "Pre-arranged";
+    scheduleLabel = "Pre-arranged";
   }
 
   // Prefer is_urgent (new alias); fall back to urgent for compatibility.
@@ -91,38 +98,92 @@ function SurveyList() {
   const [previousPage, setPreviousPage] = useState(null);
   const [error, setError] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedSurveys, setSelectedSurveys] = useState(new Set());
   const { filters, setFilters, clearFilters } = useFilters();
+  const [filterClients, setFilterClients] = useState([]);
+  const [filterSites, setFilterSites] = useState([]);
+  const [filterTeam, setFilterTeam] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [surveyorFilter, setSurveyorFilter] = useState(new Set());
+  const [clientFilterLocal, setClientFilterLocal] = useState(new Set());
+  const [siteFilterLocal, setSiteFilterLocal] = useState(new Set());
+  const [dateFilter, setDateFilter] = useState("");
+  const [scheduleFilter, setScheduleFilter] = useState(new Set());
+  const [myOnly, setMyOnly] = useState(false);
+  const [filtersReady, setFiltersReady] = useState(false);
+  const autoFilterDoneRef = React.useRef(false);
 
   useEffect(() => {
-    document.body.style.backgroundColor = "#E2DDD3";
+    document.body.style.backgroundColor = "#faf6ef";
     return () => { document.body.style.backgroundColor = ""; };
   }, []);
 
+  // Fetch filter options and auto-set "My Surveys" for surveyors
   useEffect(() => {
+    Promise.all([
+      api.get("/api/clients/"),
+      api.get("/api/sites/"),
+      api.get("/api/team/"),
+      api.get("/api/auth/user/").catch(() => ({ data: {} })),
+    ]).then(([c, s, t, u]) => {
+      setFilterClients(c.data.results || c.data);
+      setFilterSites(s.data.results || s.data);
+      const teamData = t.data.results || t.data;
+      setFilterTeam(teamData);
+      const uid = u.data.pk || u.data.id || null;
+      setUserId(uid);
+      if (!autoFilterDoneRef.current && uid) {
+        autoFilterDoneRef.current = true;
+        const me = teamData.find(m => String(m.id) === String(uid) || String(m.user) === String(uid));
+        if (me && (me.role === "surveyor" || me.role === "admin")) {
+          setMyOnly(true);
+        }
+      }
+      setFiltersReady(true);
+    }).catch(() => { setFiltersReady(true); });
+  }, []);
+
+  useEffect(() => {
+    // Wait for filter options to load (and auto-filter to be set) before fetching
+    if (!filtersReady) return;
+    if (myOnly && !userId) return;
     const fetchSurveys = async () => {
       try {
         let url = `/api/surveys/?search=${searchTerm}`;
-        if (filters.statuses.length) {
-          // Translate legacy filter ids (planned, live, etc.) to current DB
-          // values (open, assigned, archived). Deduplicates after translation
-          // so "missed" + "cancelled" → a single "archived" param.
-          const dbStatuses = [
-            ...new Set(
-              filters.statuses.map((s) => STATUS_FILTER_TRANSLATION[s.id] || s.id)
-            ),
-          ];
+        // Local status filter
+        if (statusFilter) {
+          const statusMap = { active: "open,assigned", completed: "completed", cancelled: "archived", abandoned: "archived", archived: "archived", draft: "draft" };
+          url += `&status=${statusMap[statusFilter] || statusFilter}`;
+          if (statusFilter === "cancelled") url += `&closure_reason=cancelled`;
+          if (statusFilter === "abandoned") url += `&closure_reason=abandoned`;
+        } else if (filters.statuses.length) {
+          const dbStatuses = [...new Set(filters.statuses.map((s) => STATUS_FILTER_TRANSLATION[s.id] || s.id))];
           url += `&status=${dbStatuses.join(",")}`;
         }
+        // Client
         if (clientFilter) {
           url += `&client=${clientFilter}`;
+        } else if (clientFilterLocal.size > 0) {
+          url += `&client=${[...clientFilterLocal].join(",")}`;
         } else if (filters.clients.length) {
           url += `&client=${filters.clients.map((c) => c.id).join(",")}`;
         }
-        if (filters.sites.length) url += `&site=${filters.sites.map((s) => s.id).join(",")}`;
-        if (filters.surveyors.length) url += `&assigned_to=${filters.surveyors.map((s) => s.id).join(",")}`;
+        // Site
+        if (siteFilterLocal.size > 0) url += `&site=${[...siteFilterLocal].join(",")}`;
+        else if (filters.sites.length) url += `&site=${filters.sites.map((s) => s.id).join(",")}`;
+        // Surveyor
+        if (myOnly && userId) url += `&assigned_to=${userId}`;
+        else if (surveyorFilter.size > 0) url += `&assigned_to=${[...surveyorFilter].join(",")}`;
+        else if (filters.surveyors.length) url += `&assigned_to=${filters.surveyors.map((s) => s.id).join(",")}`;
+        // Legacy context filters
         if (filters.schedule_types.length) url += `&visit_requirement=${filters.schedule_types.map((s) => s.id).join(",")}`;
         if (filters.site_types.length) url += `&site_type=${filters.site_types.map((s) => s.id).join(",")}`;
+        // Date
+        if (dateFilter) url += `&time_period=${dateFilter}`;
+        if (scheduleFilter.size > 0) url += `&schedule_status=${[...scheduleFilter].join(",")}`;
         const response = await api.get(url);
         setSurveys(response.data.results);
         setNextPage(response.data.next);
@@ -136,18 +197,73 @@ function SurveyList() {
     };
 
     fetchSurveys();
-  }, [searchTerm, clientFilter, filters]);
+  }, [searchTerm, clientFilter, filters, statusFilter, surveyorFilter, clientFilterLocal, siteFilterLocal, dateFilter, scheduleFilter, myOnly, userId, filtersReady]);
 
   return (
-    <div className="container mt-3">
+    <div className="container mt-3" style={{ paddingBottom: "50vh" }}>
       <div className="mb-3 d-none d-md-block">
         <Link to={clientFilter ? `/clients/${clientFilter}` : "/"} className="text-decoration-none">
           &larr; Back to {clientFilter ? "Client" : "Home"}
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
-        <h5 className="mb-0 fw-bold">Surveys</h5>
-        <AddButton to="/surveys/create" />
+      <div className="d-none d-md-block mb-1">
+        <h5 className="mb-0 fw-bold">Surveys ({surveys.length})</h5>
+      </div>
+      {surveys.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 12px", marginBottom: 8, fontSize: "0.82rem", color: "#6c757d" }}>
+          <span style={{ fontWeight: 700, color: "#1f0e05" }}>Surveys:</span>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <span>All {surveys.length}</span>
+            <span>Scheduled {surveys.filter(s => s.survey_date_status === "scheduled" || s.scheduled_for).length}</span>
+            <span>Unscheduled {surveys.filter(s => s.survey_date_status === "unscheduled" || (!s.survey_date_status && !s.scheduled_for)).length}</span>
+            <span>Completed {surveys.filter(s => (s.survey_status || s.status) === "completed").length}</span>
+          </div>
+          <span />
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <span>Draft {surveys.filter(s => (s.survey_status || s.status) === "draft").length}</span>
+            <span>Cancelled {surveys.filter(s => (s.survey_status) === "cancelled" || (s.status === "archived" && s.closure_reason === "cancelled")).length}</span>
+            <span>Abandoned {surveys.filter(s => (s.survey_status) === "abandoned" || (s.status === "archived" && s.closure_reason === "abandoned")).length}</span>
+            <span>Archived {surveys.filter(s => s.survey_record_status === "archived" || s.status === "archived").length}</span>
+          </div>
+        </div>
+      )}
+      {surveys.length > 0 && (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8, fontSize: "0.82rem", color: "#6c757d" }}>
+          <span style={{ fontWeight: 700, color: "#1f0e05" }}>Sessions:</span>
+          <span>All {surveys.reduce((n, s) => n + (s.session_count || 0), 0)}</span>
+          <span>Live {surveys.filter(s => s.current_session_status === "active").length}</span>
+          <span>Paused {surveys.filter(s => s.current_session_status === "paused").length}</span>
+        </div>
+      )}
+      <div className="d-flex gap-2 align-items-center mb-3">
+        <Link to="/surveys/create" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}>Add Survey</Link>
+        {selectMode && selectedSurveys.size > 0 && (
+          <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+            onClick={async () => {
+              try {
+                const count = selectedSurveys.size;
+                await Promise.all([...selectedSurveys].map(sId => {
+                  const src = surveys.find(s => s.id === sId);
+                  if (!src) return Promise.resolve();
+                  return api.post("/api/surveys/", {
+                    site: src.site_id || src.site,
+                    visit_requirement: src.visit_requirement || null,
+                    visit_time: src.visit_time || null,
+                    arrival_action: src.arrival_action || null,
+                    departure_action: src.departure_action || src.arrival_action || null,
+                    window_days: src.window_days || null,
+                  });
+                }));
+                setSelectMode(false); setSelectedSurveys(new Set());
+                alert(`${count} survey${count !== 1 ? "s" : ""} copied as draft.`);
+                window.location.reload();
+              } catch (err) { alert("Failed to copy surveys."); }
+            }}>Copy ({selectedSurveys.size})</button>
+        )}
+        <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, marginLeft: "auto" }}
+          onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelectedSurveys(new Set()); }}>
+          {selectMode ? `Select (${selectedSurveys.size})` : "Select"}
+        </button>
       </div>
       {/* ---- Filters container ---- */}
       <div className="edit-fieldset mb-4" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
@@ -156,75 +272,72 @@ function SurveyList() {
           Filters
         </p>
         {filtersOpen && <>
-        <div className="d-flex gap-2 flex-wrap" style={{ alignItems: "flex-start", marginLeft: "var(--section-gap, 16px)" }}>
-          <Link to="/filters" className="btn btn-sm"
-            style={{ fontSize: "0.75rem", padding: "3px 16px", minWidth: "5.5rem", color: "#f5f5f7", borderColor: "#f5f5f7", backgroundColor: "transparent", textDecoration: "none" }}>
-            Advanced
-          </Link>
-          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}
-            style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#f5f5f7", outline: "none" }}>
-            <option value="newest" style={{ color: "#1f2a33" }}>Newest first</option>
-            <option value="oldest" style={{ color: "#1f2a33" }}>Oldest first</option>
-            <option value="most_liked" style={{ color: "#1f2a33" }}>Most liked</option>
-            <option value="most_commented" style={{ color: "#1f2a33" }}>Most commented</option>
+        <div style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 8 }}>
+          <input type="text" className="filter-search" placeholder="Search surveys..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#fefdfc", outline: "none", width: "100%", maxWidth: 220 }} />
+        </div>
+        <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 6, alignItems: "stretch" }}>
+          <button type="button" onClick={() => { setMyOnly(!myOnly); if (!myOnly) setSurveyorFilter(new Set()); }}
+            style={{ fontSize: "0.72rem", padding: "2px 12px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: myOnly ? "#25d366" : "transparent", color: "#fefdfc", cursor: "pointer", height: 24 }}>
+            My Surveys
+          </button>
+          <FilterMultiSelect label="Surveyor" options={filterTeam.filter(m => m.role === "surveyor")} selected={surveyorFilter} onChange={(s) => { setSurveyorFilter(s); if (s.size > 0) setMyOnly(false); }} />
+          <FilterMultiSelect label="Client" options={filterClients} selected={clientFilterLocal} onChange={setClientFilterLocal} />
+          <FilterMultiSelect label="Site" options={filterSites} selected={siteFilterLocal} onChange={setSiteFilterLocal} />
+          <FilterMultiSelect label="Schedule" options={[
+            { id: "self_scheduled", name: "Self-set" },
+            { id: "provisional", name: "Provisional" },
+            { id: "confirmed", name: "Confirmed" },
+          ]} selected={scheduleFilter} onChange={setScheduleFilter} />
+          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+            style={{ fontSize: "0.72rem", padding: "2px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: dateFilter ? "#25d366" : "transparent", color: "#fefdfc", outline: "none", height: 24 }}>
+            <option value="" style={{ color: "#1f2a33" }}>Date</option>
+            <option value="all_time" style={{ color: "#1f2a33" }}>All Time</option>
+            <option value="today" style={{ color: "#1f2a33" }}>Today</option>
+            <option value="this_week" style={{ color: "#1f2a33" }}>This week</option>
+            <option value="this_month" style={{ color: "#1f2a33" }}>This month</option>
+            <option value="last_month" style={{ color: "#1f2a33" }}>Last month</option>
           </select>
         </div>
-        <div style={{ marginLeft: "var(--section-gap, 16px)", marginTop: 8 }}>
-          <input type="text" className="filter-search" placeholder="Search surveys..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ fontSize: "0.78rem", padding: "4px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#f5f5f7", outline: "none", width: "100%", maxWidth: 220 }} />
+        <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 6 }}>
+          {[{ v: "active", l: "Active" }, { v: "completed", l: "Completed" }, { v: "cancelled", l: "Cancelled" }, { v: "abandoned", l: "Abandoned" }, { v: "archived", l: "Archived" }, { v: "draft", l: "Draft" }].map(({ v, l }) => (
+            <button key={v} type="button" onClick={() => setStatusFilter(statusFilter === v ? "" : v)}
+              style={{ fontSize: "0.72rem", padding: "2px 12px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: statusFilter === v ? "#db440a" : "transparent", color: "#fefdfc", cursor: "pointer", height: 24 }}>
+              {l}
+            </button>
+          ))}
         </div>
+        {(myOnly || surveyorFilter.size > 0 || clientFilterLocal.size > 0 || siteFilterLocal.size > 0 || scheduleFilter.size > 0 || dateFilter || statusFilter) && (
+          <div style={{ marginLeft: "var(--section-gap, 16px)" }}>
+            <button type="button" onClick={() => { setMyOnly(false); setSurveyorFilter(new Set()); setClientFilterLocal(new Set()); setSiteFilterLocal(new Set()); setScheduleFilter(new Set()); setDateFilter(""); setStatusFilter(""); clearFilters(); }}
+              style={{ border: "none", background: "#fcfaf7", padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem", color: "#c0392b", borderRadius: 4 }}>Clear all</button>
+          </div>
+        )}
         </>}
-        {/* Applied chips */}
-        {(() => {
-          const totalChips = filters.statuses.length + filters.schedule_types.length + filters.site_types.length + filters.clients.length + filters.sites.length + filters.surveyors.length;
-          if (totalChips === 0) return null;
+        {/* Active filter chips when accordion closed */}
+        {!filtersOpen && (() => {
+          const chips = [];
+          if (myOnly) chips.push({ key: "my", label: "My Surveys", clear: () => setMyOnly(false) });
+          if (surveyorFilter.size > 0) chips.push({ key: "sv", label: `Surveyor (${surveyorFilter.size})`, clear: () => setSurveyorFilter(new Set()) });
+          if (clientFilterLocal.size > 0) chips.push({ key: "cl", label: `Client (${clientFilterLocal.size})`, clear: () => setClientFilterLocal(new Set()) });
+          if (siteFilterLocal.size > 0) chips.push({ key: "si", label: `Site (${siteFilterLocal.size})`, clear: () => setSiteFilterLocal(new Set()) });
+          if (scheduleFilter.size > 0) chips.push({ key: "sc", label: `Schedule (${scheduleFilter.size})`, clear: () => setScheduleFilter(new Set()) });
+          if (dateFilter) chips.push({ key: "dt", label: dateFilter.replace(/_/g, " "), clear: () => setDateFilter("") });
+          if (statusFilter) chips.push({ key: "st", label: statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1), clear: () => setStatusFilter("") });
+          if (searchTerm) chips.push({ key: "q", label: `"${searchTerm}"`, clear: () => setSearchTerm("") });
+          if (chips.length === 0) return null;
           return (
-            <div style={{ backgroundColor: "#2e5e3e", borderRadius: 2, padding: "8px 0 8px 0", marginTop: 8, marginLeft: "var(--section-gap, 16px)" }}>
-              <div className="d-flex gap-2 flex-wrap align-items-center">
-                {filters.statuses.map((st) => (
-                  <span key={`st-${st.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#2e7d32", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {st.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#2e7d32" }} onClick={() => setFilters({ statuses: filters.statuses.filter((x) => x.id !== st.id) })}>&times;</button>
-                  </span>
-                ))}
-                {filters.schedule_types.map((sc) => (
-                  <span key={`sc-${sc.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#1565c0", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {sc.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#1565c0" }} onClick={() => setFilters({ schedule_types: filters.schedule_types.filter((x) => x.id !== sc.id) })}>&times;</button>
-                  </span>
-                ))}
-                {filters.site_types.map((st) => (
-                  <span key={`st2-${st.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#7b1fa2", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {st.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#7b1fa2" }} onClick={() => setFilters({ site_types: filters.site_types.filter((x) => x.id !== st.id) })}>&times;</button>
-                  </span>
-                ))}
-                {filters.clients.map((c) => (
-                  <span key={`c-${c.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#f57f17", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {c.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#f57f17" }} onClick={() => setFilters({ clients: filters.clients.filter((x) => x.id !== c.id) })}>&times;</button>
-                  </span>
-                ))}
-                {filters.sites.map((s) => (
-                  <span key={`s-${s.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#c62828", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {s.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#c62828" }} onClick={() => setFilters({ sites: filters.sites.filter((x) => x.id !== s.id) })}>&times;</button>
-                  </span>
-                ))}
-                {filters.surveyors.map((sv) => (
-                  <span key={`sv-${sv.id}`} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#00695c", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {sv.name} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#00695c" }} onClick={() => setFilters({ surveyors: filters.surveyors.filter((x) => x.id !== sv.id) })}>&times;</button>
-                  </span>
-                ))}
-                <button type="button" style={{ border: "none", background: "#fcfaf7", padding: "2px 8px", cursor: "pointer", fontSize: "0.72rem", color: "#c0392b", borderRadius: 4 }}
-                  onClick={clearFilters}>Clear all</button>
-              </div>
+            <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginTop: 4 }}>
+              {chips.map(c => (
+                <span key={c.key} style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#2e5e3e", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {c.label} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#c0392b" }} onClick={c.clear}>&times;</button>
+                </span>
+              ))}
             </div>
           );
         })()}
       </div>
 
-      <h6 className="mb-2 d-none d-md-block">
-        Surveys
-        <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
-          ({surveys.length})
-        </span>
-      </h6>
 
       {error && <p className="text-danger">{error}</p>}
       {loading && <p>Loading surveys...</p>}
@@ -253,82 +366,55 @@ function SurveyList() {
                 <div
                   key={survey.id}
                   className="survey-queue-card"
-                  onClick={() => navigate(`/surveys/${survey.id}`)}
+                  style={{ ...((survey.survey_status || survey.status) === "draft" ? { borderLeft: "4px solid #FFA500", borderRight: "4px solid #FFA500" } : {}), position: "relative" }}
+                  onClick={() => {
+                    if (selectMode) { setSelectedSurveys(prev => { const n = new Set(prev); n.has(survey.id) ? n.delete(survey.id) : n.add(survey.id); return n; }); return; }
+                    navigate(`/surveys/${survey.id}`);
+                  }}
                 >
                   <div className="survey-queue-grid">
-                    {/* Row 1: date | site name (20 chars)... postcode | (empty) */}
-                    <span className="d-flex align-items-center gap-1">
-                      {schedule.urgent && <img src="/datumise_urgent.svg" alt="" width="12" height="12" style={{ filter: "invert(56%) sepia(81%) saturate(552%) hue-rotate(347deg) brightness(97%) contrast(87%)", flexShrink: 0 }} />}
-                      <span style={{ color: schedule.overdue ? "#d3212f" : undefined }}>{schedule.date}</span>
+                    {/* Row 1: date + schedule status | site name, postcode | ! | ★ */}
+                    <span style={{ color: schedule.overdue ? "#d3212f" : undefined, gridColumn: "1 / 3" }}>
+                      <span style={{ display: "inline-block", width: "5em" }}>{schedule.date}</span>{schedule.scheduleLabel ? <span style={{ fontSize: "0.68rem", fontStyle: "italic" }}>{schedule.scheduleLabel}</span> : ""}
                     </span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {survey.site_name ? survey.site_name.slice(0, 20) : "No site"}...{survey.site_postcode ? ` ${survey.site_postcode}` : ""}
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
+                      {survey.site_name || "No site"}{survey.site_postcode ? `, ${survey.site_postcode}` : ""}
                     </span>
-                    <span />
+                    <span>{schedule.urgent && <span style={{ color: "#ffff00", fontWeight: 700 }}>!</span>}</span>
+                    <span>{survey.client_present && <span style={{ color: "#ffff00" }}>&#9733;</span>}</span>
 
-                    {/* Row 2: time | surveyor · scheduleLabel | status + edit */}
-                    <span style={{ color: "#6c757d" }}>{schedule.time}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {[survey.assigned_to || "Unassigned", schedule.scheduleLabel].filter(Boolean).join(" \u00B7 ")}
-                    </span>
-                    <span style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span>{survey.status_display}</span>
-                      <Link to={`/surveys/${survey.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                        <img className="team-edit-icon" src="/view.svg" alt="View" width="12" height="12" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                      </Link>
-                      <Link to={`/surveys/${survey.id}/edit`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                        <img className="team-edit-icon" src="/datumise-edit.svg" alt="Edit" width="12" height="12" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                      </Link>
+                    {/* Row 2: time | sessions */}
+                    <span style={{ gridColumn: "1 / 3" }}>{schedule.time || "-"}</span>
+                    <span style={{ gridColumn: "3 / -1", fontStyle: "italic", fontSize: "0.68rem" }}>
+                      {survey.session_count > 0 && <>{survey.session_count} Session{survey.session_count !== 1 ? "s" : ""}{survey.current_session_status === "active" ? " · 1 Live" : survey.current_session_status === "paused" ? " · 1 Paused" : ""}</>}
                     </span>
 
-                    {/* Row 3: action buttons (only when applicable) */}
-                    {(() => {
-                      const canStart = (survey.status === "planned" || survey.status === "open" || survey.current_session_status === "paused") && survey.is_surveyor && survey.assigned_to;
-                      const canAssign = (survey.status === "planned" || survey.status === "open") && !survey.assigned_to;
-                      if (!canStart && !canAssign) return null;
-                      return (
-                        <span style={{ gridColumn: "1 / -1", justifySelf: "end" }}>
-                          {canStart && (
-                            <a
-                              href="#"
-                              style={{ fontWeight: 700, color: "#198754", textDecoration: "none" }}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                try {
-                                  await api.patch(`/api/surveys/${survey.id}/`, { status: PATCH_START_SESSION });
-                                  navigate(`/surveys/${survey.id}/capture`);
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              }}
-                            >
-                              {survey.current_session_status === "paused" ? "Resume" : "Start"}
-                            </a>
-                          )}
-                          {canAssign && (
-                            <a
-                              href="#"
-                              style={{ fontWeight: 600, color: "#0d6efd", textDecoration: "none", fontSize: "0.75rem" }}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                try {
-                                  const res = await api.post(`/api/surveys/${survey.id}/assign/`);
-                                  setSurveys((prev) => prev.map((s) => s.id === survey.id ? res.data : s));
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              }}
-                            >
-                              Assign to me
-                            </a>
-                          )}
-                        </span>
-                      );
-                    })()}
+                    {/* Row 3: status | obs + draft + surveyor */}
+                    <span style={{ fontStyle: "italic", fontSize: "0.68rem", gridColumn: "1 / 3" }}>{(() => {
+                      const ss = survey.survey_status;
+                      if (ss === "completed") return "Completed";
+                      if (ss === "cancelled") return "Cancelled";
+                      if (ss === "abandoned") return "Abandoned";
+                      if (ss === "draft") return "Draft";
+                      if (ss === "active" || survey.status === "open" || survey.status === "assigned") return "Active";
+                      if (survey.survey_record_status === "archived") return "Archived";
+                      return survey.status_display || "";
+                    })()}</span>
+                    <span style={{ gridColumn: "3 / -1", display: "flex", gap: "0.3rem", alignItems: "baseline", overflow: "hidden", whiteSpace: "nowrap" }}>{(() => {
+                      const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
+                      const obs = survey.observation_count || 0;
+                      const drafts = (survey.observations || []).filter(o => o.is_draft).length || 0;
+                      return (<>
+                        <span style={{ flexShrink: 0, fontStyle: "italic" }}>{fmt(obs)} Obs</span>
+                        <span style={{ flexShrink: 0, fontStyle: "italic" }}>{fmt(drafts)} Draft</span>
+                        <span style={{ fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, marginLeft: "0.5rem" }}>{survey.assigned_to_name || survey.assigned_to || "Unassigned"}</span>
+                      </>);
+                    })()}</span>
+
                   </div>
-
+                  {selectMode && (
+                    <div style={{ position: "absolute", bottom: 6, right: 8, width: 20, height: 20, borderRadius: "50%", border: "2px solid #fff", backgroundColor: selectedSurveys.has(survey.id) ? "#0d6efd" : "transparent" }} />
+                  )}
                 </div>
               );
             })}
@@ -356,34 +442,38 @@ function SurveyList() {
 
       {/* Desktop: prev / next */}
       {(previousPage || nextPage) && (
-        <div className="d-none d-md-flex justify-content-between mt-3 mb-3">
+        <div className="d-flex justify-content-center gap-2 mt-3 mb-3">
           <button
             className="btn btn-outline-secondary btn-sm"
+            style={{ opacity: previousPage ? 1 : 0.4 }}
             onClick={() =>
               previousPage &&
               api.get(previousPage).then((response) => {
                 setSurveys(response.data.results);
                 setNextPage(response.data.next);
                 setPreviousPage(response.data.previous);
+                window.scrollTo(0, 0);
               })
             }
             disabled={!previousPage}
           >
-            Previous
+            &larr; Previous
           </button>
           <button
             className="btn btn-outline-secondary btn-sm"
+            style={{ opacity: nextPage ? 1 : 0.4 }}
             onClick={() =>
               nextPage &&
               api.get(nextPage).then((response) => {
                 setSurveys(response.data.results);
                 setNextPage(response.data.next);
                 setPreviousPage(response.data.previous);
+                window.scrollTo(0, 0);
               })
             }
             disabled={!nextPage}
           >
-            Next
+            Next &rarr;
           </button>
         </div>
       )}

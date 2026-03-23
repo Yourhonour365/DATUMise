@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 import ReturnButton from "./ReturnButton";
 import EditButton from "./EditButton";
+import OverviewBlock from "./OverviewBlock";
+import { SurveyCardGrid, surveyCardStyle } from "./SurveyCard";
 
 function TeamDetail() {
   const { id } = useParams();
@@ -11,14 +13,15 @@ function TeamDetail() {
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [surveysOpen, setSurveysOpen] = useState(false);
-  const [surveyFilter, setSurveyFilter] = useState("assigned");
-  const [surveysListOpen, setSurveysListOpen] = useState(true);
+  const [surveyFilter, setSurveyFilter] = useState("active");
+  const [surveysListOpen, setSurveysListOpen] = useState(false);
   const [siblingIds, setSiblingIds] = useState({ prev: null, next: null });
 
   useEffect(() => {
     setSurveysOpen(false);
-    setSurveysListOpen(true);
-    setSurveyFilter("assigned");
+    setSurveysListOpen(false);
+    setSurveyFilter("active");
+    window.scrollTo(0, 0);
     const fetchMember = async () => {
       try {
         const [response, surveysRes, allRes] = await Promise.all([
@@ -69,44 +72,20 @@ function TeamDetail() {
           &larr; Back to Team
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between" style={{ marginBottom: 0 }}>
-        <div className="profile-header">
-          <div className="profile-header__name-row">
-            <span className="profile-header__name">{member.name}</span>
-            <span className="profile-header__role">{member.role_display}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span className="profile-header__username">{member.username}</span>
-            <span className={member.status === "active" ? "profile-header__status--active" : "profile-header__status--archived"}>{member.status_display || "Active"}</span>
-          </div>
-          <div className="profile-header__contact-row">
-            <span>{member.phone ? <a href={`tel:${member.phone}`} style={{ color: "inherit", textDecoration: "none" }}>{member.phone}</a> : "—"}</span>
-            <span className="profile-header__separator">|</span>
-            <span>{member.email ? <a href={`mailto:${member.email}`} style={{ color: "inherit", textDecoration: "none" }}>{member.email}</a> : "—"}</span>
-          </div>
-        </div>
-        <EditButton to={`/team/${id}/edit`} />
-      </div>
-      <div className="d-md-none">
-        <div className="profile-header">
-          <div className="profile-header__name-row">
-            <span className="profile-header__name">{member.name}</span>
-            <span className="profile-header__role">{member.role_display}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span className="profile-header__username">{member.username}</span>
-            <span className={member.status === "active" ? "profile-header__status--active" : "profile-header__status--archived"}>{member.status_display || "Active"}</span>
-          </div>
-          <div className="profile-header__contact-row">
-            <span>{member.phone ? <a href={`tel:${member.phone}`} style={{ color: "inherit", textDecoration: "none" }}>{member.phone}</a> : "—"}</span>
-            <span className="profile-header__separator">|</span>
-            <span>{member.email ? <a href={`mailto:${member.email}`} style={{ color: "inherit", textDecoration: "none" }}>{member.email}</a> : "—"}</span>
-          </div>
-        </div>
+      <OverviewBlock
+        name={member.name}
+        subtitle={member.role_display}
+        stats={member.username}
+        status={member.status}
+        statusLabel={member.status_display || "Active"}
+        contact={{ phone: member.phone, email: member.email }}
+        position={siblingIds.total > 0 ? { current: `Member ${siblingIds.current}`, total: siblingIds.total } : null}
+      />
+      <div className="d-flex gap-2 align-items-center mt-2 mb-2">
+        <Link to={`/team/${id}/edit`} className="btn btn-secondary btn-sm" style={{ borderRadius: 2, height: 24 }}>Edit</Link>
       </div>
 
       <div style={{ marginTop: 16 }}>
-        {siblingIds.total > 0 && <div style={{ fontSize: "0.78rem", color: "#999", fontStyle: "italic", marginBottom: 4 }}>Member {siblingIds.current} of {siblingIds.total}</div>}
         <div className="d-flex gap-2 mb-2">
           <button type="button" className="btn btn-outline-secondary btn-sm" disabled={!siblingIds.prev}
             style={{ opacity: siblingIds.prev ? 1 : 0.4 }}
@@ -129,11 +108,11 @@ function TeamDetail() {
         {surveysOpen && <div className="card-stack">
           <div className="d-flex gap-2" style={{ marginLeft: "1rem" }}>
             {[
-              { value: "assigned", label: "Assigned", count: surveys.filter(s => ["draft", "open", "assigned"].includes(s.status)).length },
-              { value: "completed", label: "Completed", count: surveys.filter(s => s.status === "completed").length },
-              { value: "archived", label: "Archived", count: surveys.filter(s => s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned").length },
-              { value: "cancelled", label: "Cancelled", count: surveys.filter(s => s.status === "archived" && s.closure_reason === "cancelled").length },
-              { value: "abandoned", label: "Abandoned", count: surveys.filter(s => s.status === "archived" && s.closure_reason === "abandoned").length },
+              { value: "active", label: "Active", count: surveys.filter(s => (s.survey_status || s.status) === "active" || ["draft", "open", "assigned"].includes(s.status)).length },
+              { value: "completed", label: "Completed", count: surveys.filter(s => (s.survey_status || s.status) === "completed").length },
+              { value: "archived", label: "Archived", count: surveys.filter(s => s.survey_record_status === "archived" || (s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned")).length },
+              { value: "cancelled", label: "Cancelled", count: surveys.filter(s => (s.survey_status || (s.status === "archived" && s.closure_reason)) === "cancelled").length },
+              { value: "abandoned", label: "Abandoned", count: surveys.filter(s => (s.survey_status || (s.status === "archived" && s.closure_reason)) === "abandoned").length },
             ].map(({ value, label, count }) => (
               <button key={value} type="button"
                 className={`btn btn-sm ${surveyFilter === value ? "btn-secondary" : "btn-outline-secondary"}`}
@@ -149,55 +128,25 @@ function TeamDetail() {
       <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
         <p className="edit-legend section-toggle" onClick={() => setSurveysListOpen(!surveysListOpen)}>
           <span className={`section-chevron${surveysListOpen ? " section-chevron--open" : ""}`}></span>
-          Surveys
+          Surveys ({surveys.length})
         </p>
         {surveysListOpen && <div className="card-stack">
           {(() => {
             const filtered = surveys.filter((s) => {
-              if (surveyFilter === "assigned") return ["draft", "open", "assigned"].includes(s.status);
-              if (surveyFilter === "completed") return s.status === "completed";
-              if (surveyFilter === "archived") return s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned";
-              if (surveyFilter === "cancelled") return s.status === "archived" && s.closure_reason === "cancelled";
-              if (surveyFilter === "abandoned") return s.status === "archived" && s.closure_reason === "abandoned";
+              const ss = s.survey_status || s.status;
+              if (surveyFilter === "active") return ss === "active" || ["draft", "open", "assigned"].includes(s.status);
+              if (surveyFilter === "completed") return ss === "completed";
+              if (surveyFilter === "archived") return s.survey_record_status === "archived" || (s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned");
+              if (surveyFilter === "cancelled") return ss === "cancelled" || (s.status === "archived" && s.closure_reason === "cancelled");
+              if (surveyFilter === "abandoned") return ss === "abandoned" || (s.status === "archived" && s.closure_reason === "abandoned");
               return true;
             });
             return filtered.length === 0 ? null : (
-            filtered.map((s) => {
-              const scheduled = s.scheduled_for ? new Date(s.scheduled_for) : null;
-              let dateStr = "—";
-              let timeStr = "";
-              if (scheduled) {
-                const d = scheduled.getDate();
-                const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
-                const y = String(scheduled.getFullYear()).slice(2);
-                dateStr = `${d} ${m} '${y}`;
-                const h = scheduled.getHours();
-                const min = scheduled.getMinutes();
-                if (h !== 0 || min !== 0) {
-                  const period = h >= 12 ? "pm" : "am";
-                  const h12 = h % 12 || 12;
-                  timeStr = `${h12}:${min.toString().padStart(2, "0")}${period}`;
-                }
-              }
-              return (
-                <div key={s.id} className="survey-queue-card" onClick={() => navigate(`/surveys/${s.id}`)}>
-                  <div className="survey-queue-grid">
-                    <span>{dateStr}</span>
-                    <span>{s.status === "completed" ? "Completed" : s.status === "archived" ? (s.closure_reason === "cancelled" ? "Cancelled" : s.closure_reason === "abandoned" ? "Abandoned" : "Archived") : ""}</span>
-                    <span style={{ justifySelf: "end" }}>{s.observation_count != null ? `${s.observation_count} obs` : ""}</span>
-
-                    <span style={{ color: "#6c757d" }}>{timeStr}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.site_name || "No site"}{s.site_postcode ? ` ${s.site_postcode}` : ""}
-                    </span>
-                    <span style={{ justifySelf: "end", display: "flex", gap: 8, color: "#6c757d" }}>
-                      {s.comment_count != null && <span>{s.comment_count} comments</span>}
-                      {s.likes_count != null && <span>{s.likes_count} likes</span>}
-                    </span>
-                  </div>
+            filtered.map((s) => (
+                <div key={s.id} className="survey-queue-card" style={surveyCardStyle(s)} onClick={() => navigate(`/surveys/${s.id}`)}>
+                  <SurveyCardGrid survey={s} />
                 </div>
-              );
-            })
+              ))
           );
           })()}
         </div>}

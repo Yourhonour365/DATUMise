@@ -38,13 +38,14 @@ class TeamMemberSerializer(serializers.ModelSerializer):
     status = serializers.CharField(source="profile.status", read_only=True)
     status_display = serializers.CharField(source="profile.get_status_display", read_only=True)
     name = serializers.SerializerMethodField()
+    survey_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = User
         fields = [
             "id", "username", "name", "email",
             "role", "role_display", "phone",
-            "status", "status_display",
+            "status", "status_display", "survey_count",
         ]
 
     def get_name(self, obj):
@@ -129,6 +130,7 @@ class CustomRegisterSerializer(RegisterSerializer):
 
 class ObservationSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
+    owner_name = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
     comment_count = serializers.IntegerField(read_only=True)
     reply_count = serializers.IntegerField(read_only=True)
@@ -157,7 +159,7 @@ class ObservationSerializer(serializers.ModelSerializer):
     def get_survey_status(self, obj):
         if not obj.survey:
             return None
-        return obj.survey.status
+        return obj.survey.survey_status or obj.survey.status
 
     def get_survey_current_session_status(self, obj):
         if not obj.survey:
@@ -175,6 +177,7 @@ class ObservationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "owner",
+            "owner_name",
             "survey",
             "survey_name",
             "site_name",
@@ -196,6 +199,13 @@ class ObservationSerializer(serializers.ModelSerializer):
             "survey_status",
             "survey_current_session_status",
         ]
+
+    def get_owner_name(self, obj):
+        u = obj.owner
+        if not u:
+            return None
+        full = f"{u.first_name} {u.last_name}".strip()
+        return full or u.username
 
     def get_is_owner(self, obj):
         request = self.context.get("request")
@@ -278,6 +288,7 @@ class CommentSerializer(serializers.ModelSerializer):
 class SurveySerializer(serializers.ModelSerializer):
 
     observation_count = serializers.IntegerField(read_only=True)
+    real_observation_count = serializers.IntegerField(read_only=True, default=0)
     total_likes_count = serializers.IntegerField(read_only=True)
     total_comments_count = serializers.IntegerField(read_only=True)
     name = serializers.SerializerMethodField()
@@ -285,6 +296,12 @@ class SurveySerializer(serializers.ModelSerializer):
     visit_requirement_display = serializers.CharField(
         source="get_visit_requirement_display", read_only=True
     )
+    # New domain fields (read-only, additive)
+    survey_status = serializers.CharField(read_only=True)
+    survey_record_status = serializers.CharField(read_only=True)
+    survey_date_status = serializers.CharField(read_only=True)
+    scheduled_status = serializers.CharField(read_only=True)
+    attendance_status = serializers.CharField(read_only=True)
     session_count = serializers.SerializerMethodField()
     current_session_number = serializers.SerializerMethodField()
     current_session_type = serializers.SerializerMethodField()
@@ -352,10 +369,18 @@ class SurveySerializer(serializers.ModelSerializer):
     site_id = serializers.IntegerField(source="site.id", read_only=True)
     assigned_to = serializers.StringRelatedField()
     assigned_to_id = serializers.IntegerField(source="assigned_to.id", read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
     created_by = serializers.StringRelatedField()
     is_owner = serializers.SerializerMethodField()
     is_surveyor = serializers.SerializerMethodField()
     is_admin = serializers.SerializerMethodField()
+
+    def get_assigned_to_name(self, obj):
+        u = obj.assigned_to
+        if not u:
+            return None
+        full = f"{u.first_name} {u.last_name}".strip()
+        return full or u.username
 
     def get_name(self, obj):
         return str(obj)
@@ -392,6 +417,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "created_by",
             "assigned_to",
             "assigned_to_id",
+            "assigned_to_name",
             "status",
             "status_display",
             "visit_requirement",
@@ -418,6 +444,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "site_contact_email",
             "created_at",
             "observation_count",
+            "real_observation_count",
             "total_likes_count",
             "total_comments_count",
             "session_count",
@@ -428,6 +455,11 @@ class SurveySerializer(serializers.ModelSerializer):
             "is_owner",
             "is_surveyor",
             "is_admin",
+            "survey_status",
+            "survey_record_status",
+            "survey_date_status",
+            "scheduled_status",
+            "attendance_status",
         ]
 
 
@@ -650,6 +682,13 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
     current_session_notify_required = serializers.SerializerMethodField()
     current_session_status = serializers.SerializerMethodField()
     is_urgent = serializers.BooleanField(source="urgent", read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    # New domain fields (read-only, additive)
+    survey_status = serializers.CharField(read_only=True)
+    survey_record_status = serializers.CharField(read_only=True)
+    survey_date_status = serializers.CharField(read_only=True)
+    scheduled_status = serializers.CharField(read_only=True)
+    attendance_status = serializers.CharField(read_only=True)
 
     def _get_active_session(self, obj):
         if not hasattr(obj, "_cached_active_session"):
@@ -657,6 +696,13 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
                 status__in=["active", "paused"]
             ).first()
         return obj._cached_active_session
+
+    def get_assigned_to_name(self, obj):
+        u = obj.assigned_to
+        if not u:
+            return None
+        full = f"{u.first_name} {u.last_name}".strip()
+        return full or u.username
 
     def get_status_display(self, obj):
         if obj.status == "assigned":
@@ -743,6 +789,7 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
             "created_by",
             "assigned_to",
             "assigned_to_id",
+            "assigned_to_name",
             "status",
             "status_display",
             "visit_requirement",
@@ -777,6 +824,11 @@ class SurveyDetailSerializer(serializers.ModelSerializer):
             "is_owner",
             "is_surveyor",
             "is_admin",
+            "survey_status",
+            "survey_record_status",
+            "survey_date_status",
+            "scheduled_status",
+            "attendance_status",
         ]
 
 

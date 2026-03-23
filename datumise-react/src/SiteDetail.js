@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "./api/api";
 import ReturnButton from "./ReturnButton";
 import EditButton from "./EditButton";
+import OverviewBlock from "./OverviewBlock";
+import { SurveyCardGrid, surveyCardStyle } from "./SurveyCard";
 
 function SiteDetail() {
   const { id } = useParams();
@@ -14,12 +16,15 @@ function SiteDetail() {
   const [loading, setLoading] = useState(true);
   const [surveysOpen, setSurveysOpen] = useState(false);
   const [surveysListOpen, setSurveysListOpen] = useState(true);
-  const [surveyFilter, setSurveyFilter] = useState("assigned");
+  const [surveyFilter, setSurveyFilter] = useState("active");
+  const [surveySelectMode, setSurveySelectMode] = useState(false);
+  const [selectedSurveys, setSelectedSurveys] = useState(new Set());
 
   useEffect(() => {
     setSurveysOpen(false);
     setSurveysListOpen(false);
-    setSurveyFilter("assigned");
+    setSurveyFilter("active");
+    window.scrollTo(0, 0);
     const fetchData = async () => {
       try {
         const [siteRes, surveysRes] = await Promise.all([
@@ -74,68 +79,20 @@ function SiteDetail() {
         </Link>
       </div>
 
-      <div className="d-none d-md-flex align-items-center justify-content-between">
-        <div className="profile-header">
-          <div className="profile-header__name-row">
-            <span className="profile-header__name">{site.name}</span>
-            <span className="profile-header__role">{site.site_type_display || ""}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span className="profile-header__username">
-              {site.client_name} &middot; {site.survey_count} {site.survey_count === 1 ? "survey" : "surveys"}
-            </span>
-            <span className={site.status === "active" ? "profile-header__status--active" : "profile-header__status--archived"}>{site.status === "active" ? "Active" : "Archived"}</span>
-          </div>
-          {site.contact_name && <div className="profile-header__meta-row">
-            <span>{site.contact_name}</span>
-          </div>}
-          <div className="profile-header__contact-row">
-            <span>{site.contact_phone ? <a href={`tel:${site.contact_phone}`} style={{ color: "inherit", textDecoration: "none" }}>{site.contact_phone}</a> : "—"}</span>
-            <span className="profile-header__separator">|</span>
-            <span>{site.contact_email ? <a href={`mailto:${site.contact_email}`} style={{ color: "inherit", textDecoration: "none" }}>{site.contact_email}</a> : "—"}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span style={{ color: "#888" }}>{[site.address_line_1, site.address_line_2, site.city].filter(Boolean).join(", ") || "—"}</span>
-          </div>
-          {site.postcode && <div className="profile-header__meta-row">
-            <span style={{ color: "#888" }}>{site.postcode}</span>
-          </div>}
-          {sitePosition.total >= 1 && <div className="profile-header__meta-row">
-            <span style={{ color: "#999", fontStyle: "italic", fontSize: "0.78rem" }}>Site {sitePosition.current} of {sitePosition.total}</span>
-          </div>}
-        </div>
-        <EditButton to={`/sites/${id}/edit`} />
-      </div>
-      <div className="d-md-none">
-        <div className="profile-header">
-          <div className="profile-header__name-row">
-            <span className="profile-header__name">{site.name}</span>
-            <span className="profile-header__role">{site.site_type_display || ""}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span className="profile-header__username">
-              {site.client_name} &middot; {site.survey_count} {site.survey_count === 1 ? "survey" : "surveys"}
-            </span>
-            <span className={site.status === "active" ? "profile-header__status--active" : "profile-header__status--archived"}>{site.status === "active" ? "Active" : "Archived"}</span>
-          </div>
-          {site.contact_name && <div className="profile-header__meta-row">
-            <span>{site.contact_name}</span>
-          </div>}
-          <div className="profile-header__contact-row">
-            <span>{site.contact_phone ? <a href={`tel:${site.contact_phone}`} style={{ color: "inherit", textDecoration: "none" }}>{site.contact_phone}</a> : "—"}</span>
-            <span className="profile-header__separator">|</span>
-            <span>{site.contact_email ? <a href={`mailto:${site.contact_email}`} style={{ color: "inherit", textDecoration: "none" }}>{site.contact_email}</a> : "—"}</span>
-          </div>
-          <div className="profile-header__meta-row">
-            <span style={{ color: "#888" }}>{[site.address_line_1, site.address_line_2, site.city].filter(Boolean).join(", ") || "—"}</span>
-          </div>
-          {site.postcode && <div className="profile-header__meta-row">
-            <span style={{ color: "#888" }}>{site.postcode}</span>
-          </div>}
-          {sitePosition.total >= 1 && <div className="profile-header__meta-row">
-            <span style={{ color: "#999", fontStyle: "italic", fontSize: "0.78rem" }}>Site {sitePosition.current} of {sitePosition.total}</span>
-          </div>}
-        </div>
+      <OverviewBlock
+        name={site.name}
+        subtitle={site.site_type_display || ""}
+        stats={`${site.client_name} \u00B7 ${site.survey_count} ${site.survey_count === 1 ? "survey" : "surveys"}`}
+        status={site.status}
+        contact={{ name: site.contact_name, phone: site.contact_phone, email: site.contact_email }}
+        address={[site.address_line_1, site.address_line_2, site.city].filter(Boolean)}
+        postcode={site.postcode}
+        position={sitePosition.total >= 1 ? { current: `Site ${sitePosition.current}`, total: sitePosition.total } : null}
+      />
+      <div className="d-flex gap-2 align-items-center mt-2 mb-2">
+        <Link to={`/surveys/create?client=${site.client}&site=${id}`} className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Survey</Link>
+        <Link to={`/sites/create?client=${site.client}`} className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Site</Link>
+        <Link to={`/sites/${id}/edit`} className="btn btn-secondary btn-sm" style={{ borderRadius: 2, height: 24 }}>Edit</Link>
       </div>
 
 
@@ -162,11 +119,11 @@ function SiteDetail() {
         {surveysOpen && <div className="card-stack">
           <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "1rem" }}>
             {[
-              { value: "assigned", label: "Assigned", count: surveys.filter(s => ["draft", "open", "assigned"].includes(s.status)).length },
-              { value: "completed", label: "Completed", count: surveys.filter(s => s.status === "completed").length },
-              { value: "archived", label: "Archived", count: surveys.filter(s => s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned").length },
-              { value: "cancelled", label: "Cancelled", count: surveys.filter(s => s.status === "archived" && s.closure_reason === "cancelled").length },
-              { value: "abandoned", label: "Abandoned", count: surveys.filter(s => s.status === "archived" && s.closure_reason === "abandoned").length },
+              { value: "active", label: "Active", count: surveys.filter(s => (s.survey_status || s.status) === "active" || ["draft", "open", "assigned"].includes(s.status)).length },
+              { value: "completed", label: "Completed", count: surveys.filter(s => (s.survey_status || s.status) === "completed").length },
+              { value: "archived", label: "Archived", count: surveys.filter(s => s.survey_record_status === "archived" || (s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned")).length },
+              { value: "cancelled", label: "Cancelled", count: surveys.filter(s => (s.survey_status) === "cancelled" || (s.status === "archived" && s.closure_reason === "cancelled")).length },
+              { value: "abandoned", label: "Abandoned", count: surveys.filter(s => (s.survey_status) === "abandoned" || (s.status === "archived" && s.closure_reason === "abandoned")).length },
             ].map(({ value, label, count }) => (
               <button key={value} type="button"
                 className={`btn btn-sm ${surveyFilter === value ? "btn-secondary" : "btn-outline-secondary"}`}
@@ -181,52 +138,64 @@ function SiteDetail() {
 
       {/* ---- Surveys ---- */}
       <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-        <p className="edit-legend section-toggle" onClick={() => setSurveysListOpen(!surveysListOpen)}>
-          <span className={`section-chevron${surveysListOpen ? " section-chevron--open" : ""}`}></span>
-          Surveys
-        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p className="edit-legend section-toggle" onClick={() => setSurveysListOpen(!surveysListOpen)} style={{ marginBottom: 0 }}>
+            <span className={`section-chevron${surveysListOpen ? " section-chevron--open" : ""}`}></span>
+            Surveys ({surveys.length})
+          </p>
+          <div className="d-flex gap-2 align-items-center">
+            {surveySelectMode && selectedSurveys.size > 0 && (<>
+              <button type="button" className="btn btn-sm d-flex align-items-center justify-content-center" style={{ width: 28, height: 28, padding: 0, backgroundColor: "#c0392b", border: "none", borderRadius: 2 }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!window.confirm(`Delete ${selectedSurveys.size} survey${selectedSurveys.size !== 1 ? "s" : ""}?`)) return;
+                  try {
+                    await Promise.all([...selectedSurveys].map(sId => api.delete(`/api/surveys/${sId}/`)));
+                    setSurveySelectMode(false); setSelectedSurveys(new Set());
+                    const res = await api.get(`/api/surveys/?site=${id}`); setSurveys(res.data.results || res.data);
+                  } catch (err) { alert("Failed to delete surveys."); }
+                }}>
+                <img src="/datumise_delete.svg" alt="Delete" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} /></button>
+              <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#6c757d", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!window.confirm(`Archive ${selectedSurveys.size} survey${selectedSurveys.size !== 1 ? "s" : ""}?`)) return;
+                  try {
+                    await Promise.all([...selectedSurveys].map(sId => api.patch(`/api/surveys/${sId}/`, { status: "archived" })));
+                    setSurveySelectMode(false); setSelectedSurveys(new Set());
+                    const res = await api.get(`/api/surveys/?site=${id}`); setSurveys(res.data.results || res.data);
+                  } catch (err) { alert("Failed to archive surveys."); }
+                }}>Archive ({selectedSurveys.size})</button>
+            </>)}
+            <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: surveySelectMode ? "#0006b1" : "#db440a", color: "#fefdfc", border: "none", borderRadius: 4 }}
+              onClick={(e) => { e.stopPropagation(); const entering = !surveySelectMode; setSurveySelectMode(entering); if (!entering) setSelectedSurveys(new Set()); if (entering && !surveysListOpen) setSurveysListOpen(true); }}>
+              {surveySelectMode ? `Select (${selectedSurveys.size})` : "Select"}
+            </button>
+          </div>
+        </div>
         {surveysListOpen && <div className="card-stack">
           {(() => {
             const filtered = surveys.filter((s) => {
-              if (surveyFilter === "assigned") return ["draft", "open", "assigned"].includes(s.status);
-              if (surveyFilter === "completed") return s.status === "completed";
-              if (surveyFilter === "archived") return s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned";
-              if (surveyFilter === "cancelled") return s.status === "archived" && s.closure_reason === "cancelled";
-              if (surveyFilter === "abandoned") return s.status === "archived" && s.closure_reason === "abandoned";
+              const ss = s.survey_status || s.status;
+              if (surveyFilter === "active") return ss === "active" || ["draft", "open", "assigned"].includes(s.status);
+              if (surveyFilter === "completed") return ss === "completed";
+              if (surveyFilter === "archived") return s.survey_record_status === "archived" || (s.status === "archived" && s.closure_reason !== "cancelled" && s.closure_reason !== "abandoned");
+              if (surveyFilter === "cancelled") return ss === "cancelled" || (s.status === "archived" && s.closure_reason === "cancelled");
+              if (surveyFilter === "abandoned") return ss === "abandoned" || (s.status === "archived" && s.closure_reason === "abandoned");
               return true;
             });
-            return filtered.length === 0 ? null : filtered.map((s) => {
-              const scheduled = s.scheduled_for ? new Date(s.scheduled_for) : null;
-              let dateStr = "—";
-              let timeStr = "";
-              if (scheduled) {
-                const d = scheduled.getDate();
-                const m = scheduled.toLocaleDateString("en-GB", { month: "short" });
-                const y = String(scheduled.getFullYear()).slice(2);
-                dateStr = `${d} ${m} '${y}`;
-                const h = scheduled.getHours();
-                const min = scheduled.getMinutes();
-                if (h !== 0 || min !== 0) {
-                  const period = h >= 12 ? "pm" : "am";
-                  const h12 = h % 12 || 12;
-                  timeStr = `${h12}:${min.toString().padStart(2, "0")}${period}`;
-                }
-              }
-              return (
-                <div key={s.id} className="survey-queue-card" onClick={() => navigate(`/surveys/${s.id}`)}>
-                  <div className="survey-queue-grid">
-                    <span>{dateStr}</span>
-                    <span>{s.status_display || ""}</span>
-                    <span style={{ justifySelf: "end" }}>{s.observation_count != null ? `${s.observation_count} obs` : ""}</span>
-                    <span style={{ color: "#6c757d" }}>{timeStr}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.assigned_to || "Unassigned"}
-                    </span>
-                    <span />
-                  </div>
+            return filtered.length === 0 ? null : filtered.map((s) => (
+                <div key={s.id} className="survey-queue-card" style={{ ...(surveyCardStyle(s) || {}), position: "relative" }}
+                  onClick={() => {
+                    if (surveySelectMode) { setSelectedSurveys(prev => { const n = new Set(prev); n.has(s.id) ? n.delete(s.id) : n.add(s.id); return n; }); return; }
+                    navigate(`/surveys/${s.id}`);
+                  }}>
+                  <SurveyCardGrid survey={s} />
+                  {surveySelectMode && (
+                    <div style={{ position: "absolute", bottom: 6, right: 8, width: 20, height: 20, borderRadius: "50%", border: "2px solid #888", backgroundColor: selectedSurveys.has(s.id) ? "#0d6efd" : "#fff" }} />
+                  )}
                 </div>
-              );
-            });
+              ));
           })()}
         </div>}
       </div>

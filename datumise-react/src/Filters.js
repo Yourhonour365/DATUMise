@@ -246,7 +246,7 @@ function Filters() {
               { id: "pending", name: "Pending" },
               { id: "provisional", name: "Provisional" },
               { id: "scheduled", name: "Scheduled" },
-              { id: "self_scheduling", name: "Self-scheduled" },
+              { id: "self_scheduling", name: "Self-set" },
             ]}
             selected={filters.schedule_types}
             onChange={(val) => setFilters({ schedule_types: val })}

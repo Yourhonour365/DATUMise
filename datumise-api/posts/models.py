@@ -145,9 +145,11 @@ class Survey(models.Model):
     ]
 
     VISIT_REQUIREMENT_CHOICES = [
-        ("unrestricted_notify", "Unrestricted - notify in advance"),
-        ("unrestricted", "Unrestricted - no notification"),
-        ("prearranged", "Pre-arranged"),
+        ("24h_notify", "24 Hours - notify in advance"),
+        ("24h_no_notify", "24 Hours - no notification"),
+        ("wh_notify", "Working hours - notify in advance"),
+        ("wh_no_notify", "Working hours - no notification"),
+        ("prearranged", "Pre-arranged visits only"),
     ]
 
     SCHEDULE_STATUS_CHOICES = [
@@ -166,6 +168,37 @@ class Survey(models.Model):
         ("missed", "Missed"),
         ("abandoned", "Abandoned"),
         ("cancelled", "Cancelled"),
+    ]
+
+    # ── New domain model fields (Phase 1) ──────────────────────────
+    SURVEY_STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("active", "Active"),
+        ("cancelled", "Cancelled"),
+        ("abandoned", "Abandoned"),
+        ("completed", "Completed"),
+    ]
+
+    RECORD_STATUS_CHOICES = [
+        ("unarchived", "Unarchived"),
+        ("archived", "Archived"),
+    ]
+
+    DATE_STATUS_CHOICES = [
+        ("unscheduled", "Unscheduled"),
+        ("scheduled", "Scheduled"),
+    ]
+
+    SCHEDULED_STATUS_CHOICES = [
+        ("self_scheduled", "Self-scheduled"),
+        ("provisional", "Provisional"),
+        ("confirmed", "Confirmed"),
+    ]
+
+    ATTENDANCE_STATUS_CHOICES = [
+        ("unknown", "Unknown"),
+        ("attended", "Attended"),
+        ("missed", "Missed"),
     ]
 
     notes = models.CharField(max_length=160, blank=True, default="")
@@ -242,6 +275,83 @@ class Survey(models.Model):
     site_contact_phone = models.CharField(max_length=50, blank=True)
     site_contact_email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # ── New domain fields ──────────────────────────────────────────
+    survey_status = models.CharField(
+        max_length=20,
+        choices=SURVEY_STATUS_CHOICES,
+        default="draft",
+    )
+    survey_record_status = models.CharField(
+        max_length=20,
+        choices=RECORD_STATUS_CHOICES,
+        default="unarchived",
+    )
+    survey_date_status = models.CharField(
+        max_length=20,
+        choices=DATE_STATUS_CHOICES,
+        default="unscheduled",
+    )
+    scheduled_status = models.CharField(
+        max_length=20,
+        choices=SCHEDULED_STATUS_CHOICES,
+        null=True,
+        blank=True,
+    )
+    attendance_status = models.CharField(
+        max_length=20,
+        choices=ATTENDANCE_STATUS_CHOICES,
+        default="unknown",
+    )
+
+    # ── Legacy → New mapping (read-only properties) ────────────────
+    @property
+    def derived_survey_status(self):
+        """Derive new survey_status from legacy status + closure_reason."""
+        if self.status == "draft":
+            return "draft"
+        elif self.status in ("open", "assigned"):
+            return "active"
+        elif self.status == "completed":
+            return "completed"
+        elif self.status == "archived":
+            cr = self.closure_reason
+            if cr == "cancelled":
+                return "cancelled"
+            elif cr == "abandoned":
+                return "abandoned"
+            else:
+                return "active"  # archived + missed = still active lifecycle
+        return "draft"
+
+    @property
+    def derived_record_status(self):
+        """Derive new record_status from legacy status."""
+        return "archived" if self.status == "archived" else "unarchived"
+
+    @property
+    def derived_date_status(self):
+        """Derive date_status from scheduled_for."""
+        return "scheduled" if self.scheduled_for else "unscheduled"
+
+    @property
+    def derived_scheduled_status(self):
+        """Derive scheduled_status from legacy schedule_status."""
+        mapping = {
+            "self_scheduled": "self_scheduled",
+            "provisional": "provisional",
+            "booked": "confirmed",
+        }
+        return mapping.get(self.schedule_status)
+
+    @property
+    def derived_attendance_status(self):
+        """Derive attendance_status from legacy closure_reason."""
+        if self.status == "archived" and self.closure_reason == "missed":
+            return "missed"
+        elif self.status == "completed":
+            return "attended"
+        return "unknown"
 
     def clean(self):
         from django.core.exceptions import ValidationError

@@ -6,6 +6,7 @@ import { thumbnailUrl } from "./imageUtils";
 import ObservationCreateForm from "./ObservationCreateForm";
 import BackToTop from "./BackToTop";
 import ReturnButton from "./ReturnButton";
+import { SurveyCardGrid, surveyCardStyle } from "./SurveyCard";
 
 
 // Session-lifecycle PATCH values sent to views.py perform_update.
@@ -31,6 +32,17 @@ function SurveyDetail() {
   const [observationCount, setObservationCount] = useState(0);
   const [durationTick, setDurationTick] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
+  const [visibleObsCount, setVisibleObsCount] = useState(25);
+  const [obsFilterOpen, setObsFilterOpen] = useState(false);
+  const [obsSearch, setObsSearch] = useState("");
+  const [obsFilterType, setObsFilterType] = useState(""); // "" | "draft" | "real" | "photo" | "no_photo"
+  const [obsSortOrder, setObsSortOrder] = useState("newest");
+  const [pushModal, setPushModal] = useState(false);
+  const [pushType, setPushType] = useState(""); // "text" | "photo" | "textphoto"
+  const [pushSurveys, setPushSurveys] = useState([]);
+  const [pushSelected, setPushSelected] = useState(new Set());
+  const [pushSearch, setPushSearch] = useState("");
+  const [pushNextPage, setPushNextPage] = useState(null);
   const observationsListRef = useRef(null);
 
 const fetchSurvey = async () => {
@@ -189,32 +201,37 @@ useLayoutEffect(() => {
         }
     };
 
-    const archiveSurvey = async () => {
-        const confirmed = window.confirm(
-            "Archive this survey?\n\nAll history will be preserved but the survey will be closed."
-        );
-        if (!confirmed) return;
+    // Rule 000016: status transitions
+    const cancelSurvey = async () => {
+        if (!window.confirm("Cancel this survey?")) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, {
-                status: "archived",
-                closure_reason: "cancelled",
-            });
+            await api.patch(`/api/surveys/${id}/`, { status: "archived", closure_reason: "cancelled" });
             fetchSurvey();
-        } catch (err) {
-            const msg = err.response?.data?.detail || "Failed to archive survey.";
-            window.alert(msg);
-        }
+        } catch (err) { window.alert(err.response?.data?.detail || "Failed to cancel survey."); }
     };
 
-    const reopenSurvey = async () => {
-        // New-domain write: "assigned" moves the survey from completed back to
-        // in-progress (no active session). No session lifecycle involved.
+    const abandonSurvey = async () => {
+        if (!window.confirm("Abandon this survey? This means the survey could not be completed.")) return;
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "assigned" });
+            await api.patch(`/api/surveys/${id}/`, { status: "archived", closure_reason: "abandoned" });
             fetchSurvey();
-        } catch (err) {
-            console.log(err);
-        }
+        } catch (err) { window.alert(err.response?.data?.detail || "Failed to abandon survey."); }
+    };
+
+    const archiveSurvey = async () => {
+        if (!window.confirm("Archive this survey?")) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "archived" });
+            fetchSurvey();
+        } catch (err) { window.alert(err.response?.data?.detail || "Failed to archive survey."); }
+    };
+
+    const unarchiveSurvey = async () => {
+        if (!window.confirm("Unarchive this survey? It will return to active status.")) return;
+        try {
+            await api.patch(`/api/surveys/${id}/`, { status: "open" });
+            fetchSurvey();
+        } catch (err) { window.alert(err.response?.data?.detail || "Failed to unarchive survey."); }
     };
 
     const assignSurvey = async () => {
@@ -302,6 +319,13 @@ const formatSurveyDuration = (startTime, _tick) => {
   return `${hours}h ${minutes}m`;
 };
 
+  // Rule 000015: component-level status derivation
+  const detailStatus = survey ? (survey.survey_status || survey.status) : "";
+  const detailRecordStatus = survey?.survey_record_status || "";
+  const isDetailReadOnly = ["completed", "cancelled", "abandoned"].includes(detailStatus) || detailRecordStatus === "archived" || survey?.status === "archived";
+  const isDetailCompleted = detailStatus === "completed";
+  const canDeleteObs = !isDetailCompleted && !isDetailReadOnly;
+
   return (
     <div className="container mt-3">
       <div className="mb-3 d-none d-md-block">
@@ -318,149 +342,122 @@ const formatSurveyDuration = (startTime, _tick) => {
 
       {!loading && survey && (
         <>
-          {/* ---- Row 1: schedule + status + actions ---- */}
-          <div className="d-flex align-items-center justify-content-between mb-1 gap-2 flex-wrap">
-            <div className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
-              <span style={{ fontSize: "0.92rem", fontWeight: 600, lineHeight: 1.2, color: "#1A1D21" }}>
-                {(() => {
-                  const scheduled = survey.scheduled_for ? new Date(survey.scheduled_for) : null;
-                  const visitReq = survey.visit_requirement;
-                  const schedStatus = survey.schedule_status;
-                  if (!visitReq) return scheduled ? scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "\u2014";
-                  if (visitReq === "unrestricted") return "Self-scheduling";
-                  if (!scheduled) return "Pre-arranged";
-                  const dateStr = scheduled.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                  if (schedStatus === "provisional") return `${dateStr} \u00B7 Provisional`;
-                  const hasTime = scheduled.getHours() !== 0 || scheduled.getMinutes() !== 0;
-                  const timeStr = hasTime
-                    ? scheduled.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-                    : "";
-                  return timeStr ? `${dateStr} \u00B7 ${timeStr}` : dateStr;
+          {survey.survey_record_status === "archived" && (
+            <div style={{ backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", borderRadius: 6, padding: "10px 14px", marginBottom: 12, fontSize: "0.85rem", color: "#721c24" }}>
+              This survey record is archived and cannot be edited.
+            </div>
+          )}
+          {/* ---- Survey card header ---- */}
+          <div className="survey-queue-card mb-2" style={surveyCardStyle(survey)}>
+            <SurveyCardGrid survey={survey} />
+            {survey.visit_requirement && (
+              <div style={{ fontSize: "0.78rem", fontStyle: "italic", marginTop: 4 }}>
+                {{ "24h_notify": "24 Hours - notify in advance", "24h_no_notify": "24 Hours - no notification", "wh_notify": "Working hours - notify in advance", "wh_no_notify": "Working hours - no notification", "prearranged": "Pre-arranged visits only" }[survey.visit_requirement] || survey.visit_requirement}
+                {survey.scheduled_for && survey.window_end_date && (() => {
+                  const fmt = (d) => { const dt = new Date(d); return `${dt.getDate()} ${dt.toLocaleDateString("en-GB", { month: "short" })} '${String(dt.getFullYear()).slice(2)}`; };
+                  return <><span style={{ marginLeft: "1rem" }}>Survey Window {fmt(survey.scheduled_for)} - {fmt(survey.window_end_date)}</span></>;
                 })()}
-              </span>
-              {survey.current_session_status !== "paused" && (
-                <span
-                  className={`badge ${
-                    (survey.status === "planned" || survey.status === "open") ? "bg-secondary" :
-                    survey.current_session_status === "active" ? "bg-success" :
-                    (survey.status === "submitted" || (survey.status === "assigned" && survey.current_session_status === null)) ? "bg-secondary" :
-                    survey.status === "completed" ? "bg-dark" :
-                    (survey.status === "missed" || (survey.status === "archived" && survey.closure_reason === "missed")) ? "bg-warning" :
-                    (survey.status === "cancelled" || (survey.status === "archived" && survey.closure_reason !== "missed")) ? "bg-danger" :
-                    "bg-secondary"
-                  }`}
-                  style={{ fontSize: "0.7rem" }}
-                >
-                  {survey.status_display}
-                </span>
-              )}
-              {survey.session_count > 0 && (
-                <span style={{ fontSize: "0.75rem", color: "#1A1D21" }}>
-                  Session {survey.current_session_number ?? survey.session_count} of {survey.session_count}
-                </span>
-              )}
-              {survey.current_session_status === "active" && (
-                <span className="d-inline-flex align-items-center gap-1 text-muted" style={{ fontSize: "0.78rem" }}>
-                  <img src="/datumise_timer.svg" alt="" width="11" height="11" style={{ opacity: 0.55 }} />
-                  {formatSurveyDuration(survey.created_at, durationTick)}
-                </span>
-              )}
-            </div>
-            <div className="d-flex gap-2 flex-shrink-0 flex-wrap align-items-center">
-              {survey.status === "draft" && survey.is_admin && (
-                <button className="btn btn-success btn-sm" onClick={openSurvey}>Open Survey</button>
-              )}
-              {!survey.assigned_to && (survey.status === "planned" || survey.status === "open") && (
-                <button className="btn btn-primary btn-sm" onClick={assignSurvey}>Assign to me</button>
-              )}
-              {(survey.status === "planned" || survey.status === "open") && survey.is_surveyor && survey.assigned_to && (
-                <button className="btn btn-success btn-sm" onClick={startSurvey}>Start</button>
-              )}
-              {survey.current_session_status === "active" && survey.is_surveyor && (
-                <>
-                  <button className="btn btn-warning btn-sm" onClick={pauseSurvey}>Pause</button>
-                  <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
-                  <button
-                    className="btn btn-outline-success btn-sm d-none d-lg-inline-block"
-                    onClick={() => setShowObservationModal(true)}
-                  >
-                    + Observation
-                  </button>
-                  <Link
-                    to={`/surveys/${id}/capture`}
-                    className="btn btn-outline-success btn-sm d-lg-none"
-                  >
-                    + Observation
-                  </Link>
-                </>
-              )}
-              {survey.current_session_status === "paused" && survey.is_surveyor && survey.assigned_to && (
-                <>
-                  <button className="btn btn-success btn-sm" onClick={resumeSurvey}>Resume session</button>
-                  <button className="btn btn-secondary btn-sm" onClick={completeSession}>Complete Session</button>
-                </>
-              )}
-              {(survey.status === "submitted" || (survey.status === "assigned" && survey.current_session_status === null)) && survey.is_surveyor && (
-                <>
-                  <button className="btn btn-success btn-sm" onClick={startNewSession}>Start New Session</button>
-                  <button className="btn btn-dark btn-sm" onClick={completeSurvey}>Complete Survey</button>
-                </>
-              )}
-              {survey.status === "completed" && survey.is_surveyor && (
-                <button className="btn btn-outline-secondary btn-sm" onClick={reopenSurvey}>Reopen</button>
-              )}
-              {survey.is_admin && survey.status !== "archived" && (
-                <>
-                  {survey.session_count === 0 && (survey.observations?.length ?? 0) === 0 && (
-                    <button className="btn btn-outline-danger btn-sm" onClick={deleteSurvey}>Delete</button>
+              </div>
+            )}
+            {survey.window_days && (() => {
+              const dayLabels = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
+              const fmtTime = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); const p = h >= 12 ? "pm" : "am"; return `${h % 12 || 12}:${String(m).padStart(2, "0")}${p}`; };
+              const fmtDay = (day, v) => {
+                if (typeof v === "object") return `${dayLabels[day] || day} ${fmtTime(v.start)}${v.start && v.end ? " - " : ""}${fmtTime(v.end)}`;
+                return dayLabels[day] || day;
+              };
+              const weekdays = Object.entries(survey.window_days).filter(([day, v]) => !["sat", "sun"].includes(day) && v && (typeof v === "object" ? true : !!v)).map(([day, v]) => fmtDay(day, v));
+              const weekends = Object.entries(survey.window_days).filter(([day, v]) => ["sat", "sun"].includes(day) && v && (typeof v === "object" ? true : !!v)).map(([day, v]) => fmtDay(day, v));
+              return (<>
+                {weekdays.length > 0 && (
+                  <div style={{ fontSize: "0.78rem", fontStyle: "italic", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {weekdays.join(", ")}
+                  </div>
+                )}
+                {weekends.length > 0 && (
+                  <div style={{ fontSize: "0.78rem", fontStyle: "italic", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    Weekends {weekends.join(", ")}
+                  </div>
+                )}
+              </>);
+            })()}
+          </div>
+
+          {/* ---- Survey action buttons ---- */}
+          <div className="d-flex gap-2 flex-wrap align-items-center mb-1" style={{ marginTop: 4 }}>
+            {(() => {
+              const ss = survey.survey_status || survey.status;
+              const rs = survey.survey_record_status;
+              const isDetailDraft = ss === "draft";
+              const isDetailActive = ss === "active" || ["open", "assigned", "planned"].includes(survey.status);
+              const isDetailCompleted = ss === "completed";
+              const isDetailCancelled = ss === "cancelled";
+              const isDetailAbandoned = ss === "abandoned";
+              const isDetailArchived = rs === "archived" || survey.status === "archived";
+              return (<>
+                {isDetailDraft && survey.is_admin && (
+                  <button className="btn btn-success btn-sm" onClick={openSurvey}>Start Survey</button>
+                )}
+                {isDetailDraft && survey.is_admin && (
+                  <button className="btn btn-danger btn-sm" onClick={cancelSurvey}>Cancel Survey</button>
+                )}
+                {isDetailDraft && (survey.is_admin || survey.is_owner) && (
+                  <Link to={`/surveys/${id}/edit`} className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>Edit Survey</Link>
+                )}
+                {isDetailActive && !isDetailArchived && (<>
+                  {!survey.current_session_status && survey.is_surveyor && survey.session_count > 0 && (
+                    <button className="btn btn-dark btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : completeSurvey}>Complete Survey</button>
                   )}
-                  <button className="btn btn-outline-secondary btn-sm" onClick={archiveSurvey}>Archive</button>
-                </>
-              )}
-              <Link
-                to={`/surveys/${id}/edit`}
-                className="btn p-0 border-0 bg-transparent edit-icon-circle"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <img src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-              </Link>
-              <button
-                type="button"
-                className="btn p-0 border-0 bg-transparent"
-                onClick={() => setShowDetails((prev) => !prev)}
-                aria-label={showDetails ? "Hide survey details" : "Show survey details"}
-                style={{ opacity: 0.4 }}
-              >
-                <img src="/datumise-down-chev.svg" alt="" width="16" height="16" style={{ transform: showDetails ? "rotate(180deg)" : "none", transition: "transform 0.2s ease", filter: "brightness(0) saturate(100%) invert(9%) sepia(10%) saturate(1000%) hue-rotate(180deg) brightness(95%)" }} />
-              </button>
-            </div>
+                  <button className="btn btn-danger btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : cancelSurvey}>Cancel Survey</button>
+                  <button className="btn btn-sm" disabled={useMode} style={{ backgroundColor: "#000", color: "#fff", ...(useMode ? { opacity: 0.4 } : {}) }} onClick={useMode ? undefined : abandonSurvey}>Abandon Survey</button>
+                  <Link to={`/surveys/${id}/edit`} className="btn btn-secondary btn-sm" disabled={useMode} style={{ textDecoration: "none", ...(useMode ? { opacity: 0.4, pointerEvents: "none" } : {}) }}>Edit Survey</Link>
+                </>)}
+                {isDetailCompleted && !isDetailArchived && (
+                  <button className="btn btn-secondary btn-sm" onClick={archiveSurvey}>Archive</button>
+                )}
+                {(isDetailCancelled || isDetailAbandoned) && !isDetailArchived && (
+                  <button className="btn btn-secondary btn-sm" onClick={archiveSurvey}>Archive</button>
+                )}
+                {isDetailArchived && (
+                  <button className="btn btn-secondary btn-sm" onClick={unarchiveSurvey}>Unarchive</button>
+                )}
+                {isDetailDraft && (survey.is_admin || survey.is_owner) && (() => {
+                  const hasRealObs = (survey.observations || []).some(o => !o.is_draft && o.image);
+                  return hasRealObs ? (
+                    <button className="btn btn-danger btn-sm" disabled style={{ opacity: 0.45, cursor: "not-allowed" }}
+                      onClick={() => alert("This item contains survey data and cannot be deleted. Archive instead.")}>Delete</button>
+                  ) : (
+                    <button className="btn btn-danger btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : deleteSurvey}>Delete</button>
+                  );
+                })()}
+              </>);
+            })()}
           </div>
 
-          {/* ---- Row 2: client / site ---- */}
-          <div className="mb-0" style={{ fontSize: "0.82rem", fontWeight: 500, color: "#1A1D21" }}>
-            {survey.client && survey.site
-              ? `${survey.client} \u2013 ${survey.site}`
-              : survey.client || survey.site || "No client / site"}
-          </div>
-
-          {/* ---- Row 3: due + surveyor + client present + urgent ---- */}
-          <div className="d-flex align-items-center gap-2 mb-1 flex-wrap" style={{ fontSize: "0.78rem", color: "#1A1D21" }}>
-            {survey.due_by && (
-              <>
-                <span>Due {new Date(survey.due_by).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-                <span>{"\u00B7"}</span>
-              </>
-            )}
-            <span>{survey.assigned_to || "Unassigned"}</span>
-            <span>{"\u00B7"}</span>
-            <span>{survey.client_present ? "Client attending" : "Client not attending"}</span>
-            {!!(survey.is_urgent ?? survey.urgent) && (
-              <>
-                <span>{"\u00B7"}</span>
-                <span className="badge bg-danger" style={{ fontSize: "0.65rem" }}>URGENT</span>
-              </>
-            )}
-          </div>
+          {/* ---- Session action buttons ---- */}
+          {(() => {
+            const ss = survey.survey_status || survey.status;
+            const isSessionActive = ss === "active" || ["open", "assigned", "planned"].includes(survey.status);
+            const isSessionArchived = (survey.survey_record_status === "archived" || survey.status === "archived");
+            if (!isSessionActive || isSessionArchived) return null;
+            const hasSessionBtns = survey.is_surveyor && survey.assigned_to;
+            if (!hasSessionBtns) return null;
+            return (
+              <div className="d-flex gap-2 flex-wrap align-items-center mb-2">
+                {!survey.current_session_status && (
+                  <Link to={useMode ? "#" : `/surveys/${id}/capture`} className="btn btn-success btn-sm" style={useMode ? { opacity: 0.4, pointerEvents: "none" } : {}} onClick={useMode ? (e) => e.preventDefault() : undefined}>Start Session</Link>
+                )}
+                {survey.current_session_status === "active" && (<>
+                  <button className="btn btn-warning btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : pauseSurvey}>Pause Session</button>
+                  <button className="btn btn-secondary btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : completeSession}>Complete Session</button>
+                </>)}
+                {survey.current_session_status === "paused" && (<>
+                  <Link to={useMode ? "#" : `/surveys/${id}/capture`} className="btn btn-success btn-sm" style={useMode ? { opacity: 0.4, pointerEvents: "none" } : {}} onClick={useMode ? (e) => e.preventDefault() : undefined}>Resume Session</Link>
+                  <button className="btn btn-secondary btn-sm" disabled={useMode} style={useMode ? { opacity: 0.4 } : {}} onClick={useMode ? undefined : completeSession}>Complete Session</button>
+                </>)}
+              </div>
+            );
+          })()}
 
           {/* ---- Collapsible survey details ---- */}
           <div className="mb-3">
@@ -477,7 +474,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                   </div>
                   <div className="survey-detail-item">
                     <span className="survey-detail-label">Surveyor</span>
-                    <span>{survey.assigned_to || "Unassigned"}</span>
+                    <span>{survey.assigned_to_name || survey.assigned_to || "Unassigned"}</span>
                   </div>
                   <div className="survey-detail-item">
                     <span className="survey-detail-label">Created by</span>
@@ -513,16 +510,22 @@ const formatSurveyDuration = (startTime, _tick) => {
                       <span>{{ unrestricted: "Unrestricted", prearranged: "Pre-arranged" }[survey.visit_requirement] || survey.visit_requirement}</span>
                     </div>
                   )}
-                  {survey.schedule_status && (
+                  {(survey.scheduled_status || survey.schedule_status) && (
                     <div className="survey-detail-item">
                       <span className="survey-detail-label">Schedule status</span>
-                      <span>{{ self_scheduled: "Self-scheduled", provisional: "Provisional", booked: "Confirmed" }[survey.schedule_status] || survey.schedule_status}</span>
+                      <span>{{ self_scheduled: "Self-set", provisional: "Provisional", confirmed: "Confirmed", booked: "Confirmed" }[survey.scheduled_status || survey.schedule_status] || survey.scheduled_status || survey.schedule_status}</span>
                     </div>
                   )}
                   {survey.visit_time && (
                     <div className="survey-detail-item">
                       <span className="survey-detail-label">Visit time</span>
                       <span>{{ anytime: "Anytime", window: "Time window", appointment: "Appointment" }[survey.visit_time] || survey.visit_time}</span>
+                    </div>
+                  )}
+                  {survey.attendance_status && survey.attendance_status !== "unknown" && (
+                    <div className="survey-detail-item">
+                      <span className="survey-detail-label">Attendance</span>
+                      <span style={{ textTransform: "capitalize" }}>{survey.attendance_status}</span>
                     </div>
                   )}
                   {survey.closure_reason && (
@@ -559,48 +562,39 @@ const formatSurveyDuration = (startTime, _tick) => {
             <div className="d-flex align-items-center gap-2">
               {useMode && selectedObs.size > 0 && (
                 <>
-                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                  <button type="button" className="btn btn-sm d-flex align-items-center"
+                    style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                     onClick={async () => {
+                      setPushType("text");
+                      setPushSearch("");
+                      setPushSelected(new Set([String(survey.id)]));
                       try {
-                        const obsTexts = (survey.observations || []).filter(o => selectedObs.has(o.id)).map(o => o.title);
-                        await Promise.all(obsTexts.map(title => api.post("/api/observations/", { survey: survey.id, title, is_draft: true })));
-                        setUseMode(false);
-                        setSelectedObs(new Set());
-                        fetchSurvey();
-                        alert(`${obsTexts.length} draft observation${obsTexts.length !== 1 ? "s" : ""} created.`);
-                      } catch (err) {
-                        console.error(err);
-                        alert("Failed to create draft observations.");
-                      }
+                        const res = await api.get("/api/surveys/?page_size=25");
+                        setPushSurveys(res.data.results || res.data);
+                        setPushNextPage(res.data.next || null);
+                      } catch (e) { setPushSurveys([]); }
+                      setPushModal(true);
                     }}>
-                    <img src="/draft.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
-                    Create drafts ({selectedObs.size})
+                    Text
                   </button>
-                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                  <button type="button" className="btn btn-sm d-flex align-items-center"
+                    style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: "#db440a", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                     onClick={async () => {
-                      const withImages = (survey.observations || []).filter(o => selectedObs.has(o.id) && o.image);
-                      if (withImages.length === 0) {
-                        alert("No selected observations have images.");
-                        return;
-                      }
+                      setPushType("photo");
+                      setPushSearch("");
+                      setPushSelected(new Set([String(survey.id)]));
                       try {
-                        await Promise.all(withImages.map(o => api.post("/api/observations/", { survey: survey.id, title: "", image: o.image, is_draft: true })));
-                        setUseMode(false);
-                        setSelectedObs(new Set());
-                        fetchSurvey();
-                        alert(`${withImages.length} photo draft${withImages.length !== 1 ? "s" : ""} created.`);
-                      } catch (err) {
-                        console.error(err);
-                        alert("Failed to create photo drafts.");
-                      }
+                        const res = await api.get("/api/surveys/?page_size=25");
+                        setPushSurveys(res.data.results || res.data);
+                        setPushNextPage(res.data.next || null);
+                      } catch (e) { setPushSurveys([]); }
+                      setPushModal(true);
                     }}>
-                    <img src="/clipboard.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
-                    Copy photo ({(survey.observations || []).filter(o => selectedObs.has(o.id) && o.image).length})
+                    Photo
                   </button>
-                  <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                    style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#c0392b", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                  {canDeleteObs && (
+                  <button type="button" className="btn btn-sm d-flex align-items-center justify-content-center"
+                    style={{ width: 24, height: 24, padding: 0, backgroundColor: "#c0392b", border: "none", borderRadius: 2 }}
                     onClick={async () => {
                       const confirmed = window.confirm(`Delete ${selectedObs.size} observation${selectedObs.size !== 1 ? "s" : ""}? This cannot be undone.`);
                       if (!confirmed) return;
@@ -614,18 +608,60 @@ const formatSurveyDuration = (startTime, _tick) => {
                         alert("Failed to delete observations.");
                       }
                     }}>
-                    Delete ({selectedObs.size})
+                    <img src="/datumise_delete.svg" alt="Delete" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
                   </button>
+                  )}
+                  <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#6c757d", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                    onClick={() => setSelectedObs(new Set())}>Clear</button>
                 </>
               )}
-              <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: useMode ? "#0006b1" : "#db440a", color: "#fefdfc", border: "none", borderRadius: 4 }}
+              {(survey.observations?.length > 0) && (
+              <button type="button" className="btn btn-sm"
+                style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                 onClick={() => { setUseMode(!useMode); if (useMode) setSelectedObs(new Set()); }}>
-                <img src="/use.svg" alt="" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
-                {useMode ? `Select (${selectedObs.size})` : "Select"}
+                {useMode && selectedObs.size > 0 ? `${selectedObs.size}/10` : "Select"}
               </button>
+              )}
             </div>
           </div>
+
+          {/* ---- Observation filters ---- */}
+          {survey.observations?.length > 0 && (
+            <div className="edit-fieldset mb-2" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
+              <p className="edit-legend section-toggle" onClick={() => setObsFilterOpen(!obsFilterOpen)} style={{ color: "#fefdfc", fontSize: "0.82rem" }}>
+                <span className={`section-chevron section-chevron--light${obsFilterOpen ? " section-chevron--open" : ""}`}></span>
+                Filters
+              </p>
+              {obsFilterOpen && (<>
+                <div style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 6 }}>
+                  <input type="text" className="filter-search" placeholder="Search observations..." value={obsSearch} onChange={(e) => setObsSearch(e.target.value)}
+                    style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: "transparent", color: "#fefdfc", outline: "none", width: "100%", maxWidth: 200 }} />
+                </div>
+                <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 6 }}>
+                  {[{ v: "", l: "All" }, { v: "draft", l: "Draft" }, { v: "real", l: "Real" }, { v: "photo", l: "With Photo" }, { v: "no_photo", l: "No Photo" }].map(({ v, l }) => (
+                    <button key={v} type="button" onClick={() => setObsFilterType(v)}
+                      style={{ fontSize: "0.68rem", padding: "2px 10px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: obsFilterType === v ? "#db440a" : "transparent", color: "#fefdfc", cursor: "pointer", height: 24 }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginBottom: 6 }}>
+                  {[{ v: "newest", l: "Newest" }, { v: "oldest", l: "Oldest" }, { v: "most_liked", l: "Most Liked" }, { v: "most_commented", l: "Most Commented" }].map(({ v, l }) => (
+                    <button key={v} type="button" onClick={() => setObsSortOrder(v)}
+                      style={{ fontSize: "0.68rem", padding: "2px 10px", border: "1px solid #f5f5f7", borderRadius: 4, backgroundColor: obsSortOrder === v ? "#db440a" : "transparent", color: "#fefdfc", cursor: "pointer", height: 24 }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </>)}
+              {!obsFilterOpen && (obsSearch || obsFilterType) && (
+                <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "var(--section-gap, 16px)", marginTop: 4 }}>
+                  {obsSearch && <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#2e5e3e", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>"{obsSearch}" <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#c0392b" }} onClick={() => setObsSearch("")}>&times;</button></span>}
+                  {obsFilterType && <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "2px 8px", backgroundColor: "#fcfaf7", color: "#2e5e3e", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>{{ draft: "Draft", real: "Real", photo: "With Photo", no_photo: "No Photo" }[obsFilterType]} <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "0.8rem", lineHeight: 1, color: "#c0392b" }} onClick={() => setObsFilterType("")}>&times;</button></span>}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ---- Observation list ---- */}
           {survey.observations?.length === 0 && (
@@ -634,82 +670,106 @@ const formatSurveyDuration = (startTime, _tick) => {
             </p>
           )}
 
-          <div id="observations-list" style={{ opacity: scrollReady ? 1 : 0 }}>
-            {survey?.observations?.map((observation, index) => (
+          <div id="observations-list" style={{ opacity: scrollReady ? 1 : 0, paddingBottom: "80vh" }}>
+            {(() => {
+              let filtered = survey?.observations || [];
+              if (obsSearch) { const q = obsSearch.toLowerCase(); filtered = filtered.filter(o => (o.title || "").toLowerCase().includes(q)); }
+              if (obsFilterType === "draft") filtered = filtered.filter(o => o.is_draft);
+              if (obsFilterType === "real") filtered = filtered.filter(o => !o.is_draft);
+              if (obsFilterType === "photo") filtered = filtered.filter(o => !!o.image);
+              if (obsFilterType === "no_photo") filtered = filtered.filter(o => !o.image);
+              if (obsSortOrder === "oldest") filtered = [...filtered].reverse();
+              if (obsSortOrder === "most_liked") filtered = [...filtered].sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
+              if (obsSortOrder === "most_commented") filtered = [...filtered].sort((a, b) => (b.comment_count || 0) - (a.comment_count || 0));
+              return filtered;
+            })().slice(0, visibleObsCount).map((observation, index) => (
               <div
                 key={observation.id}
                 id={`obs-${observation.id}`}
-                className="text-decoration-none text-dark"
-                style={{ cursor: "pointer" }}
+                className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
+                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", position: "relative" }}
+                onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
                 onClick={(e) => {
                   if (useMode) {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const clickX = e.clientX - rect.left;
                     if (clickX > rect.width * 0.8) {
-                      setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else next.add(observation.id); return next; });
+                      setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else if (next.size < 10) next.add(observation.id); return next; });
                       return;
                     }
                   }
                   const obsIds = survey.observations.map((o) => o.id);
-                  navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, returnHighlight: observation.id, observationIds: obsIds, observationIndex: obsIds.indexOf(observation.id), obsCreatedAt: observation.created_at, obsOwner: observation.owner } });
+                  navigate(`/surveys/${id}/capture`, { state: { viewObservationId: observation.id } });
                 }}
               >
-                <div
-                  className={`observation-row${highlightedObs === observation.id ? " observation-row-highlight" : ""}`}
-                  onMouseEnter={() => { if (highlightedObs && highlightedObs !== observation.id) setHighlightedObs(null); }}
-                  style={{ padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", background: "#FAF8F3", borderRadius: "3px", border: "1px solid transparent", borderBottom: "1px solid #e2ddd3", position: "relative" }}
-                >
+                <div style={{ position: "relative", width: "80px", flexShrink: 0 }}>
                   {observation.image ? (
                     <img
                       src={thumbnailUrl(observation)}
                       alt=""
                       loading="lazy"
-                      style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "3px 0 0 3px", flexShrink: 0 }}
+                      style={{ width: "80px", minHeight: "100%", objectFit: "cover", borderRadius: "2px 0 0 2px" }}
                     />
                   ) : (
-                    <div style={{ width: "80px", minHeight: "100%", borderRadius: "3px 0 0 3px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
+                    <div style={{ width: "80px", minHeight: "100%", borderRadius: "2px 0 0 2px", display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef" }}>
                       <span style={{ fontSize: "0.65rem", color: "#2c3e50" }}>No img</span>
                     </div>
                   )}
-                  <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.3rem 0.4rem", overflow: "hidden" }}>
-                    <div className="observation-row-title" style={{ lineHeight: 1.2 }}>
-                      {observation.is_draft && (
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, background: "#db440a", color: "#fff", borderRadius: "3px", padding: "1px 4px", marginRight: "5px", verticalAlign: "middle" }}>DRAFT</span>
-                      )}
-                      {observation.title}
-                    </div>
-                    <div className="observation-row-meta d-flex align-items-center justify-content-start gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0, color: "#1A1D21" }}>
-                  <span style={{ fontStyle: "normal" }}>{new Date(observation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
-                  <span style={{ fontStyle: "normal" }}>{survey.observations.length - index} of {survey.observations.length}</span>
-                  <button
-                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
-                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
-                    onClick={(e) => handleObsLike(e, observation.id)}
-                  >
-                    <img src="/datumise-like.svg" alt="" width="11" height="11" style={{ opacity: observation.is_liked ? 1 : 0.4, filter: observation.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
-                    {observation.likes_count || 0}
-                  </button>
-                  <button
-                    className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
-                    style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/observations/${observation.id}`, { state: { fromSurvey: true, surveyId: id, openComment: true } }); }}
-                  >
-                    <img src="/datumise-comment.svg" alt="" width="11" height="11" style={{ opacity: 0.5 }} />
-                    {observation.comment_count || 0}
-                  </button>
-                  <span>{new Date(observation.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                    </div>
-                  </div>
-                  {useMode && (
-                    <div onClick={(e) => { e.stopPropagation(); setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else next.add(observation.id); return next; }); }}
-                      style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0006b1", backgroundColor: selectedObs.has(observation.id) ? "#0006b1" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                      {selectedObs.has(observation.id) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
-                    </div>
+                  {observation.is_draft && (
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#db440a", color: "#fff", fontSize: "0.55rem", fontWeight: 700, textAlign: "center", borderRadius: 0, padding: "1px 0", letterSpacing: "0.05em" }}>DRAFT</div>
                   )}
                 </div>
+                <div className="observation-row-content d-flex flex-column" style={{ padding: "0.3rem 1rem 0.3rem 0.4rem", overflow: "hidden" }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", minWidth: 0 }}><div className="observation-row-title" style={{ lineHeight: 1.2, maxWidth: "80ch", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-all" }}>
+                    {isDetailReadOnly && (
+                      <span style={{ fontSize: "0.65rem", marginRight: "4px", verticalAlign: "middle" }}>{"\uD83D\uDD12"}</span>
+                    )}
+                    {observation.title}
+                  </div></div>
+                  <div className="observation-row-meta d-flex align-items-center justify-content-start gap-2" style={{ lineHeight: 1.6, marginTop: "0.1rem", flexShrink: 0 }}>
+                    <button
+                      className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                      onClick={(e) => handleObsLike(e, observation.id)}
+                    >
+                      <img src="/datumise-like.svg" alt="" width="11" height="11" style={{ opacity: observation.is_liked ? 1 : 0.4, filter: observation.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                      {observation.likes_count || 0}
+                    </button>
+                    <button
+                      className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/surveys/${id}/capture`, { state: { viewObservationId: observation.id } }); }}
+                    >
+                      <img src="/datumise-comment.svg" alt="" width="11" height="11" style={{ opacity: 0.5 }} />
+                      {observation.comment_count || 0}
+                    </button>
+                    <span>
+                      {new Date(observation.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {" \u00B7 "}{observation.owner_name || observation.owner || "Unassigned"}
+                    </span>
+                  </div>
+                </div>
+                {useMode && (
+                  <div onClick={(e) => { e.stopPropagation(); setSelectedObs(prev => { const next = new Set(prev); if (next.has(observation.id)) next.delete(observation.id); else if (next.size < 10) next.add(observation.id); return next; }); }}
+                    style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0006b1", backgroundColor: selectedObs.has(observation.id) ? "#0006b1" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                    {selectedObs.has(observation.id) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
+          {survey?.observations?.length > visibleObsCount && (
+            <div className="text-center mt-3 mb-3">
+              <button
+                className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                style={{ width: "44px", height: "44px", background: "#db440a", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+                onClick={() => setVisibleObsCount(prev => prev + 25)}
+                aria-label="Load more"
+              >
+                <img src="/datumise-load.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+              </button>
+            </div>
+          )}
         </>
       )}
         <Modal
@@ -827,6 +887,105 @@ const formatSurveyDuration = (startTime, _tick) => {
 
       <ReturnButton to={-1} />
       <BackToTop />
+
+      {/* Push to survey modal */}
+      {pushModal && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 2, maxWidth: 520, width: "90%", maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div className="d-flex justify-content-between align-items-center" style={{ backgroundColor: "#db440a", padding: "0.5rem 1rem" }}>
+              <span style={{ color: "#faf6ef", fontWeight: 700, fontSize: "1rem" }}>
+                {pushType === "text" ? "Create draft observations in selected surveys from observation text?" : pushType === "photo" ? "Create draft observations in selected surveys from observation photos?" : "Create draft observations in selected surveys from observation photos and text?"}
+              </span>
+              <button type="button" style={{ border: "none", background: "none", fontSize: "1.3rem", cursor: "pointer", color: "#faf6ef", lineHeight: 1, padding: 0 }} onClick={() => setPushModal(false)}>&times;</button>
+            </div>
+            <div style={{ padding: "0.75rem 1rem 0.5rem" }}>
+              <input type="text" className="filter-search" placeholder="Search surveys..." value={pushSearch} onChange={(e) => setPushSearch(e.target.value)}
+                style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #c8c2b8", borderRadius: 4, outline: "none", width: "100%", maxWidth: 200 }} />
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 1rem" }}>
+              {(() => {
+                const filtered = pushSurveys.filter(s => {
+                  if (!pushSearch) return true;
+                  const q = pushSearch.toLowerCase();
+                  return (s.site_name || "").toLowerCase().includes(q) || (s.name || "").toLowerCase().includes(q) || (s.assigned_to_name || s.assigned_to || "").toLowerCase().includes(q);
+                });
+                // Put current survey first
+                const sorted = [...filtered].sort((a, b) => (String(b.id) === String(survey.id) ? 1 : 0) - (String(a.id) === String(survey.id) ? 1 : 0));
+                return sorted.length === 0 ? (
+                  <p className="text-muted">No surveys found.</p>
+                ) : (<>
+                  {sorted.map(s => (
+                    <div key={s.id} className="survey-queue-card" style={{ ...(surveyCardStyle(s) || {}), cursor: "pointer", position: "relative", outline: String(s.id) === String(survey.id) ? "2px solid #0d6efd" : "none" }}
+                      onClick={() => { setPushSelected(prev => { const n = new Set(prev); n.has(String(s.id)) ? n.delete(String(s.id)) : n.add(String(s.id)); return n; }); }}>
+                      <SurveyCardGrid survey={s} />
+                      <div style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", backgroundColor: pushSelected.has(String(s.id)) ? "#0d6efd" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {pushSelected.has(String(s.id)) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {pushNextPage ? (
+                    <div className="text-center my-2">
+                      <button className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                        style={{ width: 36, height: 36, background: "#db440a", border: "none", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
+                        onClick={async () => {
+                          try { const res = await api.get(pushNextPage); setPushSurveys(prev => [...prev, ...(res.data.results || res.data)]); setPushNextPage(res.data.next || null); } catch (e) {}
+                        }}>
+                        <img src="/datumise-load.svg" alt="Load more" width="18" height="18" style={{ filter: "brightness(0) invert(1)" }} />
+                      </button>
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", fontSize: "0.72rem", color: "#999", fontStyle: "italic", margin: "8px 0" }}>All surveys downloaded</p>
+                  )}
+                </>);
+              })()}
+            </div>
+            <div className="d-flex justify-content-end gap-2" style={{ padding: "0.5rem 1rem 1rem" }}>
+              {pushSelected.size > 0 && (
+                <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#6c757d", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                  onClick={() => setPushSelected(new Set())}>Clear</button>
+              )}
+              <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", border: "1px solid #c8c2b8", borderRadius: 2, height: 24 }}
+                onClick={() => setPushModal(false)}>Cancel</button>
+              {pushSelected.size > 0 && (
+                <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                  onClick={async () => {
+                    try {
+                      const selected = (survey.observations || []).filter(o => selectedObs.has(o.id));
+                      let count = 0;
+                      for (const surveyId of pushSelected) {
+                        for (const obs of selected) {
+                          if (pushType === "photo" && !obs.image) continue;
+                          const needsImage = (pushType === "photo" || pushType === "textphoto") && obs.image;
+                          if (needsImage) {
+                            try {
+                              const imgRes = await fetch(obs.image);
+                              const blob = await imgRes.blob();
+                              const fd = new FormData();
+                              fd.append("survey", surveyId);
+                              fd.append("is_draft", "true");
+                              if (pushType === "textphoto" || pushType === "text") fd.append("title", obs.title || "");
+                              fd.append("image", blob, "photo.jpg");
+                              await api.post("/api/observations/", fd, { headers: { "Content-Type": "multipart/form-data" } });
+                              count++;
+                            } catch (e) { console.error("Image copy failed:", e); }
+                          } else {
+                            await api.post("/api/observations/", { survey: parseInt(surveyId), title: obs.title || "", is_draft: true });
+                            count++;
+                          }
+                        }
+                      }
+                      setPushModal(false);
+                      setUseMode(false);
+                      setSelectedObs(new Set());
+                      fetchSurvey();
+                      alert(`${count} draft observation${count !== 1 ? "s" : ""} created.`);
+                    } catch (err) { alert("Failed to create drafts."); }
+                  }}>Add ({pushSelected.size} {pushSelected.size === 1 ? "survey" : "surveys"})</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

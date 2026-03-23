@@ -55,17 +55,9 @@ function Home({ isLoggedIn }) {
   return (
     <div className="container mt-4 px-3">
       <div className="dashboard-grid">
-        <Link to="/quick-add" className="dashboard-tile">
-          <img src="/datumise-add.svg" alt="" width="28" height="28" />
-          <span>Quick Add</span>
-        </Link>
-        <Link to="/clients" className="dashboard-tile">
-          <img src="/datumise-clients.svg" alt="" width="28" height="28" />
-          <span>Clients</span>
-        </Link>
-        <Link to="/filters" className="dashboard-tile">
-          <img src="/datumise-filter.svg" alt="" width="28" height="28" />
-          <span>Filters</span>
+        <Link to="/surveys" className="dashboard-tile">
+          <img src="/datumise-surveys.svg" alt="" width="28" height="28" />
+          <span>Surveys</span>
         </Link>
         <Link to="/observations" className="dashboard-tile">
           <img src="/datumise-observations.svg" alt="" width="28" height="28" />
@@ -75,15 +67,19 @@ function Home({ isLoggedIn }) {
           <img src="/datumise-sites.svg" alt="" width="28" height="28" />
           <span>Sites</span>
         </Link>
-        <Link to="/surveys" className="dashboard-tile">
-          <img src="/datumise-surveys.svg" alt="" width="28" height="28" />
-          <span>Surveys</span>
+        <Link to="/clients" className="dashboard-tile">
+          <img src="/datumise-clients.svg" alt="" width="28" height="28" />
+          <span>Clients</span>
         </Link>
         <Link to="/team" className="dashboard-tile">
           <img src="/datumise-surveyors.svg" alt="" width="28" height="28" />
           <span>Team</span>
         </Link>
-        <Link to="/settings" className="dashboard-tile" style={{ order: 999 }}>
+        <Link to="/quick-add" className="dashboard-tile">
+          <img src="/datumise-add.svg" alt="" width="28" height="28" />
+          <span>Quick Add</span>
+        </Link>
+        <Link to="/settings" className="dashboard-tile">
           <img src="/datumise-settings.svg" alt="" width="28" height="28" />
           <span>Settings</span>
         </Link>
@@ -136,7 +132,6 @@ function useScreenTitle() {
   if (pathname === "/clients/create") return "New Client";
   if (pathname === "/sites/create") return "New Site";
   if (pathname === "/team/create") return "New Team Member";
-  if (pathname === "/filters") return "Filters";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/login") return "Login";
   if (pathname === "/register") return "Register";
@@ -203,13 +198,12 @@ function AppLayout() {
         </Link>
         {isLoggedIn && (
           <>
-            <NavLink className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>Clients</NavLink>
-            <NavLink className="nav-link ms-3" to="/filters" style={{ color: "#faf6ef" }}>Filters</NavLink>
-            <NavLink className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>Observations</NavLink>
-            <NavLink className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>Settings</NavLink>
-            <NavLink className="nav-link ms-3" to="/sites" style={{ color: "#faf6ef" }}>Sites</NavLink>
             <NavLink className="nav-link ms-3" to="/surveys" style={{ color: "#faf6ef" }}>Surveys</NavLink>
+            <NavLink className="nav-link ms-3" to="/observations" style={{ color: "#faf6ef" }}>Observations</NavLink>
+            <NavLink className="nav-link ms-3" to="/sites" style={{ color: "#faf6ef" }}>Sites</NavLink>
+            <NavLink className="nav-link ms-3" to="/clients" style={{ color: "#faf6ef" }}>Clients</NavLink>
             <NavLink className="nav-link ms-3" to="/team" style={{ color: "#faf6ef" }}>Team</NavLink>
+            <NavLink className="nav-link ms-3" to="/settings" style={{ color: "#faf6ef" }}>Settings</NavLink>
           </>
         )}
         <div className="ms-auto">
@@ -260,13 +254,12 @@ function AppLayout() {
 
           {menuOpen && (
             <div className="app-nav-dropdown">
-              <NavLink to="/clients" className="app-nav-dropdown-item">Clients</NavLink>
-              <NavLink to="/filters" className="app-nav-dropdown-item">Filters</NavLink>
-              <NavLink to="/observations" className="app-nav-dropdown-item">Observations</NavLink>
-              <NavLink to="/settings" className="app-nav-dropdown-item">Settings</NavLink>
-              <NavLink to="/sites" className="app-nav-dropdown-item">Sites</NavLink>
               <NavLink to="/surveys" className="app-nav-dropdown-item">Surveys</NavLink>
+              <NavLink to="/observations" className="app-nav-dropdown-item">Observations</NavLink>
+              <NavLink to="/sites" className="app-nav-dropdown-item">Sites</NavLink>
+              <NavLink to="/clients" className="app-nav-dropdown-item">Clients</NavLink>
               <NavLink to="/team" className="app-nav-dropdown-item">Team</NavLink>
+              <NavLink to="/settings" className="app-nav-dropdown-item">Settings</NavLink>
               <div className="app-nav-dropdown-divider" />
               {isLoggedIn ? (
                 <button
@@ -318,7 +311,7 @@ function AppLayout() {
         <Route path="/team/create" element={<TeamCreateForm />} />
         <Route path="/team/:id" element={<TeamDetail />} />
         <Route path="/team/:id/edit" element={<TeamEditForm />} />
-        <Route path="/filters" element={<Filters />} />
+        {/* Filters page removed — filters now inline on list pages */}
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </>

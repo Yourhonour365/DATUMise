@@ -238,23 +238,7 @@ function ObservationDetail() {
             </span>
           </div>
         )}
-        {location.state?.fromSurvey && observation.survey_current_session_status === "paused" && observation.is_owner && (
-          <button
-            type="button"
-            className="w-100"
-            style={{ position: "absolute", bottom: 0, left: 0, background: "rgba(219, 68, 10, 0.9)", color: "#faf6ef", border: "none", padding: "0.6rem", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-            onClick={async () => {
-              try {
-                await api.patch(`/api/surveys/${location.state.surveyId}/`, { status: PATCH_START_SESSION });
-                navigate(`/surveys/${location.state.surveyId}/capture`);
-              } catch (err) {
-                console.error("Failed to resume survey:", err);
-              }
-            }}
-          >
-            Resume session
-          </button>
-        )}
+        {/* Resume button removed — sessions auto-resume on photo capture (Rule 000018) */}
       </div>
 
       {/* ---- Content (right column on desktop) ---- */}
@@ -263,8 +247,16 @@ function ObservationDetail() {
       {/* ---- Observation fieldset ---- */}
       <div className="pt-0 pb-0 mb-0" style={{ background: "#FAF8F3" }}>
         <div className="obs-detail-desc" style={{ paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
+          {["completed", "cancelled", "abandoned", "archived"].includes(observation.survey_status) && (
+            <span style={{ fontSize: "0.75rem", marginRight: "4px" }}>{"\uD83D\uDD12"}</span>
+          )}
           {observation.title}
         </div>
+        {location.state?.fromSurvey && observation.is_owner && observation.survey_current_session_status !== "active" && !["completed", "cancelled", "abandoned", "archived"].includes(observation.survey_status) && (
+          <div style={{ background: "#FAF8F3", padding: "6px 0.4rem", fontSize: "0.78rem", color: "#db440a", fontWeight: 700 }}>
+            {observation.survey_current_session_status === "paused" ? "Resume session" : "Start session"} to edit or update this observation
+          </div>
+        )}
         <div className="d-flex align-items-center justify-content-between" style={{ height: "24px", flexShrink: 0, background: "#FAF8F3", paddingLeft: "0.4rem", paddingRight: "0.4rem" }}>
           <div className="d-flex align-items-center gap-3" style={{ fontSize: "0.75rem" }}>
             {!observation.is_owner && localStorage.getItem("token") ? (
@@ -308,7 +300,7 @@ function ObservationDetail() {
             </button>
           </div>
           <div className="fst-italic text-muted" style={{ fontSize: "0.68rem", textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "60%" }}>
-            {[observation.site_name, observation.owner].filter(Boolean).join(" \u00B7 ")}
+            {[observation.site_name, observation.owner_name || observation.owner].filter(Boolean).join(" \u00B7 ")}
           </div>
         </div>
       </div>
@@ -496,7 +488,7 @@ function ObservationDetail() {
                 </div>
                 <div style={{ textAlign: "left", fontSize: "0.78rem", fontStyle: "italic", lineHeight: 1.3 }}>
                   {siteStr && <div>{siteStr}</div>}
-                  <div>{observation.owner}</div>
+                  <div>{observation.owner_name || observation.owner}</div>
                 </div>
               </div>
             )}
@@ -549,7 +541,18 @@ function ObservationDetail() {
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
         <div className="survey-capture-actions">
           <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            {!nextObsId ? (
+            {location.state?.fromSurvey && observation.is_owner && observation.survey_current_session_status !== "active" && !["completed", "cancelled", "abandoned", "archived"].includes(observation.survey_status) ? (
+              <button
+                type="button"
+                className="capture-footer-btn"
+                aria-label={observation.survey_current_session_status === "paused" ? "Resume Session" : "Start Session"}
+                onClick={() => navigate(`/surveys/${location.state.surveyId}/capture`, { state: { viewObservationId: observation.id } })}
+                style={{ background: "#db440a", fontSize: "0.85rem", color: "#fff", fontWeight: 700, lineHeight: 1.2, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+              >
+                <span>{observation.survey_current_session_status === "paused" ? "Resume" : "Start"}</span>
+                <span>Session</span>
+              </button>
+            ) : !nextObsId ? (
               location.state?.nextPage ? (
                 <button
                   type="button"

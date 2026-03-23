@@ -6,17 +6,17 @@ import heic2any from "heic2any";
 import { detailMobileUrl, lightboxUrl } from "./imageUtils";
 import api from "./api/api";
 import ObservationCreateForm from "./ObservationCreateForm";
+import { SurveyCardGrid } from "./SurveyCard";
 
-// Statuses in which a survey session is actively in progress.
-// "live" is the legacy/compat value; "assigned" is the stored DB value
-// returned once the backend compatibility layer is removed.
-const ACTIVE_SESSION_STATUSES = ["live", "assigned"];
-
-// Session-lifecycle PATCH value for pausing.
-// "paused" is a legacy string required because views.py perform_update
-// triggers session pause only for requested_status == "paused".
-// PHASE 6B: Replace with PATCH /api/sessions/:id/ { status: "paused" }.
+// Session-lifecycle PATCH values (legacy compat).
+const PATCH_START_SESSION = "live";
 const PATCH_PAUSE_SESSION = "paused";
+const PATCH_END_SESSION = "submitted";
+
+// Rule 000019: inactivity timeout (10 minutes)
+const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+// Rule 000020: max session duration (2 hours)
+const MAX_SESSION_MS = 2 * 60 * 60 * 1000;
 
 function SurveyCapture() {
   const { id } = useParams();
@@ -35,19 +35,30 @@ function SurveyCapture() {
   const initialNavDoneRef = useRef(false); // prevent fetchSurvey refreshes from resetting viewingIndex
   const listOpenFromStateRef = useRef({});
   const [openNotesTrigger, setOpenNotesTrigger] = useState(0);
-  const autoSaveDraftRef = useRef(null); // set by ObservationCreateForm
+  const autoSaveDraftRef = useRef(null); // set by ObservationCreateForm (async, legacy)
   const observationsRef = useRef([]); // always-current copy for use in event handlers
   const [pauseCountdown, setPauseCountdown] = useState(null);
   const [draftIncomplete, setDraftIncomplete] = useState(false);
   const pauseTimerRef = useRef(null);
   const [showPreviewImageModal, setShowPreviewImageModal] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
+  // Rule 000018-000020: session timers
+  const inactivityTimerRef = useRef(null);
+  const maxSessionTimerRef = useRef(null);
+  const sessionStartingRef = useRef(false); // prevent duplicate start calls
+  const surveyRef = useRef(null); // always-current survey for timers
   const previewFileInputRef = useRef(null);
   const modalClosedAtRef = useRef(0);
   const [showObsListModal, setShowObsListModal] = useState(false);
   const [listSelectMode, setListSelectMode] = useState(false);
   const [listSelectedObs, setListSelectedObs] = useState(new Set());
   const [copiedToDraft, setCopiedToDraft] = useState(false);
+  const [capPushModal, setCapPushModal] = useState(false);
+  const [capPushType, setCapPushType] = useState("");
+  const [capPushSurveys, setCapPushSurveys] = useState([]);
+  const [capPushSelected, setCapPushSelected] = useState(new Set());
+  const [capPushSearch, setCapPushSearch] = useState("");
+  const [capPushNextPage, setCapPushNextPage] = useState(null);
   const [draftHasTitle, setDraftHasTitle] = useState(false);
   const [draftHasImage, setDraftHasImage] = useState(false);
   const [previewImageChanged, setPreviewImageChanged] = useState(false);
@@ -60,12 +71,96 @@ function SurveyCapture() {
     try {
       const response = await api.get(`/api/surveys/${id}/`);
       setSurvey(response.data);
+      surveyRef.current = response.data;
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Rule 000019: reset inactivity timer on photo
+  const resetInactivityTimer = () => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    inactivityTimerRef.current = setTimeout(async () => {
+      const s = surveyRef.current;
+      if (s?.current_session_status === "active") {
+        try { await api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION }); } catch (e) { /* silent */ }
+        fetchSurvey();
+      }
+    }, INACTIVITY_TIMEOUT_MS);
+  };
+
+  // Rule 000020: start max session timer (2 hours from session start)
+  const startMaxSessionTimer = () => {
+    if (maxSessionTimerRef.current) clearTimeout(maxSessionTimerRef.current);
+    maxSessionTimerRef.current = setTimeout(async () => {
+      const s = surveyRef.current;
+      if (s?.current_session_status === "active" || s?.current_session_status === "paused") {
+        try { await api.patch(`/api/surveys/${id}/`, { status: PATCH_END_SESSION }); } catch (e) { /* silent */ }
+        fetchSurvey();
+      }
+    }, MAX_SESSION_MS);
+  };
+
+  // Rule 000018 + 000021: start/resume session + auto-fill date on photo capture
+  const handlePhotoTaken = async () => {
+    const s = surveyRef.current;
+    if (!s) return;
+    const ss = s.survey_status || s.status;
+    if (ss !== "active" && !["open", "assigned"].includes(s.status)) return;
+
+    resetInactivityTimer();
+
+    // Rule 000021.2 + 000021.3: auto-fill date and scheduled_status on first real obs
+    const hasRealObs = (s.observations || []).some(o => !o.is_draft && o.image);
+    if (!hasRealObs) {
+      const patch = {};
+      if (!s.scheduled_for) {
+        const now = new Date();
+        patch.scheduled_for = now.toISOString();
+      }
+      const sched = s.scheduled_status || s.schedule_status;
+      if (sched === "provisional") {
+        patch.schedule_status = "booked"; // "confirmed" in new domain, "booked" in legacy write
+      } else if (!sched) {
+        patch.schedule_status = "self_scheduled";
+      }
+      if (Object.keys(patch).length > 0) {
+        try { await api.patch(`/api/surveys/${id}/`, patch); } catch (e) { /* silent */ }
+      }
+    }
+
+    // Session start/resume
+    if (s.current_session_status === "active") return; // already active
+    if (sessionStartingRef.current) return; // prevent duplicate
+    sessionStartingRef.current = true;
+    try {
+      await api.patch(`/api/surveys/${id}/`, { status: PATCH_START_SESSION });
+      await fetchSurvey();
+      startMaxSessionTimer();
+    } catch (e) {
+      console.error("Failed to start/resume session:", e);
+    } finally {
+      sessionStartingRef.current = false;
+    }
+  };
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (maxSessionTimerRef.current) clearTimeout(maxSessionTimerRef.current);
+    };
+  }, []);
+
+  // If session is already active on load, start timers
+  useEffect(() => {
+    if (survey?.current_session_status === "active") {
+      resetInactivityTimer();
+      startMaxSessionTimer();
+    }
+  }, [survey?.current_session_status]);
 
   useEffect(() => {
     document.body.style.backgroundColor = "#E2DDD3";
@@ -80,23 +175,17 @@ function SurveyCapture() {
     fetchSurvey();
   }, [id]);
 
-  // Navigate to specific obs, resume position, or auto-open any draft obs
+  // Navigate to specific obs if explicitly requested, otherwise blank — only on initial load
   useEffect(() => {
-    if (!survey?.observations) return;
-    const targetId = location.state?.viewObservationId || localStorage.getItem(`datumise-capture-pos-${id}`);
+    if (!survey?.observations || initialNavDoneRef.current) return;
+    initialNavDoneRef.current = true;
+    const targetId = location.state?.viewObservationId;
     if (targetId) {
       const idx = survey.observations.findIndex((obs) => obs.id === Number(targetId) || obs.id === targetId);
       if (idx !== -1) setViewingIndex(idx);
       localStorage.removeItem(`datumise-capture-pos-${id}`);
-      initialNavDoneRef.current = true;
-      return;
     }
-    // Only auto-navigate to draft on initial load — not on fetchSurvey refreshes after edits
-    if (initialNavDoneRef.current) return;
-    initialNavDoneRef.current = true;
-    // Auto-navigate to any existing draft observation
-    const draftIdx = survey.observations.findIndex((obs) => obs.is_draft);
-    if (draftIdx !== -1) setViewingIndex(draftIdx);
+    // Do NOT auto-navigate to draft — always start with a blank capture form
   }, [survey?.observations, location.state?.viewObservationId, id]);
 
   useEffect(() => {
@@ -106,28 +195,21 @@ function SurveyCapture() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-save draft and auto-pause when user backgrounds or closes the app
+  // Auto-pause session when user backgrounds or closes the app
+  // Drafts are saved proactively to the API, so no emergency save needed here
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && ACTIVE_SESSION_STATUSES.includes(survey?.status)) {
-        if (!observationsRef.current.some((o) => o.is_draft)) {
-          autoSaveDraftRef.current?.(); // fire and forget
+      if (document.visibilityState === "hidden") {
+        if (surveyRef.current?.current_session_status === "active") {
+          api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION }).catch(() => {});
         }
-        api.patch(`/api/surveys/${id}/`, { status: PATCH_PAUSE_SESSION }).catch(() => {});
-      }
-    };
-    const handleBeforeUnload = () => {
-      if (!observationsRef.current.some((o) => o.is_draft)) {
-        autoSaveDraftRef.current?.(); // fire and forget
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [survey?.status, id]);
+  }, [id]);
 
   const formatSurveyDuration = (startTime, _tick) => {
     if (!startTime) return "";
@@ -166,10 +248,7 @@ function SurveyCapture() {
 
   const executePause = async () => {
     setPauseCountdown(null);
-    // Auto-save only if no draft obs already exists in the survey
-    if (!observations.some((o) => o.is_draft) && autoSaveDraftRef.current) {
-      await autoSaveDraftRef.current();
-    }
+    // Drafts are already saved proactively to the API
     if (viewingIndex !== null && observations[viewingIndex]) {
       localStorage.setItem(`datumise-capture-pos-${id}`, observations[viewingIndex].id);
     } else {
@@ -198,7 +277,8 @@ function SurveyCapture() {
   };
 
   const closeSurvey = () => {
-    if (ACTIVE_SESSION_STATUSES.includes(survey?.status)) {
+    // Drafts are already saved proactively to the API — no manual save needed
+    if (survey?.current_session_status === "active") {
       executePause();
     } else {
       goBack();
@@ -206,11 +286,7 @@ function SurveyCapture() {
   };
 
   const handleSuccess = (newObservation) => {
-    // Delete any existing draft obs now that a confirmed obs has been submitted
-    const draftObs = (survey?.observations || []).find((o) => o.is_draft);
-    if (draftObs) {
-      api.delete(`/api/observations/${draftObs.id}/`).catch(console.error);
-    }
+    // Draft was promoted to real obs via PATCH, no need to delete separately
     setDraftIncomplete(false);
     setViewingIndex(null);
     setSuccessMessage(false);
@@ -228,14 +304,12 @@ function SurveyCapture() {
   const anyIncomplete = viewingIndex !== null ? viewedObsIncomplete : draftIncomplete;
 
   // observations array is newest-first (API ordering = -created_at)
-  // Back = toward older (higher index), Forward = toward newer (lower index)
+  // Forward = toward newer (lower index), then to NEW observation
+  // Back = toward older (higher index)
+  const canStepForward = viewingIndex !== null; // only from prior obs, not from NEW
   const canStepBack = viewingIndex === null
     ? observations.length > 0
     : viewingIndex < observations.length - 1;
-
-  const canStepForward = viewingIndex !== null && (
-    viewingIndex === 0 || !observations[viewingIndex - 1]?.is_draft
-  );
 
   const resetEditState = () => {
     if (editingField !== null) modalClosedAtRef.current = Date.now();
@@ -279,26 +353,31 @@ function SurveyCapture() {
     }
   };
 
+  const handleStepForward = () => {
+    if (Date.now() - modalClosedAtRef.current < 400) return;
+    resetEditState();
+    if (viewingIndex === null) {
+      // From NEW → go to first (newest) observation
+      if (observations.length > 0) setViewingIndex(0);
+    } else if (viewingIndex > 0) {
+      // Move toward newer observations (lower index)
+      setViewingIndex(viewingIndex - 1);
+    } else {
+      // At the newest observation → go to NEW
+      navStackRef.current = [];
+      setViewingIndex(null);
+    }
+  };
+
   const handleStepBack = () => {
     if (Date.now() - modalClosedAtRef.current < 400) return;
     resetEditState();
     if (viewingIndex === null) {
+      // From NEW → go to first (newest) observation
       if (observations.length > 0) setViewingIndex(0);
     } else if (viewingIndex < observations.length - 1) {
+      // Move toward older observations (higher index)
       setViewingIndex(viewingIndex + 1);
-    }
-  };
-
-  const handleStepForward = () => {
-    if (Date.now() - modalClosedAtRef.current < 400) return;
-    resetEditState();
-    if (viewingIndex !== null) {
-      if (viewingIndex > 0) {
-        setViewingIndex(viewingIndex - 1);
-      } else {
-        navStackRef.current = [];
-        setViewingIndex(null);
-      }
     }
   };
 
@@ -308,13 +387,17 @@ function SurveyCapture() {
     if (!viewedObservation || !field) return;
     setIsSavingEdit(true);
     try {
-      await api.patch(`/api/observations/${viewedObservation.id}/`, {
-        [field]: value,
-      });
+      const updatedObs = { ...viewedObservation, [field]: value };
+      // Auto-promote draft to real if both image and text are now present
+      const shouldPromote = updatedObs.is_draft && updatedObs.image && updatedObs.title?.trim();
+      const patchData = shouldPromote
+        ? { [field]: value, is_draft: false }
+        : { [field]: value };
+      await api.patch(`/api/observations/${viewedObservation.id}/`, patchData);
       setSurvey((prev) => ({
         ...prev,
         observations: prev.observations.map((obs) =>
-          obs.id === viewedObservation.id ? { ...obs, [field]: value } : obs
+          obs.id === viewedObservation.id ? { ...obs, ...patchData } : obs
         ),
       }));
       resetEditState();
@@ -362,7 +445,7 @@ function SurveyCapture() {
           gap: "1.5rem",
         }}>
           <div style={{ color: "#faf6ef", fontSize: "1.1rem", fontWeight: 500 }}>
-            Pausing survey in
+            Pausing session in
           </div>
           <div style={{ color: "#fef0e0", fontSize: "3.5rem", fontWeight: 700, lineHeight: 1 }}>
             {pauseCountdown}
@@ -461,7 +544,14 @@ function SurveyCapture() {
           type="button"
           className="btn-close"
           aria-label="Close"
-          onClick={closeSurvey}
+          onClick={() => {
+            // If user came here from the prior obs list, go back to it
+            if (navStackRef.current.some((e) => e.fromList)) {
+              openObsList();
+            } else {
+              closeSurvey();
+            }
+          }}
           style={{ transform: "scale(0.85)", marginLeft: "auto" }}
         />
       </div>
@@ -516,55 +606,6 @@ function SurveyCapture() {
                       {viewedObservation.title}
                     </div>
                   </div>
-                  {copiedToDraft ? (
-                    <button
-                      type="button"
-                      className="w-100 text-center"
-                      style={{ background: "#006400", color: "#faf6ef", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, fontStyle: "italic", border: "none", borderRadius: 0, cursor: "pointer" }}
-                      onClick={() => {
-                        resetEditState();
-                        setCopiedToDraft(false);
-                        const draftIdx = observations.findIndex((o) => o.is_draft);
-                        setViewingIndex(draftIdx !== -1 ? draftIdx : null);
-                      }}
-                    >
-                      Copied to draft - tap tick to confirm
-                    </button>
-                  ) : viewedObservation.image && !viewedObservation.is_draft ? (
-                    <div style={{ display: "flex", borderRadius: 0 }}>
-                      <button
-                        type="button"
-                        onClick={handleDeleteObservation}
-                        style={{ background: "#95a5a6", color: "#faf6ef", border: "none", padding: "0.85rem 0.7rem", cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#d3212f"><path d="m20.015 6.506h-16v14.423c0 .591.448 1.071 1 1.071h14c.552 0 1-.48 1-1.071 0-3.905 0-14.423 0-14.423zm-5.75 2.494c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-4.5 0c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75s-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75zm-.75-5v-1c0-.535.474-1 1-1h4c.526 0 1 .465 1 1v1h5.254c.412 0 .746.335.746.747s-.334.747-.746.747h-16.507c-.413 0-.747-.335-.747-.747s.334-.747.747-.747zm4.5 0v-.5h-3v.5z" fillRule="nonzero"/></svg>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex-grow-1"
-                        style={{ background: "#1a5bc4", color: "#faf6ef", border: "none", padding: "0.85rem", fontSize: "0.98rem", fontWeight: 600, cursor: "pointer", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
-                        onClick={async () => {
-                          const draftObs = observations.find((o) => o.is_draft);
-                          if (draftObs) {
-                            try {
-                              await api.patch(`/api/observations/${draftObs.id}/`, { title: viewedObservation.title });
-                              fetchSurvey();
-                            } catch (err) {
-                              console.error("Failed to copy to draft obs:", err);
-                            }
-                          } else {
-                            const draft = JSON.parse(localStorage.getItem("datumise-observation-draft") || "{}");
-                            draft.title = viewedObservation.title;
-                            localStorage.setItem("datumise-observation-draft", JSON.stringify(draft));
-                          }
-                          setCopiedToDraft(true);
-                        }}
-                      >
-                        <img src="/copy.svg" alt="" width="22" height="22" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-                        Copy to draft
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 <div
@@ -597,12 +638,14 @@ function SurveyCapture() {
               onPauseSurvey={startPauseCountdown}
               onClose={startPauseCountdown}
               onSuccess={handleSuccess}
+              onPhotoTaken={handlePhotoTaken}
               captureMode
               actionBarTarget={actionBarEl}
+              isSurveyor={!!survey.is_surveyor}
               anyIncomplete={anyIncomplete}
               onDraftIncomplete={setDraftIncomplete}
-              onStepBack={canStepBack && !(viewingIndex !== null ? viewedObsIncomplete : draftIncomplete) ? handleStepBack : null}
-              onStepForward={canStepForward && !viewedObsIncomplete ? handleStepForward : null}
+              onStepBack={canStepBack && !(viewingIndex !== null && viewedObsIncomplete && !viewedObservation?.is_draft) ? handleStepBack : null}
+              onStepForward={canStepForward && !(viewingIndex !== null && viewedObsIncomplete && !viewedObservation?.is_draft) ? handleStepForward : null}
               isViewingPrevious={viewingIndex !== null}
               onReturnToCurrent={() => {
                 const prev = navStackRef.current.pop();
@@ -666,7 +709,32 @@ function SurveyCapture() {
                   observations: [obs, ...(prev.observations || [])],
                 }));
               }}
+              onDraftDeleted={() => fetchSurvey()}
               isDraftObs={viewedObservation?.is_draft || false}
+              onUseDraft={async () => {
+                if (!viewedObservation) return;
+                const confirmed = window.confirm("Create draft observation from this observation?");
+                if (!confirmed) return;
+                try {
+                  const data = new FormData();
+                  data.append("title", viewedObservation.title || "");
+                  data.append("description", viewedObservation.description || "");
+                  data.append("is_draft", "true");
+                  data.append("survey", id);
+                  if (viewedObservation.image) {
+                    const res = await fetch(viewedObservation.image);
+                    const blob = await res.blob();
+                    data.append("image", new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" }));
+                  }
+                  await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+                  fetchSurvey();
+                  resetEditState();
+                  setViewingIndex(null);
+                } catch (err) {
+                  console.error("Failed to create draft from observation:", err);
+                }
+              }}
+              onCaptureDraftPhoto={() => previewFileInputRef.current?.click()}
               onCompleteDraft={async () => {
                 if (!viewedObservation) return;
                 try {
@@ -716,6 +784,10 @@ function SurveyCapture() {
           const previewUrl = URL.createObjectURL(file);
           pendingPreviewFileRef.current = file;
           pendingPreviewUrlRef.current = previewUrl;
+          // Save the original image URL so toggle can switch between them
+          if (viewedObservation.image) {
+            originalPreviewUrlRef.current = lightboxUrl(viewedObservation);
+          }
           setHasPendingPreview(true);
           setPreviewImageUrl(previewUrl);
           setPreviewImageChanged(true);
@@ -741,7 +813,7 @@ function SurveyCapture() {
         </Modal.Body>
         <div className="survey-capture-actions">
           <div className="capture-footer-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            {/* Button 1: list (plain view) or shift/toggle (comparing) */}
+            {/* Button 1: toggle between images (if pending) or list */}
             {hasPendingPreview ? (
               <button
                 type="button"
@@ -758,73 +830,86 @@ function SurveyCapture() {
                 }}
                 style={{ background: "#1a5bc4" }}
               >
-                <img src="/shift.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+                <img src="/datumise_end_right.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
               </button>
             ) : (
               <button
                 type="button"
                 className="capture-footer-btn"
-                aria-label="Observations list"
-                onClick={() => { setShowPreviewImageModal(false); openObsList(); }}
-                style={{ background: "#008080" }}
+                aria-label="Use draft"
+                onClick={async () => {
+                  if (!viewedObservation) return;
+                  const confirmed = window.confirm("Create draft observation from this observation?");
+                  if (!confirmed) return;
+                  try {
+                    const data = new FormData();
+                    data.append("title", viewedObservation.title || "");
+                    data.append("description", viewedObservation.description || "");
+                    data.append("is_draft", "true");
+                    data.append("survey", id);
+                    if (viewedObservation.image) {
+                      const res = await fetch(viewedObservation.image);
+                      const blob = await res.blob();
+                      data.append("image", new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" }));
+                    }
+                    await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+                    setShowPreviewImageModal(false);
+                    fetchSurvey();
+                    resetEditState();
+                    setViewingIndex(null);
+                  } catch (err) {
+                    console.error("Failed to create draft from observation:", err);
+                  }
+                }}
+                style={{ background: "#0006b1" }}
               >
-                <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+                <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
               </button>
             )}
-            {/* Button 2: navigate to newer observation */}
-            {(() => {
-              const canGoNewer = viewingIndex !== null && viewingIndex > 0 && !observations[viewingIndex - 1]?.is_draft;
-              return (
-                <button
-                  type="button"
-                  className="capture-footer-btn"
-                  aria-label="Newer observation"
-                  disabled={!canGoNewer}
-                  onClick={() => {
-                    if (!canGoNewer) return;
-                    const newIdx = viewingIndex - 1;
-                    setViewingIndex(newIdx);
-                    const newObs = observations[newIdx];
-                    if (newObs?.image) {
-                      setPreviewImageUrl(lightboxUrl(newObs));
-                      setPreviewImageChanged(false);
-                    } else {
-                      setShowPreviewImageModal(false);
+            {/* Button 2: retake photo */}
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Retake photo"
+              onClick={() => previewFileInputRef.current?.click()}
+              style={{ background: "#db440a" }}
+            >
+              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+            </button>
+            {/* Button 3: confirm — save currently displayed photo, discard the other */}
+            <button
+              type="button"
+              className="capture-footer-btn"
+              aria-label="Confirm photo"
+              disabled={!hasPendingPreview}
+              onClick={async () => {
+                if (!viewedObservation) return;
+                try {
+                  if (previewImageChanged) {
+                    // Currently showing the NEW photo — save it
+                    if (!pendingPreviewFileRef.current) return;
+                    const data = new FormData();
+                    data.append("image", pendingPreviewFileRef.current);
+                    // Auto-promote draft if text already present
+                    if (viewedObservation.is_draft && viewedObservation.title?.trim()) {
+                      data.append("is_draft", "false");
                     }
-                  }}
-                  style={{ background: canGoNewer ? "#1a5bc4" : "#2c3e50" }}
-                >
-                  <img src="/datumise_back.svg" alt="" width="47" height="47" style={{ filter: canGoNewer ? "brightness(0) invert(1)" : "none" }} />
-                </button>
-              );
-            })()}
-            {/* Button 3: navigate to older observation */}
-            {(() => {
-              const canGoOlder = viewingIndex !== null && viewingIndex < observations.length - 1;
-              return (
-                <button
-                  type="button"
-                  className="capture-footer-btn"
-                  aria-label="Older observation"
-                  disabled={!canGoOlder}
-                  onClick={() => {
-                    if (!canGoOlder) return;
-                    const newIdx = viewingIndex + 1;
-                    setViewingIndex(newIdx);
-                    const newObs = observations[newIdx];
-                    if (newObs?.image) {
-                      setPreviewImageUrl(lightboxUrl(newObs));
-                      setPreviewImageChanged(false);
-                    } else {
-                      setShowPreviewImageModal(false);
-                    }
-                  }}
-                  style={{ background: canGoOlder ? "#1a5bc4" : "#2c3e50" }}
-                >
-                  <img src="/right.svg" alt="" width="47" height="47" style={{ filter: canGoOlder ? "brightness(0) invert(1)" : "none" }} />
-                </button>
-              );
-            })()}
+                    await api.patch(`/api/observations/${viewedObservation.id}/`, data, { headers: { "Content-Type": "multipart/form-data" } });
+                  }
+                  // If showing original, keep it (no PATCH needed — discard new)
+                  pendingPreviewFileRef.current = null;
+                  pendingPreviewUrlRef.current = null;
+                  setHasPendingPreview(false);
+                  setPreviewImageChanged(false);
+                  fetchSurvey();
+                } catch (err) {
+                  console.error("Failed to save photo:", err);
+                }
+              }}
+              style={{ background: !hasPendingPreview ? "#2c3e50" : "#006400" }}
+            >
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: !hasPendingPreview ? "none" : "brightness(0) invert(1)" }} />
+            </button>
             {/* Button 4: close — dismisses without saving */}
             <button
               type="button"
@@ -887,11 +972,33 @@ function SurveyCapture() {
             <button
               type="button"
               className="capture-footer-btn"
-              aria-label="Observations list"
-              onClick={() => openObsList()}
-              style={{ background: "#008080" }}
+              aria-label="Use draft"
+              onClick={async () => {
+                if (!viewedObservation) return;
+                const confirmed = window.confirm("Create draft observation from this observation?");
+                if (!confirmed) return;
+                try {
+                  const data = new FormData();
+                  data.append("title", viewedObservation.title || "");
+                  data.append("description", viewedObservation.description || "");
+                  data.append("is_draft", "true");
+                  data.append("survey", id);
+                  if (viewedObservation.image) {
+                    const res = await fetch(viewedObservation.image);
+                    const blob = await res.blob();
+                    data.append("image", new File([blob], "observation.jpg", { type: blob.type || "image/jpeg" }));
+                  }
+                  await api.post("/api/observations/", data, { headers: { "Content-Type": "multipart/form-data" } });
+                  resetEditState();
+                  fetchSurvey();
+                  setViewingIndex(null);
+                } catch (err) {
+                  console.error("Failed to create draft from observation:", err);
+                }
+              }}
+              style={{ background: "#0006b1" }}
             >
-              <img src="/datumise-observations.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
@@ -963,44 +1070,42 @@ function SurveyCapture() {
         size="lg"
         contentClassName="rounded-1"
       >
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1rem" }}>
-            <div className="d-flex align-items-center gap-2">
+        <Modal.Header closeButton style={{ display: "flex" }}>
+          <Modal.Title style={{ fontSize: "1rem", flex: 1 }}>
+            <div className="d-flex align-items-center justify-content-between">
               <span>Observations ({observations.length})</span>
-              <div className="d-flex align-items-center gap-2" style={{ marginLeft: 8 }}>
+              <div className="d-flex align-items-center gap-2">
                 {listSelectMode && listSelectedObs.size > 0 && (
                   <>
-                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    <button type="button" className="btn btn-sm d-flex align-items-center"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                       onClick={async () => {
-                        const obsTexts = observations.filter(o => listSelectedObs.has(o.id)).map(o => o.title);
-                        try {
-                          await Promise.all(obsTexts.map(title => api.post("/api/observations/", { survey: survey.id, title, is_draft: true })));
-                          setListSelectMode(false); setListSelectedObs(new Set());
-                          const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
-                          alert(`${obsTexts.length} draft${obsTexts.length !== 1 ? "s" : ""} created.`);
-                        } catch (err) { console.error(err); alert("Failed."); }
+                        setCapPushType("text"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
+                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        setCapPushModal(true);
                       }}>
-                      <img src="/draft.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
-                      Drafts ({listSelectedObs.size})
+                      Text
                     </button>
-                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    <button type="button" className="btn btn-sm d-flex align-items-center"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#db440a", color: "#fefdfc", border: "1px solid #fefdfc", borderRadius: 2, height: 24 }}
                       onClick={async () => {
-                        const withImages = observations.filter(o => listSelectedObs.has(o.id) && o.image);
-                        if (!withImages.length) { alert("No images."); return; }
-                        try {
-                          await Promise.all(withImages.map(o => api.post("/api/observations/", { survey: survey.id, title: "", image: o.image, is_draft: true })));
-                          setListSelectMode(false); setListSelectedObs(new Set());
-                          const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
-                          alert(`${withImages.length} photo draft${withImages.length !== 1 ? "s" : ""} created.`);
-                        } catch (err) { console.error(err); alert("Failed."); }
+                        setCapPushType("photo"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
+                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        setCapPushModal(true);
                       }}>
-                      <img src="/clipboard.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
-                      Photo ({observations.filter(o => listSelectedObs.has(o.id) && o.image).length})
+                      Photo
                     </button>
-                    <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#c0392b", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                    <button type="button" className="btn btn-sm d-flex align-items-center"
+                      style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                      onClick={async () => {
+                        setCapPushType("textphoto"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
+                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        setCapPushModal(true);
+                      }}>
+                      Text+Photo
+                    </button>
+                    <button type="button" className="btn btn-sm d-flex align-items-center justify-content-center"
+                      style={{ width: 24, height: 24, padding: 0, backgroundColor: "#c0392b", border: "none", borderRadius: 2 }}
                       onClick={async () => {
                         if (!window.confirm(`Delete ${listSelectedObs.size} observation${listSelectedObs.size !== 1 ? "s" : ""}?`)) return;
                         try {
@@ -1009,21 +1114,20 @@ function SurveyCapture() {
                           const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
                         } catch (err) { console.error(err); alert("Failed."); }
                       }}>
-                      Delete ({listSelectedObs.size})
+                      <img src="/datumise_delete.svg" alt="Delete" width="14" height="14" style={{ filter: "brightness(0) invert(1)" }} />
                     </button>
                   </>
                 )}
-                <button type="button" className="btn btn-sm d-flex align-items-center gap-1"
-                  style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: listSelectMode ? "#0006b1" : "#db440a", color: "#fefdfc", border: "none", borderRadius: 4 }}
+                <button type="button" className="btn btn-sm d-flex align-items-center"
+                  style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                   onClick={() => { setListSelectMode(!listSelectMode); if (listSelectMode) setListSelectedObs(new Set()); }}>
-                  <img src="/use.svg" alt="" width="12" height="12" style={{ filter: "brightness(0) invert(1)" }} />
-                  {listSelectMode ? `Select (${listSelectedObs.size})` : "Select"}
+                  {listSelectMode && listSelectedObs.size > 0 ? `${listSelectedObs.size}/10` : "Select"}
                 </button>
               </div>
             </div>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem", backgroundColor: "#E2DDD3" }}>
+        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto", padding: "0.5rem", backgroundColor: "#687374" }}>
           {observations.length === 0 ? (
             <p className="text-muted text-center py-3">No observations yet.</p>
           ) : (
@@ -1037,12 +1141,12 @@ function SurveyCapture() {
                 key={obs.id}
                 id={`capture-obs-${idx}`}
                 className="observation-row"
-                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "0.35rem", border: "none", borderRadius: "2px", position: "relative" }}
+                style={{ cursor: "pointer", padding: 0, alignItems: "stretch", overflow: "hidden", gap: 0, height: "80px", marginBottom: "2px", border: "none", borderRadius: "2px", position: "relative" }}
                 onClick={(e) => {
                   if (listSelectMode) {
                     const rect = e.currentTarget.getBoundingClientRect();
                     if (e.clientX - rect.left > rect.width * 0.8) {
-                      setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else next.add(obs.id); return next; });
+                      setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else if (next.size < 10) next.add(obs.id); return next; });
                       return;
                     }
                   }
@@ -1062,22 +1166,45 @@ function SurveyCapture() {
                     </div>
                   )}
                   {obs.is_draft && (
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#db440a", color: "#fff", fontSize: "0.55rem", fontWeight: 700, textAlign: "center", borderRadius: "0 0 0 8px", padding: "1px 0", letterSpacing: "0.05em" }}>DRAFT</div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "#db440a", color: "#fff", fontSize: "0.55rem", fontWeight: 700, textAlign: "center", borderRadius: 0, padding: "1px 0", letterSpacing: "0.05em" }}>DRAFT</div>
                   )}
                 </div>
-                <div className="observation-row-content d-flex flex-column justify-content-between" style={{ padding: "0.1rem 0.4rem 0.3rem 13px", overflow: "hidden", backgroundColor: "#FAF8F3", backgroundImage: "linear-gradient(90deg, transparent 8px, #ffd6d6 8px, #ffd6d6 9px, transparent 9px)", backgroundSize: "100% calc(100% - 16px)", backgroundPosition: "0 8px" }}>
-                  <div className="observation-row-title" style={{ height: "60px", lineHeight: "20px", marginLeft: "-13px", paddingLeft: "13px", backgroundImage: "linear-gradient(transparent 19px, #cce8f5 19px, #cce8f5 20px, transparent 20px, transparent 39px, #cce8f5 39px, #cce8f5 40px, transparent 40px, transparent 59px, #cce8f5 59px, #cce8f5 60px, transparent 60px)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
-                    {obs.title || "Untitled"}
+                <div className="observation-row-content d-flex flex-column" style={{ padding: "0 0.4rem 0 13px", overflow: "hidden", backgroundColor: "#f9f9f9", backgroundImage: "linear-gradient(90deg, transparent 8px, #ffd6d6 8px, #ffd6d6 9px, transparent 9px)", backgroundSize: "100% calc(100% - 16px)", backgroundPosition: "0 8px" }}>
+                  <div className="observation-row-title" style={{ height: "60px", lineHeight: "20px", paddingTop: "1px", marginLeft: "-13px", paddingLeft: "13px", flexShrink: 0, backgroundImage: "linear-gradient(transparent 19px, #cce8f5 19px, #cce8f5 20px, transparent 20px, transparent 39px, #cce8f5 39px, #cce8f5 40px, transparent 40px, transparent 59px, #cce8f5 59px, #cce8f5 60px, transparent 60px)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
+                    {(() => {
+                      const t = obs.title || "Untitled";
+                      const words = t.split(" ");
+                      const lines = [];
+                      let wordIdx = 0;
+                      for (let row = 0; row < 3 && wordIdx < words.length; row++) {
+                        const maxLen = row === 2 ? 77 : 80;
+                        let line = "";
+                        while (wordIdx < words.length) {
+                          const next = line + (line ? " " : "") + words[wordIdx];
+                          if (next.length <= maxLen) { line = next; wordIdx++; }
+                          else break;
+                        }
+                        if (row === 2 && wordIdx < words.length) line += "...";
+                        lines.push(line);
+                      }
+                      return lines.map((l, i) => <span key={i}>{l}{i < lines.length - 1 && <br />}</span>);
+                    })()}
                   </div>
-                  <div className="observation-row-meta d-flex align-items-center justify-content-end gap-2" style={{ lineHeight: 1, marginTop: "0.1rem", flexShrink: 0, color: "#1A1D21" }}>
-                    <span style={{ marginRight: "auto", fontStyle: "normal" }}>{observations.length - idx} of {observations.length}</span>
+                  <div className="observation-row-meta d-flex align-items-center justify-content-start gap-2" style={{ lineHeight: 1, flex: 1, display: "flex", alignItems: "center" }}>
+                    <button className="btn btn-link btn-sm p-0 border-0 bg-transparent d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: "0.6rem", textDecoration: "none", color: "#95a5a6" }}
+                      onClick={(e) => e.stopPropagation()}>
+                      <img src="/datumise-like.svg" alt="" width="11" height="11" style={{ opacity: obs.is_liked ? 1 : 0.4, filter: obs.is_liked ? "invert(20%) sepia(90%) saturate(3000%) hue-rotate(120deg) brightness(0.5)" : "none" }} />
+                      {obs.likes_count || 0}
+                    </button>
                     <span>
                       {new Date(obs.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {" \u00B7 "}{obs.owner_name || obs.owner || "Unassigned"}
                     </span>
                   </div>
                 </div>
                 {listSelectMode && (
-                  <div onClick={(e) => { e.stopPropagation(); setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else next.add(obs.id); return next; }); }}
+                  <div onClick={(e) => { e.stopPropagation(); setListSelectedObs(prev => { const next = new Set(prev); if (next.has(obs.id)) next.delete(obs.id); else if (next.size < 10) next.add(obs.id); return next; }); }}
                     style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0006b1", backgroundColor: listSelectedObs.has(obs.id) ? "#0006b1" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                     {listSelectedObs.has(obs.id) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
                   </div>
@@ -1088,6 +1215,92 @@ function SurveyCapture() {
           }
         </Modal.Body>
       </Modal>
+
+      {/* Push to survey modal */}
+      {capPushModal && createPortal(
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 2, maxWidth: 520, width: "90%", maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div className="d-flex justify-content-between align-items-center" style={{ backgroundColor: "#db440a", padding: "0.5rem 1rem" }}>
+              <span style={{ color: "#faf6ef", fontWeight: 700, fontSize: "1rem" }}>
+                {capPushType === "text" ? "Create draft observations in selected surveys from observation text?" : capPushType === "photo" ? "Create draft observations in selected surveys from observation photos?" : "Create draft observations in selected surveys from observation photos and text?"}
+              </span>
+              <button type="button" style={{ border: "none", background: "none", fontSize: "1.3rem", cursor: "pointer", color: "#faf6ef", lineHeight: 1, padding: 0 }} onClick={() => setCapPushModal(false)}>&times;</button>
+            </div>
+            <div style={{ padding: "0.75rem 1rem 0.5rem" }}>
+              <input type="text" className="filter-search" placeholder="Search surveys..." value={capPushSearch} onChange={(e) => setCapPushSearch(e.target.value)}
+                style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #c8c2b8", borderRadius: 4, outline: "none", width: "100%", maxWidth: 200 }} />
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 1rem" }}>
+              {(() => {
+                const filtered = capPushSurveys.filter(s => {
+                  if (!capPushSearch) return true;
+                  const q = capPushSearch.toLowerCase();
+                  return (s.site_name || "").toLowerCase().includes(q) || (s.name || "").toLowerCase().includes(q);
+                });
+                const sorted = [...filtered].sort((a, b) => (String(b.id) === String(survey.id) ? 1 : 0) - (String(a.id) === String(survey.id) ? 1 : 0));
+                return sorted.length === 0 ? <p className="text-muted">No surveys found.</p> : (<>
+                  {sorted.map(s => (
+                    <div key={s.id} className="survey-queue-card" style={{ cursor: "pointer", position: "relative", outline: String(s.id) === String(survey.id) ? "2px solid #0d6efd" : "none" }}
+                      onClick={() => { setCapPushSelected(prev => { const n = new Set(prev); n.has(String(s.id)) ? n.delete(String(s.id)) : n.add(String(s.id)); return n; }); }}>
+                      <SurveyCardGrid survey={s} />
+                      <div style={{ position: "absolute", bottom: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", backgroundColor: capPushSelected.has(String(s.id)) ? "#0d6efd" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {capPushSelected.has(String(s.id)) && <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 700 }}>✓</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {capPushNextPage ? (
+                    <div className="text-center my-2">
+                      <button className="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                        style={{ width: 36, height: 36, background: "#db440a", border: "none" }}
+                        onClick={async () => { try { const res = await api.get(capPushNextPage); setCapPushSurveys(prev => [...prev, ...(res.data.results || res.data)]); setCapPushNextPage(res.data.next || null); } catch (e) {} }}>
+                        <img src="/datumise-load.svg" alt="" width="18" height="18" style={{ filter: "brightness(0) invert(1)" }} />
+                      </button>
+                    </div>
+                  ) : <p style={{ textAlign: "center", fontSize: "0.72rem", color: "#999", fontStyle: "italic", margin: "8px 0" }}>All surveys downloaded</p>}
+                </>);
+              })()}
+            </div>
+            <div className="d-flex justify-content-end gap-2" style={{ padding: "0.5rem 1rem 1rem" }}>
+              {capPushSelected.size > 0 && <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#6c757d", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }} onClick={() => setCapPushSelected(new Set())}>Clear</button>}
+              <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", border: "1px solid #c8c2b8", borderRadius: 2, height: 24 }} onClick={() => setCapPushModal(false)}>Cancel</button>
+              {capPushSelected.size > 0 && (
+                <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                  onClick={async () => {
+                    try {
+                      const selected = observations.filter(o => listSelectedObs.has(o.id));
+                      let count = 0;
+                      for (const surveyId of capPushSelected) {
+                        for (const obs of selected) {
+                          if (capPushType === "photo" && !obs.image) continue;
+                          const needsImage = (capPushType === "photo" || capPushType === "textphoto") && obs.image;
+                          if (needsImage) {
+                            try {
+                              const imgRes = await fetch(obs.image);
+                              const blob = await imgRes.blob();
+                              const fd = new FormData();
+                              fd.append("survey", surveyId);
+                              fd.append("is_draft", "true");
+                              if (capPushType === "textphoto" || capPushType === "text") fd.append("title", obs.title || "");
+                              fd.append("image", blob, "photo.jpg");
+                              await api.post("/api/observations/", fd, { headers: { "Content-Type": "multipart/form-data" } });
+                              count++;
+                            } catch (e) { console.error("Image copy failed:", e); }
+                          } else {
+                            await api.post("/api/observations/", { survey: parseInt(surveyId), title: obs.title || "", is_draft: true });
+                            count++;
+                          }
+                        }
+                      }
+                      setCapPushModal(false); setListSelectMode(false); setListSelectedObs(new Set());
+                      const res = await api.get(`/api/surveys/${survey.id}/`); setSurvey(res.data);
+                      alert(`${count} draft${count !== 1 ? "s" : ""} created.`);
+                    } catch (err) { alert("Failed."); }
+                  }}>Add ({capPushSelected.size} {capPushSelected.size === 1 ? "survey" : "surveys"})</button>
+              )}
+            </div>
+          </div>
+        </div>
+      , document.body)}
     </div>
   );
 }

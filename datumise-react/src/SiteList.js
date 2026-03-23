@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "./api/api";
 import ReturnButton from "./ReturnButton";
+import AddButton from "./AddButton";
 
 function SiteList() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ function SiteList() {
   const [typeDropOpen, setTypeDropOpen] = useState(false);
   const [contactDropOpen, setContactDropOpen] = useState(false);
   const [clientDropOpen, setClientDropOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const fetchSites = async () => {
@@ -47,14 +48,11 @@ function SiteList() {
           &larr; Back to Home
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
-        <h5 className="mb-0 fw-bold section-toggle" style={{ cursor: "pointer" }} onClick={() => setListOpen(!listOpen)}>
-          <span className={`section-chevron${listOpen ? " section-chevron--open" : ""}`}></span>
-          Sites ({sites.length})
-        </h5>
+      <h5 className="mb-2 fw-bold d-none d-md-block">Sites ({sites.length})</h5>
+      <div className="d-none d-md-flex gap-2 mb-3">
+        <Link to="/surveys/create" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Survey</Link>
+        <Link to="/sites/create" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Site</Link>
       </div>
-
-      <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }}>
       <div className="edit-fieldset mb-4" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
         <p className="edit-legend section-toggle" onClick={() => setFiltersOpen(!filtersOpen)} style={{ color: "#fefdfc" }}>
           <span className={`section-chevron section-chevron--light${filtersOpen ? " section-chevron--open" : ""}`}></span>
@@ -181,7 +179,7 @@ function SiteList() {
 
       {sites.length === 0 ? (
         <p className="text-muted text-center mt-4">No sites yet.</p>
-      ) : listOpen ? (
+      ) : (
         <>
         {(() => {
           let filtered = sites;
@@ -207,6 +205,11 @@ function SiteList() {
                 )}
               </div>
               <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16 }}>
+                {site.status === "active" && (
+                  <Link to={`/surveys/create?client=${site.client}&site=${site.id}`} className="btn btn-outline-secondary btn-sm"
+                    style={{ fontSize: "0.65rem", padding: "1px 8px", whiteSpace: "nowrap" }}
+                    onClick={(e) => e.stopPropagation()}>Add Survey</Link>
+                )}
                 <Link to={`/sites/${site.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
                   <img className="team-edit-icon" src="/view.svg" alt="View" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
                 </Link>
@@ -221,10 +224,10 @@ function SiteList() {
           </div>
         ))}
         </>
-      ) : null}
-      </div>
+      )}
 
       <ReturnButton to="/" />
+      <AddButton to="/sites/create" />
     </div>
   );
 }

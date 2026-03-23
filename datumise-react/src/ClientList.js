@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "./api/api";
 import ReturnButton from "./ReturnButton";
@@ -9,13 +9,21 @@ function ClientList() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [listOpen, setListOpen] = useState(true);
-  const [filter, setFilter] = useState("active");
-  const [search, setSearch] = useState("");
-  const [selectedTypes, setSelectedTypes] = useState([]);
-  const [selectedContacts, setSelectedContacts] = useState([]);
+  const [filter, setFilter] = useState(() => sessionStorage.getItem("client-filter") || "all");
+  const [search, setSearch] = useState(() => sessionStorage.getItem("client-search") || "");
+  const [selectedTypes, setSelectedTypes] = useState(() => { try { return JSON.parse(sessionStorage.getItem("client-types") || "[]"); } catch { return []; } });
+  const [selectedContacts, setSelectedContacts] = useState(() => { try { return JSON.parse(sessionStorage.getItem("client-contacts") || "[]"); } catch { return []; } });
   const [typeDropOpen, setTypeDropOpen] = useState(false);
   const [contactDropOpen, setContactDropOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [quickAddId, setQuickAddId] = useState(null);
+
+  useEffect(() => {
+    sessionStorage.setItem("client-filter", filter);
+    sessionStorage.setItem("client-search", search);
+    sessionStorage.setItem("client-types", JSON.stringify(selectedTypes));
+    sessionStorage.setItem("client-contacts", JSON.stringify(selectedContacts));
+  }, [filter, search, selectedTypes, selectedContacts]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -46,15 +54,10 @@ function ClientList() {
           &larr; Back to Home
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
-        <h5 className="mb-0 fw-bold section-toggle" style={{ cursor: "pointer" }} onClick={() => setListOpen(!listOpen)}>
-          <span className={`section-chevron${listOpen ? " section-chevron--open" : ""}`}></span>
-          Clients ({clients.length})
-        </h5>
-        <AddButton to="/clients/create" />
+      <h5 className="mb-2 fw-bold d-none d-md-block">Clients ({clients.length})</h5>
+      <div className="d-none d-md-flex gap-2 mb-3">
+        <Link to="/clients/create" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Client</Link>
       </div>
-
-      <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }}>
       <div className="edit-fieldset mb-4" style={{ backgroundColor: "#2E5E3E", borderRadius: 2, color: "#fefdfc" }}>
         <p className="edit-legend section-toggle" onClick={() => setFiltersOpen(!filtersOpen)} style={{ color: "#fefdfc" }}>
           <span className={`section-chevron section-chevron--light${filtersOpen ? " section-chevron--open" : ""}`}></span>
@@ -154,7 +157,7 @@ function ClientList() {
 
       {clients.length === 0 ? (
         <p className="text-muted text-center mt-4">No clients yet.</p>
-      ) : listOpen ? (
+      ) : (
         <>
         {(() => {
           let filtered = clients;
@@ -178,7 +181,21 @@ function ClientList() {
                   <span style={{ fontStyle: "italic", fontSize: "0.82rem", color: "#c0392b" }}>Archived</span>
                 )}
               </div>
-              <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16 }}>
+              <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16, position: "relative" }}>
+                <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "1.2rem", lineHeight: 1, color: "#2E5E3E", fontWeight: 700 }}
+                  onClick={(e) => { e.stopPropagation(); setQuickAddId(quickAddId === client.id ? null : client.id); }}>+</button>
+                {quickAddId === client.id && (
+                  <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 10, backgroundColor: "#fff", border: "1px solid #c8c2b8", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", minWidth: 140, padding: "4px 0" }}>
+                    <Link to={`/surveys/create?client=${client.id}`} style={{ display: "block", padding: "6px 12px", fontSize: "0.82rem", color: "#1F2A33", textDecoration: "none" }}
+                      onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f7"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                      Add Survey
+                    </Link>
+                    <Link to={`/sites/create?client=${client.id}`} style={{ display: "block", padding: "6px 12px", fontSize: "0.82rem", color: "#1F2A33", textDecoration: "none" }}
+                      onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f7"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                      Add Site
+                    </Link>
+                  </div>
+                )}
                 <Link to={`/clients/${client.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
                   <img className="team-edit-icon" src="/view.svg" alt="View" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
                 </Link>
@@ -193,8 +210,7 @@ function ClientList() {
           </div>
         ))}
         </>
-      ) : null}
-      </div>
+      )}
 
       <div className="d-md-none">
         <AddButton to="/clients/create" />
