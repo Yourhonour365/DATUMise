@@ -24,6 +24,7 @@ function SurveyCapture() {
   const location = useLocation();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [durationTick, setDurationTick] = useState(0);
   const [successMessage, setSuccessMessage] = useState(false);
   const [actionBarEl, setActionBarEl] = useState(null);
@@ -78,6 +79,13 @@ function SurveyCapture() {
       setLoading(false);
     }
   };
+
+  // Fetch current user ID for filtering push surveys
+  useEffect(() => {
+    api.get("/api/auth/user/").then(res => {
+      setCurrentUserId(res.data.pk || res.data.id || null);
+    }).catch(() => {});
+  }, []);
 
   // Rule 000019: reset inactivity timer on photo
   const resetInactivityTimer = () => {
@@ -306,7 +314,7 @@ function SurveyCapture() {
   // observations array is newest-first (API ordering = -created_at)
   // Forward = toward newer (lower index), then to NEW observation
   // Back = toward older (higher index)
-  const canStepForward = viewingIndex !== null; // only from prior obs, not from NEW
+  const canStepForward = viewingIndex !== null && (viewingIndex > 0 || !!survey?.is_surveyor);
   const canStepBack = viewingIndex === null
     ? observations.length > 0
     : viewingIndex < observations.length - 1;
@@ -362,8 +370,8 @@ function SurveyCapture() {
     } else if (viewingIndex > 0) {
       // Move toward newer observations (lower index)
       setViewingIndex(viewingIndex - 1);
-    } else {
-      // At the newest observation → go to NEW
+    } else if (survey?.is_surveyor) {
+      // At the newest observation → go to NEW (only for assigned surveyor)
       navStackRef.current = [];
       setViewingIndex(null);
     }
@@ -401,6 +409,13 @@ function SurveyCapture() {
         ),
       }));
       resetEditState();
+      if (shouldPromote) {
+        setViewingIndex(null);
+        setSuccessMessage(false);
+        setTimeout(() => setSuccessMessage(true), 100);
+        setTimeout(() => setSuccessMessage(false), 3000);
+        fetchSurvey();
+      }
     } catch (err) {
       console.error("Failed to update observation:", err);
     } finally {
@@ -469,7 +484,7 @@ function SurveyCapture() {
       <div className="survey-capture-header">
         <div>
           {viewingIndex !== null && !viewedObservation?.is_draft && (
-            <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", fontWeight: 700, fontSize: "1.35rem", lineHeight: 1.2, pointerEvents: "none", whiteSpace: "nowrap" }}>
+            <span className="obs-counter" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", fontWeight: 700, fontSize: "1.35rem", lineHeight: 1.2, pointerEvents: "none", whiteSpace: "nowrap", top: "50%", marginTop: "-0.68rem" }}>
               {observations.length - viewingIndex} of {observations.length}
             </span>
           )}
@@ -511,11 +526,11 @@ function SurveyCapture() {
               }}
             >
               {viewingIndex !== null ? (
-                <>
+                <span className="capture-subtitle-prior">
                   {survey.site_name || survey.site || ""}{" \u00B7 "}
                   {!viewedObservation?.is_draft && <>{viewedObservation && new Date(viewedObservation.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}{" \u00B7 "}</>}
                   {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </>
+                </span>
               ) : (
                 <>
                   {survey.site_name || survey.site || ""}{" \u00B7 "}
@@ -544,14 +559,7 @@ function SurveyCapture() {
           type="button"
           className="btn-close"
           aria-label="Close"
-          onClick={() => {
-            // If user came here from the prior obs list, go back to it
-            if (navStackRef.current.some((e) => e.fromList)) {
-              openObsList();
-            } else {
-              closeSurvey();
-            }
-          }}
+          onClick={() => closeSurvey()}
           style={{ transform: "scale(0.85)", marginLeft: "auto" }}
         />
       </div>
@@ -861,9 +869,10 @@ function SurveyCapture() {
                     console.error("Failed to create draft from observation:", err);
                   }
                 }}
-                style={{ background: "#0006b1" }}
+                style={{ background: !survey.is_surveyor ? "#2c3e50" : "#0006b1" }}
+                disabled={!survey.is_surveyor}
               >
-                <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+                <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: !survey.is_surveyor ? "none" : "brightness(0) invert(1)" }} />
               </button>
             )}
             {/* Button 2: retake photo */}
@@ -871,10 +880,11 @@ function SurveyCapture() {
               type="button"
               className="capture-footer-btn"
               aria-label="Retake photo"
-              onClick={() => previewFileInputRef.current?.click()}
-              style={{ background: "#db440a" }}
+              disabled={!survey.is_surveyor}
+              onClick={() => survey.is_surveyor && previewFileInputRef.current?.click()}
+              style={{ background: !survey.is_surveyor ? "#2c3e50" : "#db440a" }}
             >
-              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/camera.svg" alt="" width="47" height="47" style={{ filter: !survey.is_surveyor ? "none" : "brightness(0) invert(1)" }} />
             </button>
             {/* Button 3: confirm — save currently displayed photo, discard the other */}
             <button
@@ -896,11 +906,19 @@ function SurveyCapture() {
                     }
                     await api.patch(`/api/observations/${viewedObservation.id}/`, data, { headers: { "Content-Type": "multipart/form-data" } });
                   }
+                  const promoted = previewImageChanged && viewedObservation.is_draft && viewedObservation.title?.trim();
                   // If showing original, keep it (no PATCH needed — discard new)
                   pendingPreviewFileRef.current = null;
                   pendingPreviewUrlRef.current = null;
                   setHasPendingPreview(false);
                   setPreviewImageChanged(false);
+                  if (promoted) {
+                    setShowPreviewImageModal(false);
+                    setViewingIndex(null);
+                    setSuccessMessage(false);
+                    setTimeout(() => setSuccessMessage(true), 100);
+                    setTimeout(() => setSuccessMessage(false), 3000);
+                  }
                   fetchSurvey();
                 } catch (err) {
                   console.error("Failed to save photo:", err);
@@ -958,8 +976,9 @@ function SurveyCapture() {
               }
             }}
             maxLength={editingField === "title" ? 500 : 280}
-            autoFocus
-            style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", backgroundImage: "linear-gradient(transparent calc(100% - 1px), #5a9fc0 calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ff6666 14px, #ff6666 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
+            autoFocus={!!survey.is_surveyor}
+            readOnly={!survey.is_surveyor}
+            style={{ resize: "none", lineHeight: "24px", fontSize: "1rem", fontWeight: 500, border: "none", borderRadius: 0, color: "#1A1D21", padding: "0 10px 8px 19px", boxSizing: "border-box", width: "100%", backgroundColor: "#fefdf8", cursor: !survey.is_surveyor ? "default" : undefined, backgroundImage: "linear-gradient(transparent calc(100% - 1px), #5a9fc0 calc(100% - 1px)), linear-gradient(90deg, transparent 14px, #ff6666 14px, #ff6666 15px, transparent 15px)", backgroundSize: "100% 24px, 100% 100%", backgroundPosition: "0 -2px, 0 0" }}
           />
         </Modal.Body>
         {editingField === "title" && !editValue.trim() && (
@@ -996,32 +1015,33 @@ function SurveyCapture() {
                   console.error("Failed to create draft from observation:", err);
                 }
               }}
-              style={{ background: "#0006b1" }}
+              style={{ background: !survey.is_surveyor ? "#2c3e50" : "#0006b1" }}
+              disabled={!survey.is_surveyor}
             >
-              <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/draft.svg" alt="" width="47" height="47" style={{ filter: !survey.is_surveyor ? "none" : "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Clear"
               onClick={() => setEditValue("")}
-              disabled={!editValue.length}
-              style={{ background: "#95a5a6" }}
+              disabled={!editValue.length || !survey.is_surveyor}
+              style={{ background: !survey.is_surveyor ? "#2c3e50" : "#95a5a6" }}
             >
               <div className="d-flex flex-column align-items-center">
-                <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
-                <span style={{ fontSize: "0.78rem", color: "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
+                <img src="/clear.svg" alt="" width="40" height="40" style={{ filter: !survey.is_surveyor ? "none" : "brightness(0) invert(1) sepia(1) saturate(0.2) hue-rotate(340deg) brightness(1.05)" }} />
+                <span style={{ fontSize: "0.78rem", color: !survey.is_surveyor ? "#888" : "#faf6ef", marginTop: "2px", fontWeight: 700 }}>Clear</span>
               </div>
             </button>
             <button
               type="button"
               className="capture-footer-btn"
               aria-label="Save"
-              disabled={isSavingEdit || (editingField === "title" && !editValue.trim())}
+              disabled={isSavingEdit || (editingField === "title" && !editValue.trim()) || !survey.is_surveyor}
               onClick={saveField}
-              style={{ background: "#006400" }}
+              style={{ background: !survey.is_surveyor ? "#2c3e50" : "#006400" }}
             >
-              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: "brightness(0) invert(1)" }} />
+              <img src="/datumise-confirm.svg" alt="" width="47" height="47" style={{ filter: !survey.is_surveyor ? "none" : "brightness(0) invert(1)" }} />
             </button>
             <button
               type="button"
@@ -1072,16 +1092,16 @@ function SurveyCapture() {
       >
         <Modal.Header closeButton style={{ display: "flex" }}>
           <Modal.Title style={{ fontSize: "1rem", flex: 1 }}>
-            <div className="d-flex align-items-center justify-content-between">
+            <div className="section-header-row">
               <span>Observations ({observations.length})</span>
-              <div className="d-flex align-items-center gap-2">
+              <div className="section-header-actions">
                 {listSelectMode && listSelectedObs.size > 0 && (
                   <>
                     <button type="button" className="btn btn-sm d-flex align-items-center"
                       style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                       onClick={async () => {
                         setCapPushType("text"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
-                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        try { const url = currentUserId && !survey.is_surveyor ? `/api/surveys/?page_size=25&assigned_to=${currentUserId}` : "/api/surveys/?page_size=25"; const res = await api.get(url); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
                         setCapPushModal(true);
                       }}>
                       Text
@@ -1090,7 +1110,7 @@ function SurveyCapture() {
                       style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#db440a", color: "#fefdfc", border: "1px solid #fefdfc", borderRadius: 2, height: 24 }}
                       onClick={async () => {
                         setCapPushType("photo"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
-                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        try { const url = currentUserId && !survey.is_surveyor ? `/api/surveys/?page_size=25&assigned_to=${currentUserId}` : "/api/surveys/?page_size=25"; const res = await api.get(url); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
                         setCapPushModal(true);
                       }}>
                       Photo
@@ -1099,7 +1119,7 @@ function SurveyCapture() {
                       style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
                       onClick={async () => {
                         setCapPushType("textphoto"); setCapPushSearch(""); setCapPushSelected(new Set([String(survey.id)]));
-                        try { const res = await api.get("/api/surveys/?page_size=25"); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
+                        try { const url = currentUserId && !survey.is_surveyor ? `/api/surveys/?page_size=25&assigned_to=${currentUserId}` : "/api/surveys/?page_size=25"; const res = await api.get(url); setCapPushSurveys(res.data.results || res.data); setCapPushNextPage(res.data.next || null); } catch (e) { setCapPushSurveys([]); }
                         setCapPushModal(true);
                       }}>
                       Text+Photo
@@ -1119,7 +1139,7 @@ function SurveyCapture() {
                   </>
                 )}
                 <button type="button" className="btn btn-sm d-flex align-items-center"
-                  style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                  style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: listSelectMode ? "#fefdfc" : "#0006b1", color: listSelectMode ? "#0006b1" : "#fefdfc", border: listSelectMode ? "1px solid #0006b1" : "none", borderRadius: 2, height: 24 }}
                   onClick={() => { setListSelectMode(!listSelectMode); if (listSelectMode) setListSelectedObs(new Set()); }}>
                   {listSelectMode && listSelectedObs.size > 0 ? `${listSelectedObs.size}/10` : "Select"}
                 </button>

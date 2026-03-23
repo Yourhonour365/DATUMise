@@ -206,9 +206,9 @@ function ObservationList() {
           &larr; Back to Home
         </Link>
       </div>
-      <div className="d-none d-md-flex align-items-center justify-content-between mb-3">
+      <div className="section-header-row mb-3">
         <h5 className="mb-0 fw-bold">Observations ({observations.length})</h5>
-        <div className="d-flex align-items-center gap-2">
+        <div className="section-header-actions">
           {useMode && selectedObs.size > 0 && (
             <button type="button" className="btn btn-sm" style={{ fontSize: "0.7rem", padding: "2px 8px", backgroundColor: "#6c757d", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
               onClick={() => setSelectedObs(new Set())}>Clear</button>
@@ -221,7 +221,7 @@ function ObservationList() {
                 setPushSearch("");
                 setPushStatusFilter("");
                 try {
-                  const res = await api.get("/api/surveys/?page_size=25");
+                  const res = await api.get(userId ? `/api/surveys/?page_size=25&assigned_to=${userId}` : "/api/surveys/?page_size=25");
                   setActiveSurveys(res.data.results || res.data);
                   setPushNextPage(res.data.next || null);
                 } catch (err) { console.error(err); }
@@ -233,7 +233,7 @@ function ObservationList() {
             </button>
           )}
           <button type="button" className="btn btn-sm"
-            style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+            style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: useMode ? "#fefdfc" : "#0006b1", color: useMode ? "#0006b1" : "#fefdfc", border: useMode ? "1px solid #0006b1" : "none", borderRadius: 2, height: 24 }}
             onClick={() => { setUseMode(!useMode); if (useMode) setSelectedObs(new Set()); }}>
             {useMode && selectedObs.size > 0 ? `${selectedObs.size}/10` : "Select"}
           </button>
@@ -453,16 +453,16 @@ function ObservationList() {
 
       {pushModal && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#fff", borderRadius: 2, maxWidth: 520, width: "90%", maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 2, maxWidth: 520, width: "90%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="d-flex justify-content-between align-items-center" style={{ backgroundColor: "#db440a", padding: "0.5rem 1rem" }}>
               <span style={{ color: "#faf6ef", fontWeight: 700, fontSize: "1rem" }}>Create draft observations in selected surveys from observation text?</span>
               <button type="button" style={{ border: "none", background: "none", fontSize: "1.3rem", cursor: "pointer", color: "#faf6ef", lineHeight: 1, padding: 0 }} onClick={() => setPushModal(false)}>&times;</button>
             </div>
-            <div style={{ padding: "0.75rem 1rem 0.5rem" }}>
-              <p style={{ fontSize: "0.88rem", color: "#1F2A33", margin: "0 0 8px 0" }}>
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 1rem" }}>
+              <p style={{ fontSize: "0.82rem", color: "#1F2A33", margin: "0.4rem 0 6px 0", lineHeight: 1.3 }}>
                 Create draft observations in the selected surveys using the text from your selections. No images will be copied.
               </p>
-              <div className="d-flex gap-2 flex-wrap" style={{ marginBottom: 8 }}>
+              <div className="d-flex gap-2 flex-wrap" style={{ marginBottom: 8, position: "sticky", top: 0, backgroundColor: "#fff", paddingTop: 4, paddingBottom: 4, zIndex: 1 }}>
                 <input type="text" className="filter-search" placeholder="Search surveys..." value={pushSearch}
                   onChange={(e) => setPushSearch(e.target.value)}
                   style={{ fontSize: "0.75rem", padding: "3px 8px", border: "1px solid #c8c2b8", borderRadius: 4, outline: "none", width: "100%", maxWidth: 180 }} />
@@ -473,8 +473,6 @@ function ObservationList() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div style={{ overflowY: "auto", flex: 1, padding: "0 1rem" }}>
               {pushLoading ? (
                 <p className="text-muted">Loading surveys...</p>
               ) : (() => {

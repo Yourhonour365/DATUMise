@@ -174,38 +174,39 @@ function ClientList() {
             style={{ backgroundColor: "#cec7bb", cursor: "pointer", alignSelf: "stretch" }}
             onClick={() => navigate(`/clients/${client.id}`)}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1F2A33", whiteSpace: "nowrap" }}>{client.name}</span>
-                {client.status === "archived" && (
-                  <span style={{ fontStyle: "italic", fontSize: "0.82rem", color: "#c0392b" }}>Archived</span>
-                )}
-              </div>
-              <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16, position: "relative" }}>
-                <button type="button" style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: "1.2rem", lineHeight: 1, color: "#2E5E3E", fontWeight: 700 }}
-                  onClick={(e) => { e.stopPropagation(); setQuickAddId(quickAddId === client.id ? null : client.id); }}>+</button>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1F2A33", whiteSpace: "nowrap" }}>{client.name}</span>
+              {client.status === "archived" && (
+                <span style={{ fontStyle: "italic", fontSize: "0.82rem", color: "#c0392b" }}>Archived</span>
+              )}
+            </div>
+            <div style={{ fontSize: "0.82rem", color: "#888", fontStyle: "italic" }}>
+              {client.site_count} {client.site_count === 1 ? "site" : "sites"} &middot; {client.survey_count} {client.survey_count === 1 ? "survey" : "surveys"}
+            </div>
+            <div className="site-card-actions" style={{ marginLeft: 0, marginTop: 6 }}>
+              <div style={{ position: "relative" }}>
+                <button type="button" className="btn btn-outline-secondary btn-sm"
+                  style={{ fontSize: "0.65rem", padding: "1px 8px", whiteSpace: "nowrap" }}
+                  onClick={(e) => { e.stopPropagation(); setQuickAddId(quickAddId === client.id ? null : client.id); }}>Add +</button>
                 {quickAddId === client.id && (
-                  <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 10, backgroundColor: "#fff", border: "1px solid #c8c2b8", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", minWidth: 140, padding: "4px 0" }}>
+                  <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 10, backgroundColor: "#fff", border: "1px solid #c8c2b8", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", minWidth: 140, padding: "4px 0" }}>
                     <Link to={`/surveys/create?client=${client.id}`} style={{ display: "block", padding: "6px 12px", fontSize: "0.82rem", color: "#1F2A33", textDecoration: "none" }}
-                      onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f7"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                      onClick={(e) => e.stopPropagation()}>
                       Add Survey
                     </Link>
                     <Link to={`/sites/create?client=${client.id}`} style={{ display: "block", padding: "6px 12px", fontSize: "0.82rem", color: "#1F2A33", textDecoration: "none" }}
-                      onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f5f5f7"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                      onClick={(e) => e.stopPropagation()}>
                       Add Site
                     </Link>
                   </div>
                 )}
-                <Link to={`/clients/${client.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                  <img className="team-edit-icon" src="/view.svg" alt="View" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                </Link>
-                <Link to={`/clients/${client.id}/edit`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                  <img className="team-edit-icon" src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                </Link>
               </div>
-            </div>
-            <div style={{ fontSize: "0.82rem", color: "#888", fontStyle: "italic" }}>
-              {client.site_count} {client.site_count === 1 ? "site" : "sites"} &middot; {client.survey_count} {client.survey_count === 1 ? "survey" : "surveys"}
+              <Link to={`/clients/${client.id}`} className="text-decoration-none d-inline-flex align-items-center" onClick={(e) => e.stopPropagation()}>
+                <img src="/view.svg" alt="View" width="20" height="20" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+              </Link>
+              <Link to={`/clients/${client.id}/edit`} className="text-decoration-none d-inline-flex align-items-center" onClick={(e) => e.stopPropagation()}>
+                <img src="/datumise-edit.svg" alt="Edit" width="20" height="20" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+              </Link>
             </div>
           </div>
         ))}

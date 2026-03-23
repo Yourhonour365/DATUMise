@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function EditButton({ to }) {
   return (
-    <Link to={to} className="edit-button" aria-label="Edit">
+    <Link to={to} className="edit-button mobile-fab mobile-fab--edit" aria-label="Edit">
       <img
         src="/datumise-edit.svg"
         alt=""

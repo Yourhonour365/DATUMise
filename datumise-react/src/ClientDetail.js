@@ -106,7 +106,7 @@ function ClientDetail() {
           <div className="d-flex gap-2 align-items-center mt-2 mb-2">
             <button type="button" className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }} onClick={() => setShowCopyPrompt(true)}>+ Survey</button>
             <Link to={`/sites/create?client=${id}`} className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Site</Link>
-            <Link to={`/clients/${id}/edit`} className="btn btn-secondary btn-sm" style={{ borderRadius: 2, height: 24 }}>Edit</Link>
+            <Link to={`/clients/${id}/edit`} className="btn btn-secondary btn-sm d-inline-flex align-items-center" style={{ borderRadius: 2, height: 24, fontSize: "0.75rem", padding: "3px 12px", textDecoration: "none" }}>Edit</Link>
           </div>
         </>);
       })()}
@@ -130,12 +130,12 @@ function ClientDetail() {
 
       {/* ---- Sites ---- */}
       <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="section-header-row">
           <p className="edit-legend section-toggle" onClick={() => setSitesOpen(!sitesOpen)} style={{ marginBottom: 0 }}>
             <span className={`section-chevron${sitesOpen ? " section-chevron--open" : ""}`}></span>
             Sites ({sites.length})
           </p>
-          <div className="d-flex gap-2 align-items-center">
+          <div className="section-header-actions">
             {siteSelectMode && selectedSites.size > 0 && (<>
               <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
                 onClick={async (e) => {
@@ -257,12 +257,12 @@ function ClientDetail() {
 
       {/* ---- Surveys ---- */}
       <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="section-header-row">
           <p className="edit-legend section-toggle" onClick={() => setSurveysListOpen(!surveysListOpen)} style={{ marginBottom: 0 }}>
             <span className={`section-chevron${surveysListOpen ? " section-chevron--open" : ""}`}></span>
             Surveys ({surveys.length})
           </p>
-          <div className="d-flex gap-2 align-items-center">
+          <div className="section-header-actions">
             {surveySelectMode && selectedSurveys.size > 0 && (<>
               <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 4 }}
                 onClick={async (e) => {

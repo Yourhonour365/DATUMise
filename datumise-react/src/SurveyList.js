@@ -260,7 +260,7 @@ function SurveyList() {
               } catch (err) { alert("Failed to copy surveys."); }
             }}>Copy ({selectedSurveys.size})</button>
         )}
-        <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, marginLeft: "auto" }}
+        <button type="button" className="btn btn-sm" style={{ fontSize: "0.68rem", padding: "2px 8px", backgroundColor: selectMode ? "#fefdfc" : "#0006b1", color: selectMode ? "#0006b1" : "#fefdfc", border: selectMode ? "1px solid #0006b1" : "none", borderRadius: 2, height: 24, marginLeft: "auto" }}
           onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelectedSurveys(new Set()); }}>
           {selectMode ? `Select (${selectedSurveys.size})` : "Select"}
         </button>

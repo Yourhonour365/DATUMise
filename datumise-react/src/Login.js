@@ -25,8 +25,21 @@ function Login() {
 
     try {
       const response = await api.post("/api/auth/login/", formData);
-        localStorage.setItem("token", response.data.key);
-        window.location.href = "/";
+      localStorage.setItem("token", response.data.key);
+      // Check if user is archived before allowing access
+      try {
+        const userRes = await api.get("/api/auth/user/");
+        const uid = userRes.data.pk || userRes.data.id;
+        const teamRes = await api.get("/api/team/");
+        const team = teamRes.data.results || teamRes.data;
+        const me = team.find(m => String(m.id) === String(uid));
+        if (me && me.status === "archived") {
+          localStorage.removeItem("token");
+          setErrors({ detail: "Your account has been archived. Please contact an administrator." });
+          return;
+        }
+      } catch (_) {}
+      window.location.href = "/";
     } catch (err) {
       console.log("Login error:", err.response?.data);
       setErrors(err.response?.data || { detail: "Login failed." });

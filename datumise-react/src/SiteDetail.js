@@ -92,7 +92,7 @@ function SiteDetail() {
       <div className="d-flex gap-2 align-items-center mt-2 mb-2">
         <Link to={`/surveys/create?client=${site.client}&site=${id}`} className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Survey</Link>
         <Link to={`/sites/create?client=${site.client}`} className="btn btn-sm" style={{ fontSize: "0.75rem", padding: "3px 12px", backgroundColor: "#2E5E3E", color: "#fefdfc", border: "none", borderRadius: 2, height: 24, textDecoration: "none" }}>+ Site</Link>
-        <Link to={`/sites/${id}/edit`} className="btn btn-secondary btn-sm" style={{ borderRadius: 2, height: 24 }}>Edit</Link>
+        <Link to={`/sites/${id}/edit`} className="btn btn-secondary btn-sm d-inline-flex align-items-center" style={{ borderRadius: 2, height: 24, fontSize: "0.75rem", padding: "3px 12px", textDecoration: "none" }}>Edit</Link>
       </div>
 
 
@@ -117,7 +117,7 @@ function SiteDetail() {
           Survey Filters{surveys.length > 0 ? ` (${surveys.length})` : ""}
         </p>
         {surveysOpen && <div className="card-stack">
-          <div className="d-flex gap-2 flex-wrap" style={{ marginLeft: "1rem" }}>
+          <div className="d-flex gap-2 flex-wrap filter-btn-row" style={{ marginLeft: "1rem" }}>
             {[
               { value: "active", label: "Active", count: surveys.filter(s => (s.survey_status || s.status) === "active" || ["draft", "open", "assigned"].includes(s.status)).length },
               { value: "completed", label: "Completed", count: surveys.filter(s => (s.survey_status || s.status) === "completed").length },
@@ -129,7 +129,7 @@ function SiteDetail() {
                 className={`btn btn-sm ${surveyFilter === value ? "btn-secondary" : "btn-outline-secondary"}`}
                 style={{ fontSize: "0.75rem", padding: "3px 16px", minWidth: "5.5rem" }}
                 onClick={() => setSurveyFilter(value)}>
-                {label} ({count})
+                {label} <span className="filter-count">({count})</span>
               </button>
             ))}
           </div>
@@ -138,12 +138,12 @@ function SiteDetail() {
 
       {/* ---- Surveys ---- */}
       <div className="edit-fieldset mb-2" style={{ backgroundColor: "#cec7bb" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="section-header-row">
           <p className="edit-legend section-toggle" onClick={() => setSurveysListOpen(!surveysListOpen)} style={{ marginBottom: 0 }}>
             <span className={`section-chevron${surveysListOpen ? " section-chevron--open" : ""}`}></span>
             Surveys ({surveys.length})
           </p>
-          <div className="d-flex gap-2 align-items-center">
+          <div className="section-header-actions">
             {surveySelectMode && selectedSurveys.size > 0 && (<>
               <button type="button" className="btn btn-sm d-flex align-items-center justify-content-center" style={{ width: 28, height: 28, padding: 0, backgroundColor: "#c0392b", border: "none", borderRadius: 2 }}
                 onClick={async (e) => {

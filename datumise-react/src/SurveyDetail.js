@@ -27,6 +27,7 @@ function SurveyDetail() {
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [useMode, setUseMode] = useState(false);
   const [selectedObs, setSelectedObs] = useState(new Set());
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [observationSuccess, setObservationSuccess] = useState(false);
   const [observationFading, setObservationFading] = useState(false);
   const [observationCount, setObservationCount] = useState(0);
@@ -85,6 +86,7 @@ useEffect(() => {
   }
 
   fetchSurvey();
+  api.get("/api/auth/user/").then(res => setCurrentUserId(res.data.pk || res.data.id || null)).catch(() => {});
 }, [id]);
 
 const hasScrolledRef = useRef(false);
@@ -361,25 +363,28 @@ const formatSurveyDuration = (startTime, _tick) => {
             )}
             {survey.window_days && (() => {
               const dayLabels = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
-              const fmtTime = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); const p = h >= 12 ? "pm" : "am"; return `${h % 12 || 12}:${String(m).padStart(2, "0")}${p}`; };
-              const fmtDay = (day, v) => {
-                if (typeof v === "object") return `${dayLabels[day] || day} ${fmtTime(v.start)}${v.start && v.end ? " - " : ""}${fmtTime(v.end)}`;
-                return dayLabels[day] || day;
-              };
-              const weekdays = Object.entries(survey.window_days).filter(([day, v]) => !["sat", "sun"].includes(day) && v && (typeof v === "object" ? true : !!v)).map(([day, v]) => fmtDay(day, v));
-              const weekends = Object.entries(survey.window_days).filter(([day, v]) => ["sat", "sun"].includes(day) && v && (typeof v === "object" ? true : !!v)).map(([day, v]) => fmtDay(day, v));
-              return (<>
-                {weekdays.length > 0 && (
-                  <div style={{ fontSize: "0.78rem", fontStyle: "italic", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {weekdays.join(", ")}
-                  </div>
-                )}
-                {weekends.length > 0 && (
-                  <div style={{ fontSize: "0.78rem", fontStyle: "italic", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    Weekends {weekends.join(", ")}
-                  </div>
-                )}
-              </>);
+              const fmtTime = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`; };
+              const entries = Object.entries(survey.window_days).filter(([, v]) => v && (typeof v === "object" ? true : !!v));
+              if (!entries.length) return null;
+              const rows = [];
+              for (let i = 0; i < entries.length; i += 3) rows.push(entries.slice(i, i + 3));
+              return (
+                <div style={{ marginTop: 4 }}>
+                  {rows.map((row, ri) => (
+                    <div key={ri} style={{ display: "grid", gridTemplateColumns: `repeat(${row.length}, auto)`, gap: "0 16px", marginBottom: ri < rows.length - 1 ? 6 : 0, fontSize: "0.78rem", fontStyle: "italic" }}>
+                      {row.map(([day]) => (
+                        <div key={`h-${day}`} style={{ fontWeight: 600 }}>{dayLabels[day] || day}</div>
+                      ))}
+                      {row.map(([day, v]) => (
+                        <div key={`s-${day}`} style={{ fontSize: "0.72rem" }}>{typeof v === "object" && v.start ? fmtTime(v.start) : ""}</div>
+                      ))}
+                      {row.map(([day, v]) => (
+                        <div key={`e-${day}`} style={{ fontSize: "0.72rem" }}>{typeof v === "object" && v.end ? fmtTime(v.end) : ""}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
             })()}
           </div>
 
@@ -552,14 +557,14 @@ const formatSurveyDuration = (startTime, _tick) => {
           </div>
 
           {/* ---- Observations toolbar ---- */}
-          <div className="d-flex align-items-center justify-content-between mb-2">
+          <div className="section-header-row mb-2">
             <h6 className="mb-0">
               Observations
               <span className="text-muted fw-normal ms-1" style={{ fontSize: "0.85rem" }}>
                 ({survey.observations?.length || 0})
               </span>
             </h6>
-            <div className="d-flex align-items-center gap-2">
+            <div className="section-header-actions">
               {useMode && selectedObs.size > 0 && (
                 <>
                   <button type="button" className="btn btn-sm d-flex align-items-center"
@@ -569,7 +574,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                       setPushSearch("");
                       setPushSelected(new Set([String(survey.id)]));
                       try {
-                        const res = await api.get("/api/surveys/?page_size=25");
+                        const res = await api.get(currentUserId ? `/api/surveys/?page_size=25&assigned_to=${currentUserId}` : "/api/surveys/?page_size=25");
                         setPushSurveys(res.data.results || res.data);
                         setPushNextPage(res.data.next || null);
                       } catch (e) { setPushSurveys([]); }
@@ -584,7 +589,7 @@ const formatSurveyDuration = (startTime, _tick) => {
                       setPushSearch("");
                       setPushSelected(new Set([String(survey.id)]));
                       try {
-                        const res = await api.get("/api/surveys/?page_size=25");
+                        const res = await api.get(currentUserId ? `/api/surveys/?page_size=25&assigned_to=${currentUserId}` : "/api/surveys/?page_size=25");
                         setPushSurveys(res.data.results || res.data);
                         setPushNextPage(res.data.next || null);
                       } catch (e) { setPushSurveys([]); }
@@ -617,7 +622,7 @@ const formatSurveyDuration = (startTime, _tick) => {
               )}
               {(survey.observations?.length > 0) && (
               <button type="button" className="btn btn-sm"
-                style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: "#0006b1", color: "#fefdfc", border: "none", borderRadius: 2, height: 24 }}
+                style={{ fontSize: "0.75rem", padding: "2px 8px", backgroundColor: useMode ? "#fefdfc" : "#0006b1", color: useMode ? "#0006b1" : "#fefdfc", border: useMode ? "1px solid #0006b1" : "none", borderRadius: 2, height: 24 }}
                 onClick={() => { setUseMode(!useMode); if (useMode) setSelectedObs(new Set()); }}>
                 {useMode && selectedObs.size > 0 ? `${selectedObs.size}/10` : "Select"}
               </button>

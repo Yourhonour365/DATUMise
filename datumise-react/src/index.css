@@ -296,8 +296,9 @@ fieldset {
 }
 
 .filter-search::placeholder {
-  color: #fefdfc;
-  opacity: 0.6;
+  color: #fefdfc !important;
+  opacity: 0.6 !important;
+  -webkit-text-fill-color: rgba(254, 253, 252, 0.6);
 }
 
 .team-edit-icon {
@@ -864,6 +865,103 @@ textarea.edit-field {
   }
 }
 
+/* ---- Section header row (chevron title + action buttons) ---- */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.section-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---- Site card layout ---- */
+.site-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.site-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 16px;
+}
+
+/* ---- Working hours grid ---- */
+.working-hours-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+.working-hours-day {
+  min-width: 70px;
+  flex: 1 1 calc(14.28% - 6px);
+}
+@media (max-width: 576px) {
+  .working-hours-day {
+    flex: 1 1 calc(50% - 6px);
+  }
+  .wh-label {
+    display: none !important;
+  }
+  .radio-stack {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .deadline-row {
+    flex-direction: column !important;
+  }
+  .time-btn {
+    text-align: left !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  .site-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .site-card-actions {
+    margin-left: 0 !important;
+    margin-top: 6px;
+  }
+  .section-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .section-header-actions {
+    margin-top: 6px;
+  }
+  .filter-btn-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+  .filter-btn-row .btn {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+  .filter-count {
+    display: none !important;
+  }
+  .capture-subtitle-prior {
+    display: none !important;
+  }
+  .field-block {
+    max-width: calc(100% - 1rem) !important;
+    width: calc(100% - 1rem) !important;
+  }
+  .field-block .edit-field {
+    max-width: 100% !important;
+  }
+}
+
 /* Compact mode for very small screens (~320px wide) */
 @media (max-width: 359px) {
   /* Issue 1: reduce action bar height */
@@ -1418,19 +1516,63 @@ textarea.edit-field {
   background: #2e5440;
 }
 
-/* Mobile: floating bottom-right */
-@media (max-width: 767.98px) {
-  .add-button {
-    position: fixed;
-    bottom: 24px;
-    right: 20px;
-  }
-}
-
 /* Desktop: inline (placed in header by component) */
 @media (min-width: 768px) {
   .add-button {
     box-shadow: none;
+  }
+}
+
+/* Mobile floating action buttons — horizontal row at bottom */
+@media (max-width: 767.98px) {
+  .mobile-fab {
+    position: fixed;
+    bottom: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: width 0.3s ease, height 0.3s ease, bottom 0.3s ease;
+  }
+  .mobile-fab--return {
+    background: #6c757d;
+    right: 12px;
+  }
+  .mobile-fab--edit {
+    right: 64px;
+  }
+  .mobile-fab--add {
+    right: 116px;
+  }
+  .mobile-fab--top {
+    background: #6c757d;
+    right: 168px;
+  }
+  body.scrolled .mobile-fab {
+    width: 32px;
+    height: 32px;
+    bottom: 8px;
+  }
+  body.scrolled .mobile-fab img {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  body.scrolled .mobile-fab span {
+    font-size: 1rem !important;
+  }
+  body.scrolled .mobile-fab--edit {
+    right: 48px;
+  }
+  body.scrolled .mobile-fab--add {
+    right: 84px;
+  }
+  body.scrolled .mobile-fab--top {
+    right: 120px;
   }
 }
 
@@ -1450,14 +1592,6 @@ textarea.edit-field {
 }
 .edit-button:hover {
   background: #f0ece4;
-}
-
-@media (max-width: 767.98px) {
-  .edit-button {
-    position: fixed;
-    bottom: 24px;
-    right: 20px;
-  }
 }
 
 @media (min-width: 768px) {

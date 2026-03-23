@@ -197,29 +197,27 @@ function SiteList() {
             style={{ backgroundColor: "#cec7bb", cursor: "pointer", alignSelf: "stretch" }}
             onClick={() => navigate(`/sites/${site.id}`)}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1F2A33", whiteSpace: "nowrap" }}>{site.name}</span>
-                {site.status === "archived" && (
-                  <span style={{ fontStyle: "italic", fontSize: "0.82rem", color: "#c0392b" }}>Archived</span>
-                )}
-              </div>
-              <div className="d-flex align-items-center gap-3" style={{ marginLeft: 16 }}>
-                {site.status === "active" && (
-                  <Link to={`/surveys/create?client=${site.client}&site=${site.id}`} className="btn btn-outline-secondary btn-sm"
-                    style={{ fontSize: "0.65rem", padding: "1px 8px", whiteSpace: "nowrap" }}
-                    onClick={(e) => e.stopPropagation()}>Add Survey</Link>
-                )}
-                <Link to={`/sites/${site.id}`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                  <img className="team-edit-icon" src="/view.svg" alt="View" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                </Link>
-                <Link to={`/sites/${site.id}/edit`} className="text-decoration-none" onClick={(e) => e.stopPropagation()}>
-                  <img className="team-edit-icon" src="/datumise-edit.svg" alt="Edit" width="14" height="14" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
-                </Link>
-              </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1F2A33", whiteSpace: "nowrap" }}>{site.name}</span>
+              {site.status === "archived" && (
+                <span style={{ fontStyle: "italic", fontSize: "0.82rem", color: "#c0392b" }}>Archived</span>
+              )}
             </div>
             <div style={{ fontSize: "0.82rem", color: "#888", fontStyle: "italic", whiteSpace: "nowrap" }}>
               {[`${site.survey_count} ${site.survey_count === 1 ? "survey" : "surveys"}`, site.city, site.postcode].filter(Boolean).join(" \u00B7 ")}
+            </div>
+            <div className="site-card-actions" style={{ marginLeft: 0, marginTop: 6 }}>
+              {site.status === "active" && (
+                <Link to={`/surveys/create?client=${site.client}&site=${site.id}`} className="btn btn-outline-secondary btn-sm"
+                  style={{ fontSize: "0.65rem", padding: "1px 8px", whiteSpace: "nowrap" }}
+                  onClick={(e) => e.stopPropagation()}>Add Survey</Link>
+              )}
+              <Link to={`/sites/${site.id}`} className="text-decoration-none d-inline-flex align-items-center" onClick={(e) => e.stopPropagation()}>
+                <img src="/view.svg" alt="View" width="20" height="20" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+              </Link>
+              <Link to={`/sites/${site.id}/edit`} className="text-decoration-none d-inline-flex align-items-center" onClick={(e) => e.stopPropagation()}>
+                <img src="/datumise-edit.svg" alt="Edit" width="20" height="20" style={{ filter: "invert(22%) sepia(90%) saturate(1500%) hue-rotate(213deg) brightness(70%) contrast(95%)" }} />
+              </Link>
             </div>
           </div>
         ))}

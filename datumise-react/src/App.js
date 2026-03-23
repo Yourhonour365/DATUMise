@@ -151,6 +151,34 @@ function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
+  // Block archived users — check on load and log out if archived
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    api.get("/api/auth/user/").then(userRes => {
+      const uid = userRes.data.pk || userRes.data.id;
+      if (!uid) return;
+      api.get("/api/team/").then(teamRes => {
+        const team = teamRes.data.results || teamRes.data;
+        const me = team.find(m => String(m.id) === String(uid));
+        if (me && me.status === "archived") {
+          localStorage.removeItem("token");
+          setIsLoggedIn(false);
+          alert("Your account has been archived. Please contact an administrator.");
+          navigate("/");
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Toggle scrolled class on body for mobile FAB shrink
+  useEffect(() => {
+    const onScroll = () => {
+      document.body.classList.toggle("scrolled", window.scrollY > 200);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Close menu when route changes
   useEffect(() => {
     setMenuOpen(false);

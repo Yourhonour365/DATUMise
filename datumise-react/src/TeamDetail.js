@@ -82,7 +82,7 @@ function TeamDetail() {
         position={siblingIds.total > 0 ? { current: `Member ${siblingIds.current}`, total: siblingIds.total } : null}
       />
       <div className="d-flex gap-2 align-items-center mt-2 mb-2">
-        <Link to={`/team/${id}/edit`} className="btn btn-secondary btn-sm" style={{ borderRadius: 2, height: 24 }}>Edit</Link>
+        <Link to={`/team/${id}/edit`} className="btn btn-secondary btn-sm d-inline-flex align-items-center" style={{ borderRadius: 2, height: 24, fontSize: "0.75rem", padding: "3px 12px", textDecoration: "none" }}>Edit</Link>
       </div>
 
       <div style={{ marginTop: 16 }}>
@@ -106,7 +106,7 @@ function TeamDetail() {
           Survey Filters{surveys.length > 0 ? ` (${surveys.length})` : ""}
         </p>
         {surveysOpen && <div className="card-stack">
-          <div className="d-flex gap-2" style={{ marginLeft: "1rem" }}>
+          <div className="d-flex gap-2 flex-wrap filter-btn-row" style={{ marginLeft: "1rem" }}>
             {[
               { value: "active", label: "Active", count: surveys.filter(s => (s.survey_status || s.status) === "active" || ["draft", "open", "assigned"].includes(s.status)).length },
               { value: "completed", label: "Completed", count: surveys.filter(s => (s.survey_status || s.status) === "completed").length },
@@ -118,7 +118,7 @@ function TeamDetail() {
                 className={`btn btn-sm ${surveyFilter === value ? "btn-secondary" : "btn-outline-secondary"}`}
                 style={{ fontSize: "0.75rem", padding: "3px 16px", minWidth: "5.5rem" }}
                 onClick={() => setSurveyFilter(value)}>
-                {label} ({count})
+                {label} <span className="filter-count">({count})</span>
               </button>
             ))}
           </div>

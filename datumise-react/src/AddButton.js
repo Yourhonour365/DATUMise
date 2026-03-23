@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 function AddButton({ to }) {
   return (
-    <Link to={to} className="add-button" aria-label="Add">
+    <Link to={to} className="add-button mobile-fab mobile-fab--add" aria-label="Add">
       <img
         src="/datumise-add.svg"
         alt=""

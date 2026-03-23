@@ -603,27 +603,25 @@ function SurveyEditForm() {
                   </button>
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "space-evenly", alignItems: "flex-start" }}>
+              <div className="working-hours-grid">
                 {WINDOW_DAYS.map(({ key, label }) => {
                   const day = windowDays[key] || { ...EMPTY_DAY };
                   return (
-                    <div key={key} onClick={() => setWindowDays({ ...windowDays, [key]: { ...day, on: !day.on, timeStart: day.on ? "" : (day.timeStart || "09:00"), timeEnd: day.on ? "" : (day.timeEnd || "17:00") } })}
-                      style={{ border: "1px solid #c8c2b8", borderRadius: 6, padding: "6px 6px 8px", backgroundColor: day.on ? "#e8e2d8" : "#f5f5f7", width: "calc(14.28% - 6px)", cursor: "pointer", userSelect: "none" }}>
-                      <div style={{ display: "flex", alignItems: "baseline", marginBottom: day.on ? 6 : 0 }}>
-                        <span style={{ flex: 1, fontSize: "0.7rem", color: "#888" }}>Day</span>
-                        <span style={{ flex: 1, textAlign: "center", fontSize: "0.85rem", fontWeight: 700 }}>{label}</span>
-                        <span style={{ flex: 1 }} />
+                    <div key={key} className="working-hours-day" onClick={() => setWindowDays({ ...windowDays, [key]: { ...day, on: !day.on, timeStart: day.on ? "" : (day.timeStart || "09:00"), timeEnd: day.on ? "" : (day.timeEnd || "17:00") } })}
+                      style={{ border: "1px solid #c8c2b8", borderRadius: 6, padding: "6px 6px 8px", backgroundColor: day.on ? "#e8e2d8" : "#f5f5f7", cursor: "pointer", userSelect: "none" }}>
+                      <div style={{ textAlign: "center", marginBottom: day.on ? 6 : 0 }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{label}</div>
                       </div>
                       {day.on && (
                         <>
                           <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-                            <span style={{ fontSize: "0.7rem", color: "#888", flexShrink: 0, minWidth: "1.8rem" }}>Start</span>
+                            <span className="wh-label" style={{ fontSize: "0.7rem", color: "#888", flexShrink: 0, minWidth: "1.8rem" }}>Start</span>
                             <TimePicker value={day.timeStart} defaultValue="09:00"
                               className="time-btn" style={{ marginLeft: "auto" }}
                               onChange={(v) => setWindowDays({ ...windowDays, [key]: { ...day, timeStart: v } })} />
                           </div>
                           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                            <span style={{ fontSize: "0.7rem", color: "#888", flexShrink: 0, minWidth: "1.8rem" }}>End</span>
+                            <span className="wh-label" style={{ fontSize: "0.7rem", color: "#888", flexShrink: 0, minWidth: "1.8rem" }}>End</span>
                             <TimePicker value={day.timeEnd} defaultValue="09:00"
                               className="time-btn" style={{ marginLeft: "auto" }}
                               onChange={(v) => setWindowDays({ ...windowDays, [key]: { ...day, timeEnd: v } })} />
@@ -653,7 +651,7 @@ function SurveyEditForm() {
             </div>
             <div className={cardClass("procedures")} style={{ backgroundColor: (form.arrival_action && form.arrival_action !== "none") ? "#f0ece4" : "#f5f5f7", width: "fit-content", gap: 8, ...fieldBorder(fieldComplete.arrival_action) }}>
               {cardLabel("procedures", "Site procedures")}
-              <div className="edit-field d-flex gap-4">
+              <div className="edit-field d-flex gap-4 radio-stack">
                 {[
                   { value: "reception", label: "Arrival - reception" },
                   { value: "security", label: "Arrival - security" },
@@ -815,7 +813,7 @@ function SurveyEditForm() {
             )}
           </p>
           {openSections.requirements && <div className="card-stack">
-            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+            <div className="deadline-row" style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
               <div className="field-block" style={{ backgroundColor: "#f5f5f7", width: "auto", flex: "0 0 auto" }}>
                 <div className="field-label">Due date</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 0 }}>
@@ -829,7 +827,7 @@ function SurveyEditForm() {
               </div>
               <div className={`field-block${form.urgent === "" ? " field-block--unset" : ""}`} style={{ backgroundColor: form.urgent !== "" ? "#f0ece4" : "#f5f5f7", width: "auto", flex: "0 0 auto", ...fieldBorder(fieldComplete.urgent) }}>
                 <div className="field-label">Priority</div>
-                <div className="edit-field d-flex gap-4">
+                <div className="edit-field d-flex gap-4 radio-stack">
                   {[{ value: "no", label: "Standard" }, { value: "yes", label: "Urgent" }, { value: "critical", label: "Critical" }].map(({ value, label }) => (
                     <label key={value} className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
                       <input type="radio" name="urgent" value={value}
