@@ -125,7 +125,9 @@ class ClientContact(models.Model):
         return f"{self.first_name} {self.last_name}".strip()
 
 class Survey(models.Model):
-    STATUS_CHOICES = [
+    # Legacy status values — kept for reference during the transition period.
+    # Remove once the frontend no longer references these strings.
+    STATUS_CHOICES_LEGACY = [
         ("planned", "Planned"),
         ("live", "Live"),
         ("paused", "Paused"),
@@ -135,11 +137,69 @@ class Survey(models.Model):
         ("cancelled", "Cancelled"),
     ]
 
-    SCHEDULE_TYPE_CHOICES = [
-        ("scheduled", "Scheduled"),
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("open", "Open"),
+        ("assigned", "Assigned"),
+        ("completed", "Completed"),
+        ("archived", "Archived"),
+    ]
+
+    VISIT_REQUIREMENT_CHOICES = [
+        ("24h_notify", "24 Hours - notify in advance"),
+        ("24h_no_notify", "24 Hours - no notification"),
+        ("wh_notify", "Working hours - notify in advance"),
+        ("wh_no_notify", "Working hours - no notification"),
+        ("prearranged", "Pre-arranged visits only"),
+    ]
+
+    SCHEDULE_STATUS_CHOICES = [
+        ("self_scheduled", "Self-scheduled"),
         ("provisional", "Provisional"),
-        ("self_scheduling", "Self-scheduling"),
-        ("pending", "Pending"),
+        ("booked", "Booked"),
+    ]
+
+    VISIT_TIME_CHOICES = [
+        ("anytime", "Anytime"),
+        ("window", "Time window"),
+        ("appointment", "Appointment"),
+    ]
+
+    CLOSURE_REASON_CHOICES = [
+        ("missed", "Missed"),
+        ("abandoned", "Abandoned"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    # ── New domain model fields (Phase 1) ──────────────────────────
+    SURVEY_STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("active", "Active"),
+        ("cancelled", "Cancelled"),
+        ("abandoned", "Abandoned"),
+        ("completed", "Completed"),
+    ]
+
+    RECORD_STATUS_CHOICES = [
+        ("unarchived", "Unarchived"),
+        ("archived", "Archived"),
+    ]
+
+    DATE_STATUS_CHOICES = [
+        ("unscheduled", "Unscheduled"),
+        ("scheduled", "Scheduled"),
+    ]
+
+    SCHEDULED_STATUS_CHOICES = [
+        ("self_scheduled", "Self-scheduled"),
+        ("provisional", "Provisional"),
+        ("confirmed", "Confirmed"),
+    ]
+
+    ATTENDANCE_STATUS_CHOICES = [
+        ("unknown", "Unknown"),
+        ("attended", "Attended"),
+        ("missed", "Missed"),
     ]
 
     notes = models.CharField(max_length=160, blank=True, default="")
@@ -173,17 +233,46 @@ class Survey(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="planned",
+        default="draft",
     )
-    schedule_type = models.CharField(
+    visit_requirement = models.CharField(
         max_length=20,
-        choices=SCHEDULE_TYPE_CHOICES,
-        default="pending",
+        choices=VISIT_REQUIREMENT_CHOICES,
+        null=True,
+        blank=True,
     )
     scheduled_for = models.DateTimeField(null=True, blank=True)
     due_by = models.DateTimeField(null=True, blank=True)
     client_present = models.BooleanField(default=False)
     urgent = models.BooleanField(default=False)
+    schedule_status = models.CharField(
+        max_length=20,
+        choices=SCHEDULE_STATUS_CHOICES,
+        null=True,
+        blank=True,
+    )
+    visit_time = models.CharField(
+        max_length=20,
+        choices=VISIT_TIME_CHOICES,
+        null=True,
+        blank=True,
+    )
+    closure_reason = models.CharField(
+        max_length=20,
+        choices=CLOSURE_REASON_CHOICES,
+        null=True,
+        blank=True,
+    )
+    notify_required = models.BooleanField(null=True, blank=True)
+    arrival_action = models.CharField(max_length=500, blank=True, null=True)
+    departure_action = models.CharField(max_length=500, blank=True, null=True)
+    window_end_date = models.DateField(null=True, blank=True)
+    window_end_time = models.CharField(max_length=5, blank=True, null=True)
+    window_start_end_time = models.CharField(max_length=5, blank=True, null=True)
+    window_days = models.JSONField(null=True, blank=True)
+    survey_weekends = models.JSONField(null=True, blank=True)
+    site_requirements = models.CharField(max_length=50, blank=True, default="")
+    other_attendees = models.JSONField(null=True, blank=True)
     access_notes = models.TextField(blank=True)
     site_contact_name = models.CharField(max_length=255, blank=True)
     site_contact_phone = models.CharField(max_length=50, blank=True)
@@ -191,11 +280,98 @@ class Survey(models.Model):
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # ── New domain fields ──────────────────────────────────────────
+    survey_status = models.CharField(
+        max_length=20,
+        choices=SURVEY_STATUS_CHOICES,
+        default="draft",
+    )
+    survey_record_status = models.CharField(
+        max_length=20,
+        choices=RECORD_STATUS_CHOICES,
+        default="unarchived",
+    )
+    survey_date_status = models.CharField(
+        max_length=20,
+        choices=DATE_STATUS_CHOICES,
+        default="unscheduled",
+    )
+    scheduled_status = models.CharField(
+        max_length=20,
+        choices=SCHEDULED_STATUS_CHOICES,
+        null=True,
+        blank=True,
+    )
+    attendance_status = models.CharField(
+        max_length=20,
+        choices=ATTENDANCE_STATUS_CHOICES,
+        default="unknown",
+    )
+
+    # ── Legacy → New mapping (read-only properties) ────────────────
+    @property
+    def derived_survey_status(self):
+        """Derive new survey_status from legacy status + closure_reason."""
+        if self.status == "draft":
+            return "draft"
+        elif self.status in ("open", "assigned"):
+            return "active"
+        elif self.status == "completed":
+            return "completed"
+        elif self.status == "archived":
+            cr = self.closure_reason
+            if cr == "cancelled":
+                return "cancelled"
+            elif cr == "abandoned":
+                return "abandoned"
+            else:
+                return "active"  # archived + missed = still active lifecycle
+        return "draft"
+
+    @property
+    def derived_record_status(self):
+        """Derive new record_status from legacy status."""
+        return "archived" if self.status == "archived" else "unarchived"
+
+    @property
+    def derived_date_status(self):
+        """Derive date_status from scheduled_for."""
+        return "scheduled" if self.scheduled_for else "unscheduled"
+
+    @property
+    def derived_scheduled_status(self):
+        """Derive scheduled_status from legacy schedule_status."""
+        mapping = {
+            "self_scheduled": "self_scheduled",
+            "provisional": "provisional",
+            "booked": "confirmed",
+        }
+        return mapping.get(self.schedule_status)
+
+    @property
+    def derived_attendance_status(self):
+        """Derive attendance_status from legacy closure_reason."""
+        if self.status == "archived" and self.closure_reason == "missed":
+            return "missed"
+        elif self.status == "completed":
+            return "attended"
+        return "unknown"
+
     def clean(self):
         from django.core.exceptions import ValidationError
-        if self.schedule_type in ("scheduled", "provisional") and not self.scheduled_for:
+        if self.visit_requirement == "unrestricted":
+            self.schedule_status = "self_scheduled"
+        elif (
+            self.visit_requirement == "prearranged"
+            and self.schedule_status not in (None, "provisional", "booked")
+        ):
             raise ValidationError(
-                {"scheduled_for": "A planned date is required when schedule type is scheduled or provisional."}
+                {
+                    "schedule_status": (
+                        "Schedule status must be provisional or booked "
+                        "for pre-arranged surveys."
+                    )
+                }
             )
 
     class Meta:
@@ -261,6 +437,12 @@ class SurveySession(models.Model):
         ("abandoned", "Abandoned"),
     ]
 
+    SESSION_TYPE_CHOICES = [
+        ("visit", "Visit"),
+        ("revisit", "Revisit"),
+        ("review", "Review"),
+    ]
+
     survey = models.ForeignKey(
         Survey,
         on_delete=models.CASCADE,
@@ -268,6 +450,13 @@ class SurveySession(models.Model):
     )
     session_number = models.PositiveIntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    session_type = models.CharField(
+        max_length=20,
+        choices=SESSION_TYPE_CHOICES,
+        null=True,
+        blank=True,
+    )
+    notify_required = models.BooleanField(default=False)
     started_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

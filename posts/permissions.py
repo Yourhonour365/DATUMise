@@ -2,19 +2,15 @@ from rest_framework import permissions
 
 
 class IsActiveUser(permissions.BasePermission):
-    """
-    Deny access to users whose profile status is archived.
-    """
+    """Block archived users from accessing the API."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
-            return True  # Let auth classes handle unauthenticated users
+            return True  # Let auth handlers deal with anonymous users
         try:
-            if request.user.profile.status == "archived":
-                return False
+            return request.user.profile.status == "active"
         except Exception:
-            pass
-        return True
+            return True
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):

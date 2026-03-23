@@ -1,6 +1,18 @@
 from rest_framework import permissions
 
 
+class IsActiveUser(permissions.BasePermission):
+    """Block archived users from accessing the API."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return True  # Let auth handlers deal with anonymous users
+        try:
+            return request.user.profile.status == "active"
+        except Exception:
+            return True
+
+
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
     Allow read-only access for everyone,

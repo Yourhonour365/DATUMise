@@ -11,8 +11,8 @@ class SurveyFilter(django_filters.FilterSet):
         field_name="assigned_to", lookup_expr="in"
     )
     status = django_filters.BaseInFilter(field_name="status", lookup_expr="in")
-    schedule_type = django_filters.BaseInFilter(
-        field_name="schedule_type", lookup_expr="in"
+    visit_requirement = django_filters.BaseInFilter(
+        field_name="visit_requirement", lookup_expr="in"
     )
     site_type = django_filters.BaseInFilter(
         field_name="site__site_type", lookup_expr="in"
@@ -20,7 +20,7 @@ class SurveyFilter(django_filters.FilterSet):
 
     class Meta:
         model = Survey
-        fields = ["client", "site", "assigned_to", "status", "schedule_type", "site_type"]
+        fields = ["client", "site", "assigned_to", "status", "visit_requirement", "site_type"]
 
 
 class ObservationFilter(django_filters.FilterSet):

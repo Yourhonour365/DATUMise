@@ -6,7 +6,7 @@ from .serializers import (
     ObservationSerializer, CommentSerializer,
     SurveySerializer, SurveyDetailSerializer,
     ClientSerializer, ClientSiteSerializer,
-    TeamMemberSerializer,
+    TeamMemberSerializer, _STATUS_TRANSLATION,
 )
 from .permissions import IsOwnerOrReadOnly, IsCommentOwnerOrObservationOwner
 from django.utils import timezone
@@ -18,6 +18,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Count
 from rest_framework.exceptions import ValidationError
+
+# Statuses in which a survey is actively being worked on and observations
+# may be created. Mirrors _ACTIVE_SURVEY_STATUSES in serializers.py.
+_ACTIVE_SURVEY_STATUSES = {"assigned"}
+
 
 class ObservationList(generics.ListCreateAPIView):
     serializer_class = ObservationSerializer
@@ -35,6 +40,8 @@ class ObservationList(generics.ListCreateAPIView):
         survey_id = self.request.query_params.get("survey")
         if survey_id:
             queryset = queryset.filter(survey_id=survey_id)
+        else:
+            queryset = queryset.filter(is_draft=False)
 
         return queryset
 
@@ -42,9 +49,9 @@ class ObservationList(generics.ListCreateAPIView):
         survey = serializer.validated_data.get("survey")
         is_draft = serializer.validated_data.get("is_draft", False)
 
-        if survey and survey.status != "live" and not is_draft:
+        if survey and survey.status not in _ACTIVE_SURVEY_STATUSES and not is_draft:
             raise ValidationError(
-                "Observations can only be added to a live survey."
+                "Observations can only be added to an active survey."
             )
 
         serializer.save(owner=self.request.user)
@@ -54,7 +61,7 @@ class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
     serializer_class = ObservationSerializer
     permission_classes = [
-        permissions.IsAuthenticatedOrReadOnly,
+        permissions.IsAuthenticated,
         IsOwnerOrReadOnly,
     ]
 
@@ -88,6 +95,16 @@ class SurveyList(generics.ListCreateAPIView):
         observation_count=Count("observations", distinct=True),
         total_likes_count=Count("observations__likes", distinct=True),
         total_comments_count=Count("observations__comments", distinct=True),
+        real_observation_count=Count(
+            "observations",
+            filter=Q(observations__is_draft=False, observations__image__isnull=False) & ~Q(observations__image=""),
+            distinct=True,
+        ),
+        draft_observation_count=Count(
+            "observations",
+            filter=Q(observations__is_draft=True),
+            distinct=True,
+        ),
     ).order_by("-created_at")
     serializer_class = SurveySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -104,7 +121,7 @@ class SurveyList(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         site = serializer.validated_data.get("site")
-        extra = {}
+        extra = {"status": "draft"}
         if site:
             extra["access_notes"] = site.access_notes
             extra["site_contact_name"] = site.contact_name
@@ -112,7 +129,7 @@ class SurveyList(generics.ListCreateAPIView):
             extra["site_contact_email"] = site.contact_email
         serializer.save(created_by=self.request.user, **extra)
 
-class SurveyDetail(generics.RetrieveUpdateAPIView):
+class SurveyDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Survey.objects.all()
     serializer_class = SurveyDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -123,24 +140,83 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
             return SurveyWriteSerializer
         return SurveyDetailSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        survey = self.get_object()
+
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can delete surveys."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if survey.sessions.exists() or survey.observations.exists():
+            return Response(
+                {
+                    "detail": (
+                        "Surveys with sessions or observations cannot be deleted. "
+                        "Archive instead."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        survey.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     def perform_update(self, serializer):
         old_status = serializer.instance.status
-        new_status = serializer.validated_data.get("status", old_status)
+        # What the frontend requested (may be a legacy string like "live").
+        requested_status = serializer.validated_data.get("status", old_status)
+        # What we actually store in the DB after translation.
+        stored_status = _STATUS_TRANSLATION.get(
+            requested_status, requested_status
+        )
 
-        if old_status != new_status:
+        # Write the translated value back before save.
+        if "status" in serializer.validated_data:
+            serializer.validated_data["status"] = stored_status
+
+        # Sync survey_status from legacy status.
+        _LEGACY_TO_SURVEY_STATUS = {
+            "draft": "draft",
+            "open": "active",
+            "assigned": "active",
+            "completed": "completed",
+            "archived": "active",
+        }
+        if "status" in serializer.validated_data:
+            new_survey_status = _LEGACY_TO_SURVEY_STATUS.get(
+                stored_status
+            )
+            if new_survey_status:
+                serializer.validated_data[
+                    "survey_status"
+                ] = new_survey_status
+
+        # Auto-populate closure_reason for legacy terminal status transitions.
+        if (
+            requested_status in ("missed", "cancelled")
+            and not serializer.validated_data.get("closure_reason")
+        ):
+            serializer.validated_data["closure_reason"] = (
+                "missed" if requested_status == "missed" else "cancelled"
+            )
+
+        # Session lifecycle — only when a status value was explicitly sent.
+        if "status" in serializer.validated_data:
             survey = serializer.instance
             active_session = SurveySession.objects.filter(
                 survey=survey,
                 status__in=["active", "paused"],
             ).first()
 
-            if new_status == "live":
+            if requested_status == "live":
                 if active_session and active_session.status == "paused":
-                    # Resume: reactivate the paused session
+                    # Resume: reactivate the paused session.
                     active_session.status = "active"
                     active_session.save(update_fields=["status"])
                 elif not active_session:
-                    # Start: create a new session
+                    # Start: create a new session.
                     session_number = (
                         SurveySession.objects.filter(survey=survey).count() + 1
                     )
@@ -151,18 +227,18 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
                         started_by=self.request.user,
                     )
 
-            elif new_status == "paused":
+            elif requested_status == "paused":
                 if active_session and active_session.status == "active":
                     active_session.status = "paused"
                     active_session.save(update_fields=["status"])
 
-            elif new_status == "submitted":
+            elif requested_status == "submitted":
                 if active_session:
                     active_session.status = "completed"
                     active_session.ended_at = timezone.now()
                     active_session.save(update_fields=["status", "ended_at"])
 
-            elif new_status == "completed":
+            elif requested_status == "completed":
                 if active_session:
                     raise ValidationError(
                         {"status": (
@@ -171,7 +247,7 @@ class SurveyDetail(generics.RetrieveUpdateAPIView):
                         )}
                     )
 
-            elif new_status in ("cancelled", "missed"):
+            elif requested_status in ("cancelled", "missed", "archived"):
                 if active_session:
                     active_session.status = "abandoned"
                     active_session.ended_at = timezone.now()
@@ -197,9 +273,9 @@ class SurveyAssign(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if survey.status != "planned":
+        if survey.status != "open":
             return Response(
-                {"detail": "Only planned surveys can be assigned."},
+                {"detail": "Only open surveys can be assigned."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -310,7 +386,9 @@ class ClientSiteDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class TeamList(generics.ListCreateAPIView):
-    queryset = User.objects.select_related("profile").order_by(
+    queryset = User.objects.select_related("profile").annotate(
+        survey_count=Count("assigned_surveys"),
+    ).order_by(
         "first_name", "last_name", "username"
     )
     permission_classes = [permissions.IsAuthenticated]
@@ -322,6 +400,11 @@ class TeamList(generics.ListCreateAPIView):
         return TeamMemberSerializer
 
     def create(self, request, *args, **kwargs):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can create team members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -339,9 +422,24 @@ class TeamDetail(generics.RetrieveUpdateAPIView):
             return TeamMemberWriteSerializer
         return TeamMemberSerializer
 
+    def update(self, request, *args, **kwargs):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can modify team members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
 
 class DeleteDemoData(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can delete demo data."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
     def delete(self, request):
         obs_count = Observation.objects.filter(
@@ -357,7 +455,6 @@ class DeleteDemoData(APIView):
             is_demo=True
         ).count()
 
-        # Delete in dependency order
         Observation.objects.filter(is_demo=True).delete()
         Survey.objects.filter(is_demo=True).delete()
         ClientSite.objects.filter(is_demo=True).delete()

@@ -11,11 +11,11 @@ class SurveyAdmin(admin.ModelAdmin):
         "created_by",
         "assigned_to",
         "status",
-        "schedule_type",
         "scheduled_for",
         "due_by",
         "client_present",
         "urgent",
+        "is_demo",
     )
     
 @admin.register(Observation)
