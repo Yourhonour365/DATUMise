@@ -250,18 +250,18 @@ useLayoutEffect(() => {
         const missing = [];
         if (!survey.site) missing.push("Site");
         if (!survey.client) missing.push("Client");
-        if (!survey.visit_requirement) missing.push("Visit requirement");
-        if (survey.notify_required === null || survey.notify_required === undefined) missing.push("Notify required (confirm yes or no)");
-        if (!survey.arrival_action) missing.push("Arrival action");
-        if (!survey.departure_action) missing.push("Departure action");
         if (missing.length > 0) {
             window.alert(
-                `Cannot open survey. Missing required fields:\n\n${missing.map((f) => `\u2022 ${f}`).join("\n")}\n\nPlease edit the survey to complete these fields.`
+                `Cannot activate survey. Missing required fields:\n\n${missing.map((f) => `\u2022 ${f}`).join("\n")}\n\nPlease edit the survey to complete these fields.`
             );
             return;
         }
         try {
-            await api.patch(`/api/surveys/${id}/`, { status: "open" });
+            const payload = { status: "open" };
+            if (!survey.departure_action && survey.arrival_action) {
+                payload.departure_action = survey.arrival_action;
+            }
+            await api.patch(`/api/surveys/${id}/`, payload);
             fetchSurvey();
         } catch (err) {
             const errors = err.response?.data;
@@ -269,9 +269,9 @@ useLayoutEffect(() => {
                 const msgs = Object.entries(errors)
                     .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
                     .join("\n");
-                window.alert(`Failed to open survey:\n\n${msgs}`);
+                window.alert(`Failed to activate survey:\n\n${msgs}`);
             } else {
-                window.alert("Failed to open survey.");
+                window.alert("Failed to activate survey.");
             }
         }
     };
@@ -400,7 +400,7 @@ const formatSurveyDuration = (startTime, _tick) => {
               const isDetailAbandoned = ss === "abandoned";
               const isDetailArchived = rs === "archived" || survey.status === "archived";
               return (<>
-                {isDetailDraft && survey.is_admin && (
+                {isDetailDraft && (survey.is_admin || survey.is_owner || survey.is_surveyor) && (
                   <button className="btn btn-success btn-sm" onClick={openSurvey}>Start Survey</button>
                 )}
                 {isDetailDraft && survey.is_admin && (

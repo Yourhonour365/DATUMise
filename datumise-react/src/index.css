@@ -796,6 +796,8 @@ textarea.edit-field {
 /* --- Observation detail layout --- */
 .obs-detail-main {
   display: block;
+  max-width: 640px;
+  margin: 0 auto;
 }
 .obs-detail-img {
   width: 100%;
@@ -827,6 +829,17 @@ textarea.edit-field {
   box-sizing: border-box;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+}
+
+/* Desktop: deeper image and description */
+@media (min-width: 768px) {
+  .obs-detail-img,
+  .obs-detail-img-placeholder {
+    height: 400px;
+  }
+  .obs-detail-desc {
+    height: 200px;
+  }
 }
 
 /* --- Prior observation detail view --- */

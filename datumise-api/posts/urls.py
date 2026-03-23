@@ -7,6 +7,7 @@ from .views import (
     ClientList, ClientDetail,
     ClientSiteList, ClientSiteDetail,
     TeamList, TeamDetail,
+    DeleteDemoData,
 )
 
 urlpatterns = [
@@ -83,5 +84,10 @@ urlpatterns = [
         "team/<int:pk>/",
         TeamDetail.as_view(),
         name="team-detail",
+    ),
+    path(
+        "demo-data/",
+        DeleteDemoData.as_view(),
+        name="delete-demo-data",
     ),
 ]

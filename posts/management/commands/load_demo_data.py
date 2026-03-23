@@ -236,10 +236,12 @@ class Command(BaseCommand):
     help = "Load demo clients, sites, surveys, observations and comments"
 
     def handle(self, *args, **options):
-        if Client.objects.filter(is_demo=True).exists():
+        if (Client.objects.filter(is_demo=True).exists()
+                or Survey.objects.filter(is_demo=True).exists()):
             self.stderr.write(
                 self.style.WARNING(
-                    "Demo data already exists. Delete it first via Django admin before reloading."
+                    "Demo data already exists. "
+                    "Delete it first before reloading."
                 )
             )
             return
@@ -258,7 +260,7 @@ class Command(BaseCommand):
         site_map = {}
         for data in SITES:
             client = client_map[data.pop("client")]
-            site = ClientSite.objects.create(client=client, **data)
+            site = ClientSite.objects.create(client=client, is_demo=True, **data)
             site_map[site.name] = site
         self.stdout.write(f"  Created {len(site_map)} sites")
 
@@ -291,6 +293,7 @@ class Command(BaseCommand):
                 site=site,
                 created_by=created_by,
                 assigned_to=assigned_to,
+                is_demo=True,
                 **data,
             )
             survey_map[site.name] = survey
@@ -322,6 +325,7 @@ class Command(BaseCommand):
                 owner=owner,
                 title=data["title"],
                 image=image_field_value,
+                is_demo=True,
             )
             obs_list.append(obs)
         self.stdout.write(f"  Created {len(obs_list)} observations")

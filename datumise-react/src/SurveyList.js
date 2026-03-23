@@ -135,13 +135,7 @@ function SurveyList() {
       setFilterTeam(teamData);
       const uid = u.data.pk || u.data.id || null;
       setUserId(uid);
-      if (!autoFilterDoneRef.current && uid) {
-        autoFilterDoneRef.current = true;
-        const me = teamData.find(m => String(m.id) === String(uid) || String(m.user) === String(uid));
-        if (me && (me.role === "surveyor" || me.role === "admin")) {
-          setMyOnly(true);
-        }
-      }
+      autoFilterDoneRef.current = true;
       setFiltersReady(true);
     }).catch(() => { setFiltersReady(true); });
   }, []);
@@ -402,8 +396,9 @@ function SurveyList() {
                     })()}</span>
                     <span style={{ gridColumn: "3 / -1", display: "flex", gap: "0.3rem", alignItems: "baseline", overflow: "hidden", whiteSpace: "nowrap" }}>{(() => {
                       const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
-                      const obs = survey.observation_count || 0;
-                      const drafts = (survey.observations || []).filter(o => o.is_draft).length || 0;
+                      const totalObs = survey.observation_count || 0;
+                      const drafts = survey.draft_observation_count || 0;
+                      const obs = totalObs - drafts;
                       return (<>
                         <span style={{ flexShrink: 0, fontStyle: "italic" }}>{fmt(obs)} Obs</span>
                         <span style={{ flexShrink: 0, fontStyle: "italic" }}>{fmt(drafts)} Draft</span>

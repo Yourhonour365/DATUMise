@@ -221,7 +221,11 @@ function ObservationList() {
                 setPushSearch("");
                 setPushStatusFilter("");
                 try {
-                  const res = await api.get(userId ? `/api/surveys/?page_size=25&assigned_to=${userId}` : "/api/surveys/?page_size=25");
+                  let uid = userId;
+                  if (!uid) {
+                    try { const u = await api.get("/api/auth/user/"); uid = u.data.pk || u.data.id; setUserId(uid); } catch (_) {}
+                  }
+                  const res = await api.get(uid ? `/api/surveys/?page_size=25&assigned_to=${uid}` : "/api/surveys/?page_size=25");
                   setActiveSurveys(res.data.results || res.data);
                   setPushNextPage(res.data.next || null);
                 } catch (err) { console.error(err); }

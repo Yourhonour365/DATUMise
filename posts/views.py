@@ -338,3 +338,36 @@ class TeamDetail(generics.RetrieveUpdateAPIView):
             from .serializers import TeamMemberWriteSerializer
             return TeamMemberWriteSerializer
         return TeamMemberSerializer
+
+
+class DeleteDemoData(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        obs_count = Observation.objects.filter(
+            is_demo=True
+        ).count()
+        survey_count = Survey.objects.filter(
+            is_demo=True
+        ).count()
+        site_count = ClientSite.objects.filter(
+            is_demo=True
+        ).count()
+        client_count = Client.objects.filter(
+            is_demo=True
+        ).count()
+
+        # Delete in dependency order
+        Observation.objects.filter(is_demo=True).delete()
+        Survey.objects.filter(is_demo=True).delete()
+        ClientSite.objects.filter(is_demo=True).delete()
+        Client.objects.filter(is_demo=True).delete()
+
+        return Response({
+            "deleted": {
+                "observations": obs_count,
+                "surveys": survey_count,
+                "sites": site_count,
+                "clients": client_count,
+            }
+        })

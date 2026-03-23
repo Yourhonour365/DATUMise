@@ -61,7 +61,7 @@ class ObservationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Observation.objects.all()
     serializer_class = ObservationSerializer
     permission_classes = [
-        permissions.IsAuthenticatedOrReadOnly,
+        permissions.IsAuthenticated,
         IsOwnerOrReadOnly,
     ]
 
@@ -98,6 +98,11 @@ class SurveyList(generics.ListCreateAPIView):
         real_observation_count=Count(
             "observations",
             filter=Q(observations__is_draft=False, observations__image__isnull=False) & ~Q(observations__image=""),
+            distinct=True,
+        ),
+        draft_observation_count=Count(
+            "observations",
+            filter=Q(observations__is_draft=True),
             distinct=True,
         ),
     ).order_by("-created_at")
@@ -170,6 +175,23 @@ class SurveyDetail(generics.RetrieveUpdateDestroyAPIView):
         # Write the translated value back before save.
         if "status" in serializer.validated_data:
             serializer.validated_data["status"] = stored_status
+
+        # Sync survey_status from legacy status.
+        _LEGACY_TO_SURVEY_STATUS = {
+            "draft": "draft",
+            "open": "active",
+            "assigned": "active",
+            "completed": "completed",
+            "archived": "active",
+        }
+        if "status" in serializer.validated_data:
+            new_survey_status = _LEGACY_TO_SURVEY_STATUS.get(
+                stored_status
+            )
+            if new_survey_status:
+                serializer.validated_data[
+                    "survey_status"
+                ] = new_survey_status
 
         # Auto-populate closure_reason for legacy terminal status transitions.
         if (
@@ -378,6 +400,11 @@ class TeamList(generics.ListCreateAPIView):
         return TeamMemberSerializer
 
     def create(self, request, *args, **kwargs):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can create team members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -394,3 +421,50 @@ class TeamDetail(generics.RetrieveUpdateAPIView):
             from .serializers import TeamMemberWriteSerializer
             return TeamMemberWriteSerializer
         return TeamMemberSerializer
+
+    def update(self, request, *args, **kwargs):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can modify team members."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+
+class DeleteDemoData(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        if request.user.profile.role != "admin":
+            return Response(
+                {"detail": "Only admins can delete demo data."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+    def delete(self, request):
+        obs_count = Observation.objects.filter(
+            is_demo=True
+        ).count()
+        survey_count = Survey.objects.filter(
+            is_demo=True
+        ).count()
+        site_count = ClientSite.objects.filter(
+            is_demo=True
+        ).count()
+        client_count = Client.objects.filter(
+            is_demo=True
+        ).count()
+
+        Observation.objects.filter(is_demo=True).delete()
+        Survey.objects.filter(is_demo=True).delete()
+        ClientSite.objects.filter(is_demo=True).delete()
+        Client.objects.filter(is_demo=True).delete()
+
+        return Response({
+            "deleted": {
+                "observations": obs_count,
+                "surveys": survey_count,
+                "sites": site_count,
+                "clients": client_count,
+            }
+        })

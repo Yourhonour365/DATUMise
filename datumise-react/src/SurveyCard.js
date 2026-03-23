@@ -57,8 +57,9 @@ const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : St
 export function SurveyCardGrid({ survey }) {
   const schedule = formatScheduleLine(survey);
   const ss = survey.survey_status || survey.status;
-  const obs = survey.observation_count || 0;
-  const drafts = (survey.observations || []).filter(o => o.is_draft).length || 0;
+  const totalObs = survey.observation_count ?? survey.observations?.length ?? 0;
+  const drafts = survey.draft_observation_count ?? (survey.observations || []).filter(o => o.is_draft).length ?? 0;
+  const obs = totalObs - drafts;
 
   return (
     <div className="survey-queue-grid">

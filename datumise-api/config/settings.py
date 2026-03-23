@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-uyg6g*^sk=#etbm%y!ul0%zmkbye+*+h&hr7@kkb)&^l44_4eq",
 )
 
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS", "localhost,127.0.0.1"
@@ -185,7 +185,16 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Keep registration simple for dev/testing
 ACCOUNT_EMAIL_VERIFICATION = "none"
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+
+# ── Production security hardening (only when DEBUG=False) ──
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 REST_FRAMEWORK = {

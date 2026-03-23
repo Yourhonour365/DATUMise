@@ -1,8 +1,38 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ReturnButton from "./ReturnButton";
+import api from "./api/api";
 
 function Settings() {
+  const [deleting, setDeleting] = useState(false);
+  const [deleteResult, setDeleteResult] = useState(null);
+
+  const handleDeleteDemo = async () => {
+    const confirmed = window.confirm(
+      "Delete all demo data?\n\nThis will permanently remove all clients, sites, surveys, and observations marked as demo data. Real data will not be affected."
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    setDeleteResult(null);
+    try {
+      const res = await api.delete("/api/demo-data/");
+      const d = res.data.deleted;
+      const total = d.clients + d.sites + d.surveys + d.observations;
+      if (total === 0) {
+        setDeleteResult({ type: "info", message: "No demo data found." });
+      } else {
+        setDeleteResult({
+          type: "success",
+          message: `Deleted ${d.clients} clients, ${d.sites} sites, ${d.surveys} surveys, ${d.observations} observations.`,
+        });
+      }
+    } catch (err) {
+      setDeleteResult({ type: "error", message: "Failed to delete demo data." });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="container mt-3 px-3" style={{ maxWidth: "640px" }}>
       <div className="mb-3 d-none d-md-block">
@@ -75,25 +105,26 @@ function Settings() {
 
         <div className="settings-role-card">
           <p className="mb-2" style={{ fontSize: "0.82rem" }}>
-            Admin users will be able to manage training and demo data for onboarding or demonstrations.
+            Demo data is used for onboarding and demonstrations. It can be safely deleted without affecting real data.
           </p>
-          <div className="d-flex flex-column gap-2" style={{ fontSize: "0.82rem" }}>
-            <div className="d-flex align-items-center gap-2 text-muted">
-              <img src="/datumise-load.svg" alt="" width="16" height="16" style={{ opacity: 0.5 }} />
-              <span>Load demo data</span>
-              <span className="badge bg-secondary" style={{ fontSize: "0.65rem" }}>Coming soon</span>
+          <button
+            type="button"
+            className="btn btn-sm d-flex align-items-center gap-2"
+            style={{ fontSize: "0.82rem", padding: "6px 16px", backgroundColor: "#c0392b", color: "#fefdfc", border: "none", borderRadius: 2 }}
+            disabled={deleting}
+            onClick={handleDeleteDemo}
+          >
+            <img src="/datumise_delete.svg" alt="" width="16" height="16" style={{ filter: "brightness(0) invert(1)" }} />
+            {deleting ? "Deleting..." : "Delete Demo Data"}
+          </button>
+          {deleteResult && (
+            <div
+              className={`mt-2 ${deleteResult.type === "error" ? "text-danger" : deleteResult.type === "success" ? "text-success" : "text-muted"}`}
+              style={{ fontSize: "0.82rem" }}
+            >
+              {deleteResult.message}
             </div>
-            <div className="d-flex align-items-center gap-2 text-muted">
-              <img src="/datumise-delete.svg" alt="" width="16" height="16" style={{ opacity: 0.5 }} />
-              <span>Delete demo data</span>
-              <span className="badge bg-secondary" style={{ fontSize: "0.65rem" }}>Coming soon</span>
-            </div>
-            <div className="d-flex align-items-center gap-2 text-muted">
-              <img src="/datumise-confirm.svg" alt="" width="16" height="16" style={{ opacity: 0.5 }} />
-              <span>Restore demo data</span>
-              <span className="badge bg-secondary" style={{ fontSize: "0.65rem" }}>Coming soon</span>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

@@ -289,6 +289,7 @@ class SurveySerializer(serializers.ModelSerializer):
 
     observation_count = serializers.IntegerField(read_only=True)
     real_observation_count = serializers.IntegerField(read_only=True, default=0)
+    draft_observation_count = serializers.IntegerField(read_only=True, default=0)
     total_likes_count = serializers.IntegerField(read_only=True)
     total_comments_count = serializers.IntegerField(read_only=True)
     name = serializers.SerializerMethodField()
@@ -433,6 +434,8 @@ class SurveySerializer(serializers.ModelSerializer):
             "notify_required",
             "arrival_action",
             "departure_action",
+            "site_requirements",
+            "other_attendees",
             "window_end_date",
             "window_end_time",
             "window_start_end_time",
@@ -445,6 +448,7 @@ class SurveySerializer(serializers.ModelSerializer):
             "created_at",
             "observation_count",
             "real_observation_count",
+            "draft_observation_count",
             "total_likes_count",
             "total_comments_count",
             "session_count",
@@ -491,6 +495,8 @@ class SurveyWriteSerializer(serializers.ModelSerializer):
             "notify_required",
             "arrival_action",
             "departure_action",
+            "site_requirements",
+            "other_attendees",
             "window_end_date",
             "window_end_time",
             "window_start_end_time",

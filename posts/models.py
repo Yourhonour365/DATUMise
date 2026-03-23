@@ -96,6 +96,7 @@ class ClientSite(models.Model):
     contact_email = models.EmailField(blank=True)
     access_notes = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
+    is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -187,6 +188,7 @@ class Survey(models.Model):
     site_contact_name = models.CharField(max_length=255, blank=True)
     site_contact_phone = models.CharField(max_length=50, blank=True)
     site_contact_email = models.EmailField(blank=True)
+    is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
@@ -233,6 +235,7 @@ class Observation(models.Model):
     title = models.CharField(max_length=500, blank=True, default="")
     description = models.TextField(blank=True)
     is_draft = models.BooleanField(default=False)
+    is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     image = models.ImageField(upload_to="images/", blank=True, null=True)
